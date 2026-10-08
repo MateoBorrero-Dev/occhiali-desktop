@@ -1,0 +1,38 @@
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
+import { resolve } from 'node:path';
+
+export default defineConfig({
+  main: {
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        external: ['electron'],
+        input: resolve('src/main/index.ts'),
+      },
+    },
+  },
+  preload: {
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        external: ['electron'],
+        input: resolve('src/preload/index.ts'),
+        output: {
+          entryFileNames: 'index.cjs',
+          format: 'cjs',
+        },
+      },
+    },
+  },
+  renderer: {
+    root: resolve('src/renderer'),
+    plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        input: resolve('src/renderer/index.html'),
+      },
+    },
+  },
+});
