@@ -5,7 +5,7 @@
 La aplicación separa los privilegios de Electron de la interfaz. `electron-vite` compila tres
 contextos independientes:
 
-1. `src/main`: ciclo de vida de la aplicación, ventana, seguridad y futura persistencia.
+1. `src/main`: ciclo de vida de la aplicación, ventana, seguridad y persistencia SQLite.
 2. `src/preload`: API mínima disponible para la interfaz mediante `contextBridge`.
 3. `src/renderer`: aplicación React sin acceso directo a Node.js ni a Electron.
 
@@ -56,8 +56,12 @@ excepción no se aplica a la aplicación compilada y no se permite contenido rem
 
 ## SQLite
 
-La Fase 1 no instala el motor, no abre una conexión y no crea esquema ni migraciones. El helper
-`src/main/database/paths.ts` establece la futura ubicación:
+`better-sqlite3` se carga exclusivamente en el proceso principal. Al iniciar, `ApplicationDatabase`
+abre la conexión, activa claves foráneas y WAL, aplica migraciones versionadas y construye
+repositorios tipados. Un fallo de apertura o migración impide abrir la ventana y muestra un mensaje
+genérico, sin borrar ni reemplazar el archivo existente.
+
+`src/main/database/paths.ts` establece la ubicación:
 
 ```text
 join(app.getPath('userData'), 'optica.sqlite3')
@@ -66,6 +70,8 @@ join(app.getPath('userData'), 'optica.sqlite3')
 De este modo, los datos vivirán fuera de `src`, `resources`, `app.asar` y del directorio del
 instalador, y podrán persistir entre actualizaciones.
 
-En Fase 2 se evaluará e integrará `better-sqlite3` contra la versión exacta de Electron. La
-compilación/reconstrucción del módulo nativo y su desempaquetado se validarán antes de elegir la
-configuración del instalador.
+La conexión se cierra durante `before-quit`. React no recibe la conexión ni una API SQL; los modelos
+compartidos solo preparan contratos seguros para futuras operaciones IPC específicas.
+
+La estructura relacional, migraciones, índices y estrategia de backup futura están documentados en
+[database.md](database.md).

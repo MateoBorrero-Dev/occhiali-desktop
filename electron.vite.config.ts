@@ -8,7 +8,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        external: ['electron'],
+        external: ['better-sqlite3', 'electron'],
         input: resolve('src/main/index.ts'),
       },
     },

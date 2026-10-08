@@ -8,7 +8,7 @@ Base Electron/React/TypeScript, seguridad, tooling, pantalla inicial y documenta
 
 ## Fase 2 — SQLite, esquema y migraciones
 
-**Estado:** pendiente.
+**Estado:** completada.
 
 Motor SQLite, conexión local, esquema inicial, migraciones reales y estrategia de integridad.
 

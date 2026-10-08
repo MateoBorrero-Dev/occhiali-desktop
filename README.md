@@ -1,8 +1,8 @@
 # Sistema de Gestión Óptica
 
 Aplicación de escritorio offline para digitalizar la gestión cotidiana de una óptica pequeña de
-Argentina. En su estado actual establece la base técnica y visual; todavía no administra clientes,
-recetas ni información comercial.
+Argentina. En su estado actual dispone de una base técnica, visual y de persistencia; todavía no
+ofrece pantallas para administrar clientes, recetas ni trabajos.
 
 ## Tecnologías
 
@@ -11,7 +11,7 @@ recetas ni información comercial.
 - Vite y Tailwind CSS.
 - Vitest para pruebas automatizadas.
 - ESLint y Prettier para calidad y formato.
-- SQLite planificado para la Fase 2, con almacenamiento bajo `app.getPath('userData')`.
+- SQLite mediante `better-sqlite3`, con almacenamiento bajo `app.getPath('userData')`.
 
 Las versiones exactas instaladas están fijadas en `package.json` y `package-lock.json`.
 
@@ -43,6 +43,7 @@ npm run typecheck
 npm run lint
 npm run format:check
 npm test
+npm run test:electron:sqlite
 npm run build
 ```
 
@@ -56,11 +57,15 @@ npm run format
 
 **Fase 1 — Inicialización y arquitectura:** completada.
 
-La aplicación presenta una pantalla inicial en español, una configuración segura de Electron y un
-puente IPC mínimo. No existe todavía un archivo SQLite ni se recopilan datos reales.
+**Fase 2 — SQLite, modelo de datos y persistencia:** completada.
+
+La aplicación presenta una pantalla inicial en español, una configuración segura de Electron, un
+puente IPC mínimo y persistencia SQLite inicializada desde el proceso principal. No se recopilan
+datos reales automáticamente: la única carga inicial es el catálogo de tratamientos.
 
 Encontrá más información en:
 
 - [Arquitectura](docs/architecture.md)
 - [Desarrollo](docs/development.md)
+- [Base de datos](docs/database.md)
 - [Roadmap](docs/roadmap.md)

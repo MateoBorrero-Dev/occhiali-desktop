@@ -25,6 +25,7 @@ export default tseslint.config(
   {
     files: [
       'electron.vite.config.ts',
+      'scripts/**/*.cjs',
       'src/main/**/*.ts',
       'src/preload/**/*.ts',
       'tests/**/*.ts',
@@ -51,5 +52,13 @@ export default tseslint.config(
   {
     ...tseslint.configs.disableTypeChecked,
     files: ['**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: globals.node,
+    },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      '@typescript-eslint/no-require-imports': 'off',
+    },
   },
 );

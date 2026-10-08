@@ -1,8 +1,18 @@
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, dialog, session } from 'electron';
 import { join } from 'node:path';
+import { ApplicationDatabase } from './database';
+import { applyQaUserDataPathOverride, getDatabaseFilePath } from './database/paths';
 import { registerIpcHandlers } from './ipc/register-handlers';
 
 const isDevelopment = process.env.ELECTRON_RENDERER_URL !== undefined;
+let applicationDatabase: ApplicationDatabase | null = null;
+let qaConfigurationError: unknown = null;
+
+try {
+  applyQaUserDataPathOverride();
+} catch (error: unknown) {
+  qaConfigurationError = error;
+}
 
 function contentSecurityPolicy(): string {
   const connectSource = isDevelopment ? "'self' ws: http://localhost:*" : "'self'";
@@ -78,6 +88,11 @@ function createMainWindow(): BrowserWindow {
 app
   .whenReady()
   .then(() => {
+    if (qaConfigurationError) {
+      throw new Error('La ruta aislada de QA no es válida.', { cause: qaConfigurationError });
+    }
+
+    applicationDatabase = ApplicationDatabase.open(getDatabaseFilePath());
     configureSecurity();
     registerIpcHandlers();
     createMainWindow();
@@ -88,10 +103,18 @@ app
       }
     });
   })
-  .catch((error: unknown) => {
-    console.error('No se pudo iniciar la aplicación.', error);
+  .catch(() => {
+    dialog.showErrorBox(
+      'No se pudo iniciar la aplicación',
+      'No fue posible abrir el almacenamiento local. Cerrá la aplicación y volvé a intentarlo.',
+    );
     app.quit();
   });
+
+app.on('before-quit', () => {
+  applicationDatabase?.close();
+  applicationDatabase = null;
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
