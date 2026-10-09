@@ -50,8 +50,22 @@ mínimo permitido ni el tamaño normal de producción. Ambas variables deben apu
 temporal aislado y no se usan en la operación cotidiana.
 
 Las pruebas de `tests/renderer` usan Testing Library y jsdom para verificar rutas, estado activo,
-accesos rápidos, estados vacíos y comportamiento accesible de los controles. Complementan, pero no
+formularios, búsquedas, mutaciones, estados vacíos y comportamiento accesible de los controles. Las
+pruebas de repositorios e IPC usan bases SQLite temporales reales. Ambas complementan, pero no
 reemplazan, la inspección visual real en Electron.
+
+### Flujo de QA de clientes
+
+Con `OPTICA_QA_USER_DATA_PATH` apuntando a un directorio temporal nuevo:
+
+1. Abrir Clientes y confirmar el estado vacío.
+2. Registrar una persona ficticia, buscarla y abrir su ficha.
+3. Editar un dato y cerrar Electron.
+4. Reiniciar con la misma ruta temporal y comprobar la persistencia.
+5. Archivar, filtrar por Archivados, reactivar y confirmar su regreso a Activos.
+
+Eliminar el perfil temporal únicamente después de cerrar Electron y verificar que su ruta pertenece
+al directorio temporal del sistema.
 
 ## Interfaz y navegación
 
@@ -90,5 +104,6 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
 - No hay instalador en esta fase; su configuración corresponde a la Fase 9.
 - El futuro empaquetado debe conservar el binario `.node` fuera de `app.asar` mediante
   `asarUnpack`; todavía no se generó un instalador.
-- Clientes, recetas y trabajos todavía no permiten altas ni edición; esos flujos corresponden a las
-  Fases 4 a 6.
+- Recetas y trabajos todavía no permiten altas ni edición; esos flujos corresponden a las Fases 5 y 6.
+- El QA visual de Fase 4 requiere un entorno Windows cuya ventana de Electron pueda ser capturada por
+  la herramienta de automatización.

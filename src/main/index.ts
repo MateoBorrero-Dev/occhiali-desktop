@@ -95,7 +95,7 @@ app
 
     applicationDatabase = ApplicationDatabase.open(getDatabaseFilePath());
     configureSecurity();
-    registerIpcHandlers();
+    registerIpcHandlers(applicationDatabase);
     createMainWindow();
 
     app.on('activate', () => {

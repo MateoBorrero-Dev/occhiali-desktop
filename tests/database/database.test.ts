@@ -126,6 +126,124 @@ describe('persistencia SQLite', () => {
     it('rechaza nombres obligatorios vacíos', () => {
       expect(() => context.database.clients.create({ ...TEST_CLIENT, firstName: '  ' })).toThrow();
     });
+
+    it('rechaza apellidos obligatorios vacíos', () => {
+      expect(() => context.database.clients.create({ ...TEST_CLIENT, lastName: '  ' })).toThrow();
+    });
+
+    it('normaliza nombres, espacios y DNI antes de guardar', () => {
+      const client = context.database.clients.create({
+        ...TEST_CLIENT,
+        firstName: '  Ana   María  ',
+        lastName: '  López ',
+        documentNumber: '12.345.678',
+        address: '   ',
+      });
+      expect(client).toMatchObject({
+        firstName: 'Ana María',
+        lastName: 'López',
+        documentNumber: '12345678',
+        address: null,
+      });
+    });
+
+    it('rechaza caracteres inválidos en el DNI', () => {
+      expect(() =>
+        context.database.clients.create({ ...TEST_CLIENT, documentNumber: '12A345' }),
+      ).toThrow('DNI');
+    });
+
+    it('rechaza fechas de nacimiento inválidas', () => {
+      expect(() =>
+        context.database.clients.create({ ...TEST_CLIENT, birthDate: '2026-02-30' }),
+      ).toThrow('fecha');
+    });
+
+    it('busca parcialmente por nombre ignorando mayúsculas y acentos', () => {
+      context.database.clients.create({ ...TEST_CLIENT, firstName: 'José', lastName: 'Álvarez' });
+      expect(context.database.clients.search({ query: 'jose' }).items[0]?.firstName).toBe('José');
+      expect(context.database.clients.search({ query: 'ALVAREZ' }).items[0]?.lastName).toBe(
+        'Álvarez',
+      );
+    });
+
+    it('busca por nombre completo', () => {
+      context.database.clients.create({ ...TEST_CLIENT, firstName: 'Clara', lastName: 'Benítez' });
+      expect(context.database.clients.search({ query: 'Clara Benitez' }).total).toBe(1);
+    });
+
+    it('busca por DNI y teléfono', () => {
+      context.database.clients.create({
+        ...TEST_CLIENT,
+        documentNumber: '30111222',
+        phone: '011 4567-8901',
+      });
+      expect(context.database.clients.search({ query: '111222' }).total).toBe(1);
+      expect(context.database.clients.search({ query: '4567-89' }).total).toBe(1);
+    });
+
+    it('devuelve una página vacía cuando no hay resultados', () => {
+      context.database.clients.create(TEST_CLIENT);
+      expect(context.database.clients.search({ query: 'inexistente' })).toMatchObject({
+        items: [],
+        total: 0,
+      });
+    });
+
+    it('pagina sin cargar indiscriminadamente todos los registros', () => {
+      for (let index = 0; index < 5; index += 1) {
+        context.database.clients.create({
+          ...TEST_CLIENT,
+          firstName: `Cliente ${index}`,
+          documentNumber: null,
+        });
+      }
+      const page = context.database.clients.search({ limit: 2, offset: 2 });
+      expect(page.items).toHaveLength(2);
+      expect(page).toMatchObject({ total: 5, limit: 2, offset: 2 });
+    });
+
+    it('filtra activos, archivados y todos', () => {
+      const archived = context.database.clients.create({ ...TEST_CLIENT, firstName: 'Archivado' });
+      context.database.clients.create({ ...TEST_CLIENT, firstName: 'Activo' });
+      context.database.clients.archive(archived.id);
+      expect(context.database.clients.search({ status: 'active' }).total).toBe(1);
+      expect(context.database.clients.search({ status: 'archived' }).total).toBe(1);
+      expect(context.database.clients.search({ status: 'all' }).total).toBe(2);
+    });
+
+    it('reactiva un cliente archivado', () => {
+      const created = context.database.clients.create(TEST_CLIENT);
+      context.database.clients.archive(created.id);
+      const restored = context.database.clients.restore(created.id);
+      expect(restored).toMatchObject({ id: created.id, isArchived: false });
+      expect(context.database.clients.list()).toHaveLength(1);
+    });
+
+    it('conserva el mismo ID al editar y evita escrituras sin cambios', () => {
+      const created = context.database.clients.create(TEST_CLIENT);
+      const unchanged = context.database.clients.update(created.id, {
+        firstName: created.firstName,
+      });
+      const updated = context.database.clients.update(created.id, { phone: '11 9999 9999' });
+      expect(unchanged.updatedAt).toBe(created.updatedAt);
+      expect(updated.id).toBe(created.id);
+    });
+
+    it('preserva recetas y trabajos relacionados al archivar', () => {
+      const client = context.database.clients.create(TEST_CLIENT);
+      const prescription = context.database.prescriptions.createWithValues({
+        clientId: client.id,
+        prescriptionDate: '2025-01-01',
+      });
+      context.database.opticalJobs.createWithTreatments({
+        clientId: client.id,
+        prescriptionId: prescription.id,
+      });
+      context.database.clients.archive(client.id);
+      expect(context.database.prescriptions.listByClient(client.id)).toHaveLength(1);
+      expect(context.database.opticalJobs.listByClient(client.id)).toHaveLength(1);
+    });
   });
 
   describe('recetas y valores ópticos', () => {

@@ -2,7 +2,7 @@
 
 Aplicación de escritorio offline para digitalizar la gestión cotidiana de una óptica pequeña de
 Argentina. Dispone de una base técnica y de persistencia, además de una interfaz de escritorio con
-navegación preparada para incorporar los flujos de negocio en las próximas fases.
+navegación y un módulo de clientes conectado al almacenamiento local.
 
 ## Tecnologías
 
@@ -63,10 +63,11 @@ npm run format
 
 **Fase 3 — Diseño de interfaz y navegación:** completada.
 
-La aplicación presenta la identidad OCCHIALI y una navegación lateral persistente entre Inicio,
-Clientes, Recetas, Trabajos y Configuración. Los módulos todavía sin operaciones muestran estados
-vacíos honestos, sin estadísticas ni datos ficticios. La configuración segura de Electron, el
-puente IPC mínimo y la persistencia SQLite inicializada desde el proceso principal se conservan.
+**Fase 4 — Gestión de clientes:** implementación completada; QA visual manual pendiente.
+
+La aplicación permite registrar, buscar, consultar, editar, archivar y reactivar clientes. Los
+datos se guardan en SQLite mediante canales IPC específicos y validados; no se usan datos simulados
+ni `localStorage`. Los módulos de recetas y trabajos continúan mostrando estados vacíos honestos.
 No se recopilan datos reales automáticamente: la única carga inicial es el catálogo de
 tratamientos.
 
@@ -75,4 +76,5 @@ Encontrá más información en:
 - [Arquitectura](docs/architecture.md)
 - [Desarrollo](docs/development.md)
 - [Base de datos](docs/database.md)
+- [Gestión de clientes](docs/clients.md)
 - [Roadmap](docs/roadmap.md)

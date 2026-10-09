@@ -37,6 +37,22 @@ export interface UpdateClientInput {
   isArchived?: boolean;
 }
 
+export type ClientStatusFilter = 'active' | 'archived' | 'all';
+
+export interface ClientListRequest {
+  query?: string;
+  status?: ClientStatusFilter;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ClientListPage {
+  items: Client[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export type PrescriptionDistance = 'FAR' | 'NEAR';
 export type Eye = 'OD' | 'OI';
 

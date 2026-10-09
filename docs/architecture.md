@@ -31,9 +31,10 @@ HTML compilado y local.
 
 ## Preload
 
-`src/preload/index.ts` expone `window.optica`, un objeto congelado con una sola operación tipada:
-`getAppInfo()`. No se expone `ipcRenderer`, nombres de canales arbitrarios, acceso al sistema de
-archivos ni objetos completos de Electron.
+`src/preload/index.ts` expone `window.optica`, un objeto congelado. Incluye `getAppInfo()` y una API
+de clientes con operaciones concretas para listar, obtener, crear, actualizar, archivar y reactivar.
+No se expone `ipcRenderer`, nombres de canales arbitrarios, acceso al sistema de archivos ni objetos
+completos de Electron.
 
 ## Renderer
 
@@ -49,14 +50,18 @@ Las rutas actuales son:
 
 - `/`: Inicio.
 - `/clientes`: Clientes.
+- `/clientes/nuevo`: alta de cliente.
+- `/clientes/:id`: ficha individual.
+- `/clientes/:id/editar`: edición.
 - `/recetas`: Recetas.
 - `/trabajos`: Trabajos.
 - `/configuracion`: Configuración.
 - cualquier otra ruta: pantalla de recurso no encontrado con retorno seguro al inicio.
 
 Los bloques visuales reutilizables se agrupan por responsabilidad: `Button` y `Card` en `ui`,
-`PageHeader`, `EmptyState` y `ModulePlaceholder` en `common`, y `Sidebar` en `navigation`. Las páginas
-de módulos muestran estados vacíos reales hasta que las fases de negocio implementen sus flujos.
+`PageHeader`, `EmptyState` y `ModulePlaceholder` en `common`, y `Sidebar` en `navigation`. El módulo
+de clientes agrega `ClientForm`, `ClientStatusBadge` y `ArchiveClientDialog`. Recetas y trabajos
+mantienen estados vacíos reales hasta que sus fases implementen los flujos correspondientes.
 
 La paleta usa verde petróleo como color de marca, fondos neutros cálidos, tipografía del sistema e
 iconos de Lucide. Los estilos incluyen foco visible, estados activos, soporte de movimiento reducido
@@ -65,9 +70,13 @@ y una anchura mínima alineada con la ventana de Electron para evitar una interf
 ## IPC
 
 Los canales se enumeran en `src/shared/ipc-contracts.ts`. Cada handler se registra de forma explícita
-y valida sus argumentos antes de ejecutar lógica. La Fase 1 incluye solamente `app:get-info`, sin
-argumentos. Los futuros contratos deberán declarar sus tipos y validadores en la capa compartida; no
-se implementará un método genérico `send` o `invoke`.
+y valida tipos, cantidad de argumentos, longitudes, fechas, DNI y filtros en runtime. Los canales de
+clientes son `clients:list`, `clients:get`, `clients:create`, `clients:update`, `clients:archive` y
+`clients:restore`. No existe un método genérico `send`, `invoke` ni SQL accesible desde React.
+
+Los handlers convierten errores internos en resultados discriminados con códigos de validación,
+DNI duplicado, registro inexistente, conflicto o persistencia. Las respuestas nunca exponen rutas
+locales, SQL ni datos privados en logs.
 
 ## Política de seguridad de contenido
 
@@ -92,8 +101,10 @@ join(app.getPath('userData'), 'optica.sqlite3')
 De este modo, los datos vivirán fuera de `src`, `resources`, `app.asar` y del directorio del
 instalador, y podrán persistir entre actualizaciones.
 
-La conexión se cierra durante `before-quit`. React no recibe la conexión ni una API SQL; los modelos
-compartidos solo preparan contratos seguros para futuras operaciones IPC específicas.
+La conexión se cierra durante `before-quit`. React no recibe la conexión ni una API SQL. El
+repositorio de clientes reutiliza la tabla e índices de la migración inicial, normaliza las entradas,
+pagina los resultados y ejecuta búsquedas parametrizadas mediante una función local determinista que
+ignora mayúsculas y acentos.
 
 La estructura relacional, migraciones, índices y estrategia de backup futura están documentados en
 [database.md](database.md).
