@@ -195,6 +195,50 @@ export interface CreateOpticalJobInput {
   treatmentIds?: string[];
 }
 
+export interface UpdateOpticalJobInput {
+  prescriptionId?: number | null;
+  jobNumber?: string | null;
+  product?: string | null;
+  frameCondition?: FrameCondition | null;
+  frameMaterial?: FrameMaterial | null;
+  frameModel?: string | null;
+  colorType?: ColorType | null;
+  observations?: string | null;
+  treatmentIds?: string[];
+}
+
+export interface OpticalJobSummary {
+  id: number;
+  clientId: number;
+  clientFirstName: string;
+  clientLastName: string;
+  prescriptionId: number | null;
+  jobNumber: string | null;
+  product: string | null;
+  frameModel: string | null;
+  createdAt: IsoTimestamp;
+  updatedAt: IsoTimestamp;
+}
+
+export interface OpticalJobListRequest {
+  query?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface OpticalJobsByClientRequest {
+  clientId: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface OpticalJobListPage {
+  items: OpticalJobSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface Treatment {
   id: string;
   name: string;

@@ -62,6 +62,24 @@ function installApi() {
         correct: vi.fn(),
         revisions: vi.fn(),
       },
+      opticalJobs: {
+        list: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 25, offset: 0 },
+          }),
+        ),
+        listByClient: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 10, offset: 0 },
+          }),
+        ),
+        get: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
     },
   });
   return clients;

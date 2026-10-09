@@ -94,12 +94,25 @@ function installApi(pageItems = [SUMMARY]) {
     correct: vi.fn(() => Promise.resolve(prescriptionSuccess(PRESCRIPTION))),
     revisions: vi.fn(() => Promise.resolve(prescriptionSuccess([] as PrescriptionRevision[]))),
   };
+  const opticalJobs = {
+    list: vi.fn(() =>
+      Promise.resolve({ ok: true as const, data: { items: [], total: 0, limit: 25, offset: 0 } }),
+    ),
+    listByClient: vi.fn(() =>
+      Promise.resolve({ ok: true as const, data: { items: [], total: 0, limit: 10, offset: 0 } }),
+    ),
+    get: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  };
   Object.defineProperty(window, 'optica', {
     configurable: true,
     value: {
       getAppInfo: vi.fn(() => Promise.resolve({ name: 'OCCHIALI', version: '0.1.0' })),
       clients,
       prescriptions,
+      opticalJobs,
+      treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
     },
   });
   return { clients, prescriptions };

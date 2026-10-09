@@ -1,6 +1,12 @@
 /// <reference types="vite/client" />
 
-import type { AppInfo, ClientApi, PrescriptionApi } from '../../shared/ipc-contracts';
+import type {
+  AppInfo,
+  ClientApi,
+  OpticalJobApi,
+  PrescriptionApi,
+  TreatmentApi,
+} from '../../shared/ipc-contracts';
 
 declare global {
   interface Window {
@@ -8,6 +14,8 @@ declare global {
       getAppInfo: () => Promise<AppInfo>;
       clients: ClientApi;
       prescriptions: PrescriptionApi;
+      opticalJobs: OpticalJobApi;
+      treatments: TreatmentApi;
     };
   }
 }

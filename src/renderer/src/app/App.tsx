@@ -12,6 +12,9 @@ import { PrescriptionDetailPage } from '../pages/PrescriptionDetailPage';
 import { PrescriptionCorrectionPage } from '../pages/PrescriptionCorrectionPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { WorkPage } from '../pages/WorkPage';
+import { OpticalJobCreatePage } from '../pages/OpticalJobCreatePage';
+import { OpticalJobDetailPage } from '../pages/OpticalJobDetailPage';
+import { OpticalJobEditPage } from '../pages/OpticalJobEditPage';
 
 export function App(): React.JSX.Element {
   return (
@@ -24,11 +27,15 @@ export function App(): React.JSX.Element {
           <Route path="clientes/:id" element={<ClientDetailPage />} />
           <Route path="clientes/:id/editar" element={<ClientEditPage />} />
           <Route path="clientes/:id/recetas/nueva" element={<PrescriptionCreatePage />} />
+          <Route path="clientes/:id/trabajos/nuevo" element={<OpticalJobCreatePage />} />
           <Route path="recetas" element={<PrescriptionsPage />} />
           <Route path="recetas/nueva" element={<PrescriptionCreatePage />} />
           <Route path="recetas/:id" element={<PrescriptionDetailPage />} />
           <Route path="recetas/:id/corregir" element={<PrescriptionCorrectionPage />} />
           <Route path="trabajos" element={<WorkPage />} />
+          <Route path="trabajos/nuevo" element={<OpticalJobCreatePage />} />
+          <Route path="trabajos/:id" element={<OpticalJobDetailPage />} />
+          <Route path="trabajos/:id/editar" element={<OpticalJobEditPage />} />
           <Route path="configuracion" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

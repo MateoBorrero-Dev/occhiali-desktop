@@ -5,12 +5,19 @@ import type {
   CreateClientInput,
   CorrectPrescriptionInput,
   CreatePrescriptionInput,
+  CreateOpticalJobInput,
+  OpticalJob,
+  OpticalJobListPage,
+  OpticalJobListRequest,
+  OpticalJobsByClientRequest,
   Prescription,
   PrescriptionListPage,
   PrescriptionListRequest,
   PrescriptionRevision,
+  Treatment,
   PrescriptionsByClientRequest,
   UpdateClientInput,
+  UpdateOpticalJobInput,
 } from './database-models';
 
 export const IPC_CHANNELS = {
@@ -27,6 +34,12 @@ export const IPC_CHANNELS = {
   prescriptionsCreate: 'prescriptions:create',
   prescriptionsCorrect: 'prescriptions:correct',
   prescriptionsRevisions: 'prescriptions:revisions',
+  opticalJobsList: 'optical-jobs:list',
+  opticalJobsListByClient: 'optical-jobs:list-by-client',
+  opticalJobsGet: 'optical-jobs:get',
+  opticalJobsCreate: 'optical-jobs:create',
+  opticalJobsUpdate: 'optical-jobs:update',
+  treatmentsList: 'treatments:list',
 } as const;
 
 export interface AppInfo {
@@ -78,6 +91,41 @@ export interface PrescriptionApi {
     input: CorrectPrescriptionInput,
   ) => Promise<PrescriptionIpcResult<Prescription>>;
   revisions: (id: number) => Promise<PrescriptionIpcResult<PrescriptionRevision[]>>;
+}
+
+export type OpticalJobIpcErrorCode =
+  | 'VALIDATION'
+  | 'DUPLICATE_JOB_NUMBER'
+  | 'NOT_FOUND'
+  | 'CLIENT_NOT_FOUND'
+  | 'ARCHIVED_CLIENT'
+  | 'PRESCRIPTION_NOT_FOUND'
+  | 'PRESCRIPTION_MISMATCH'
+  | 'TREATMENT_NOT_FOUND'
+  | 'CONFLICT'
+  | 'PERSISTENCE';
+
+export interface OpticalJobIpcError {
+  code: OpticalJobIpcErrorCode;
+  message: string;
+  fields?: Record<string, string>;
+}
+
+export type OpticalJobIpcResult<T> =
+  { ok: true; data: T } | { ok: false; error: OpticalJobIpcError };
+
+export interface OpticalJobApi {
+  list: (request?: OpticalJobListRequest) => Promise<OpticalJobIpcResult<OpticalJobListPage>>;
+  listByClient: (
+    request: OpticalJobsByClientRequest,
+  ) => Promise<OpticalJobIpcResult<OpticalJobListPage>>;
+  get: (id: number) => Promise<OpticalJobIpcResult<OpticalJob>>;
+  create: (input: CreateOpticalJobInput) => Promise<OpticalJobIpcResult<OpticalJob>>;
+  update: (id: number, input: UpdateOpticalJobInput) => Promise<OpticalJobIpcResult<OpticalJob>>;
+}
+
+export interface TreatmentApi {
+  list: () => Promise<OpticalJobIpcResult<Treatment[]>>;
 }
 
 export function assertNoArguments(channel: string, args: readonly unknown[]): void {

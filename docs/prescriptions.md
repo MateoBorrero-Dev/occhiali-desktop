@@ -68,3 +68,7 @@ detalle y bloqueo de clientes archivados.
 La ficha física no aclara si DIP y ALT son mediciones monoculares, binoculares o compartidas. Se
 conservan por fila sin inferencia clínica hasta confirmar el criterio. La estrategia integral de
 backup y restauración corresponde a Fase 8.
+
+Una ficha de trabajo puede referenciar una receta existente del mismo cliente. La relación apunta al
+registro actual de la receta: una corrección posterior se refleja al abrirla y no modifica la ficha
+ni guarda una copia congelada de las graduaciones.

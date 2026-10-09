@@ -4,6 +4,7 @@ import { assertNoArguments, IPC_CHANNELS } from '../../shared/ipc-contracts';
 import type { AppInfo } from '../../shared/ipc-contracts';
 import { createClientIpcHandlers } from './client-handlers';
 import { createPrescriptionIpcHandlers } from './prescription-handlers';
+import { createOpticalJobIpcHandlers } from './optical-job-handlers';
 
 export function registerIpcHandlers(database: ApplicationDatabase): void {
   ipcMain.handle(IPC_CHANNELS.appInfo, (_event, ...args: unknown[]): AppInfo => {
@@ -45,5 +46,25 @@ export function registerIpcHandlers(database: ApplicationDatabase): void {
   );
   ipcMain.handle(IPC_CHANNELS.prescriptionsRevisions, (_event, ...args: unknown[]) =>
     prescriptions.revisions(...args),
+  );
+
+  const opticalJobs = createOpticalJobIpcHandlers(database);
+  ipcMain.handle(IPC_CHANNELS.opticalJobsList, (_event, ...args: unknown[]) =>
+    opticalJobs.list(...args),
+  );
+  ipcMain.handle(IPC_CHANNELS.opticalJobsListByClient, (_event, ...args: unknown[]) =>
+    opticalJobs.listByClient(...args),
+  );
+  ipcMain.handle(IPC_CHANNELS.opticalJobsGet, (_event, ...args: unknown[]) =>
+    opticalJobs.get(...args),
+  );
+  ipcMain.handle(IPC_CHANNELS.opticalJobsCreate, (_event, ...args: unknown[]) =>
+    opticalJobs.create(...args),
+  );
+  ipcMain.handle(IPC_CHANNELS.opticalJobsUpdate, (_event, ...args: unknown[]) =>
+    opticalJobs.update(...args),
+  );
+  ipcMain.handle(IPC_CHANNELS.treatmentsList, (_event, ...args: unknown[]) =>
+    opticalJobs.treatments(...args),
   );
 }

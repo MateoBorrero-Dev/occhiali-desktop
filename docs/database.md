@@ -148,6 +148,11 @@ Valores enumerados opcionales:
 - `frame_material`: `ZILO` o `METAL`.
 - `color_type`: `FULL` o `GRADIENT`.
 
+Fase 6 utiliza esta estructura existente sin migraciones nuevas. `product` sigue siendo texto libre
+para admitir anteojos recetados, lentes de sol y otros productos sin crear inventario. `job_number`
+es textual, conserva ceros iniciales y su índice único parcial evita duplicados solo cuando se
+informa. Las altas se bloquean para clientes archivados y las ediciones conservan el cliente.
+
 ### `treatments`
 
 Catálogo extensible con identificador textual estable, nombre visible e indicador de actividad. La
@@ -160,6 +165,9 @@ migración inicial incorpora de manera idempotente:
 - `shape-change`: Cambio de forma.
 
 Los tratamientos usados no se eliminan; podrán desactivarse en una fase futura.
+
+En la interfaz se presentan como **Tratamientos y acabados de lentes**. Son características
+comerciales del producto óptico, no tratamientos médicos ni procedimientos clínicos.
 
 ### `optical_job_treatments`
 
@@ -185,6 +193,8 @@ Fase 2 aplica unicidad cuando se informa, de acuerdo con el criterio preventivo 
 - Las fechas de negocio usan `AAAA-MM-DD`; los timestamps son UTC en formato ISO.
 - Los repositorios usan sentencias preparadas y parámetros, nunca concatenan entradas en SQL.
 - Las operaciones compuestas de receta-valores y trabajo-tratamientos usan transacciones.
+- La edición de una ficha actualiza campos y reemplaza asociaciones de tratamientos de forma
+  atómica; si un paso falla, se revierte todo.
 - Hay índices para nombres de clientes, archivado, historiales por cliente, receta de un trabajo y
   búsquedas inversas de tratamientos.
 
@@ -200,6 +210,9 @@ Migraciones actuales:
 2. `002_seed_treatments`: catálogo inicial idempotente.
 3. `003_prescription_revisions`: tablas e índices de revisiones históricas, sin alterar las
    migraciones anteriores.
+
+Fase 6 no agrega migraciones: las tres tablas de fichas y tratamientos ya representaban el dominio
+necesario.
 
 Una migración registrada que el código no conoce detiene la apertura para evitar ejecutar una
 versión antigua contra un esquema más nuevo.

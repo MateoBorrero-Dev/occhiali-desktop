@@ -7,6 +7,7 @@ import { PageHeader } from '../components/common/PageHeader';
 import { ArchiveClientDialog } from '../components/clients/ArchiveClientDialog';
 import { ClientStatusBadge } from '../components/clients/ClientStatusBadge';
 import { ClientPrescriptionHistory } from '../components/prescriptions/ClientPrescriptionHistory';
+import { ClientOpticalJobHistory } from '../components/optical-jobs/ClientOpticalJobHistory';
 import { Button } from '../components/ui/Button';
 import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
@@ -242,6 +243,7 @@ export function ClientDetailPage(): React.JSX.Element {
       </div>
 
       <ClientPrescriptionHistory client={client} />
+      <ClientOpticalJobHistory client={client} />
 
       {showArchiveDialog && (
         <ArchiveClientDialog

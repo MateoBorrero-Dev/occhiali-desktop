@@ -46,6 +46,24 @@ function mockAppInfo(
         correct: vi.fn(),
         revisions: vi.fn(),
       },
+      opticalJobs: {
+        list: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 25, offset: 0 },
+          }),
+        ),
+        listByClient: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 10, offset: 0 },
+          }),
+        ),
+        get: vi.fn(),
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
     },
   });
 }
@@ -118,7 +136,7 @@ describe('interfaz principal', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Recetas' })).toBeInTheDocument();
   });
 
-  it('presenta el estado vacío real de clientes y los módulos pendientes', async () => {
+  it('presenta estados vacíos reales de clientes y trabajos', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -132,9 +150,9 @@ describe('interfaz principal', () => {
 
     await user.click(screen.getByRole('link', { name: 'Trabajos' }));
     expect(
-      screen.getByRole('heading', {
+      await screen.findByRole('heading', {
         level: 2,
-        name: 'El módulo de trabajos estará disponible próximamente',
+        name: 'Todavía no hay fichas de trabajo.',
       }),
     ).toBeInTheDocument();
   });

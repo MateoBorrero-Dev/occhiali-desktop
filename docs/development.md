@@ -82,6 +82,18 @@ Con el mismo mecanismo de perfil temporal aislado:
 Las pruebas de Fase 5 también construyen una base con solo las migraciones 001/002 y comprueban que
 003 se aplica sin perder recetas ni graduaciones.
 
+### Flujo de QA de fichas de trabajo
+
+Con un perfil temporal aislado:
+
+1. Crear un cliente y una receta ficticios.
+2. Registrar anteojos recetados con número, armazón, receta y tratamientos.
+3. Abrir el detalle y editar el modelo y los acabados.
+4. Crear lentes de sol sin receta y confirmar que son válidos.
+5. Buscar ambas fichas, reiniciar Electron y comprobar persistencia.
+6. Archivar el cliente, consultar sus fichas y verificar el bloqueo de nuevas altas.
+7. Reactivar el cliente y eliminar el perfil temporal después de cerrar Electron.
+
 ## Interfaz y navegación
 
 La aplicación usa `HashRouter`, de modo que las URLs permanecen dentro del archivo HTML local al
@@ -119,8 +131,8 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
 - No hay instalador en esta fase; su configuración corresponde a la Fase 9.
 - El futuro empaquetado debe conservar el binario `.node` fuera de `app.asar` mediante
   `asarUnpack`; todavía no se generó un instalador.
-- Trabajos todavía no permite altas ni edición; ese flujo corresponde a la Fase 6.
 - DIP y ALT se conservan por combinación distancia-ojo, pero su interpretación clínica exacta debe
   confirmarse con la dueña antes de imponer nuevas reglas.
+- No existen precios, ventas, stock, pagos ni estados logísticos; son dominios fuera de Fase 6.
 - El QA visual de Fase 4 requiere un entorno Windows cuya ventana de Electron pueda ser capturada por
   la herramienta de automatización.

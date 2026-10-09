@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClientIpcHandlers } from '../src/main/ipc/client-handlers';
 import { createPrescriptionIpcHandlers } from '../src/main/ipc/prescription-handlers';
+import { createOpticalJobIpcHandlers } from '../src/main/ipc/optical-job-handlers';
 import { assertArgumentCount, assertNoArguments, IPC_CHANNELS } from '../src/shared/ipc-contracts';
 import { createTestDatabase, destroyTestDatabase, TEST_CLIENT } from './database/helpers';
 import type { TestDatabase } from './database/helpers';
@@ -21,6 +22,12 @@ describe('contratos IPC', () => {
       prescriptionsCreate: 'prescriptions:create',
       prescriptionsCorrect: 'prescriptions:correct',
       prescriptionsRevisions: 'prescriptions:revisions',
+      opticalJobsList: 'optical-jobs:list',
+      opticalJobsListByClient: 'optical-jobs:list-by-client',
+      opticalJobsGet: 'optical-jobs:get',
+      opticalJobsCreate: 'optical-jobs:create',
+      opticalJobsUpdate: 'optical-jobs:update',
+      treatmentsList: 'treatments:list',
     });
   });
 
@@ -31,6 +38,114 @@ describe('contratos IPC', () => {
   it('rechaza argumentos no esperados', () => {
     expect(() => assertNoArguments(IPC_CHANNELS.appInfo, ['no permitido'])).toThrow(TypeError);
     expect(() => assertArgumentCount(IPC_CHANNELS.clientsGet, [], 1)).toThrow(TypeError);
+  });
+});
+
+describe('handlers IPC de fichas de trabajo', () => {
+  let context: TestDatabase;
+  beforeEach(() => {
+    context = createTestDatabase();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    destroyTestDatabase(context);
+  });
+
+  it('crea, obtiene, lista y actualiza una ficha con respuestas seguras', () => {
+    const owner = context.database.clients.create(TEST_CLIENT);
+    const handlers = createOpticalJobIpcHandlers(context.database);
+    const created = handlers.create({
+      clientId: owner.id,
+      jobNumber: 'IPC-01',
+      product: 'Lentes de sol',
+      treatmentIds: ['edge-polish'],
+    });
+    expect(created).toMatchObject({ ok: true, data: { jobNumber: 'IPC-01' } });
+    if (!created.ok) throw new Error('No se pudo preparar la ficha.');
+    expect(handlers.get(created.data.id)).toEqual(created);
+    expect(handlers.list({ query: 'IPC-01' })).toMatchObject({ ok: true, data: { total: 1 } });
+    expect(handlers.listByClient({ clientId: owner.id })).toMatchObject({
+      ok: true,
+      data: { total: 1 },
+    });
+    expect(handlers.update(created.data.id, { product: 'Producto actualizado' })).toMatchObject({
+      ok: true,
+      data: { id: created.data.id, product: 'Producto actualizado' },
+    });
+  });
+
+  it('devuelve el catálogo real de tratamientos sin argumentos', () => {
+    const handlers = createOpticalJobIpcHandlers(context.database);
+    const result = handlers.treatments();
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('No se pudo consultar el catálogo.');
+    expect(result.data).toHaveLength(5);
+    expect(result.data.every((item) => item.isActive)).toBe(true);
+    expect(handlers.treatments('extra')).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+  });
+
+  it('rechaza payloads, IDs y cantidades de argumentos inválidos', () => {
+    const handlers = createOpticalJobIpcHandlers(context.database);
+    expect(handlers.create({ clientId: '1' })).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+    expect(handlers.get('1')).toMatchObject({ ok: false, error: { code: 'VALIDATION' } });
+    expect(handlers.update(1)).toMatchObject({ ok: false, error: { code: 'VALIDATION' } });
+  });
+
+  it('diferencia número duplicado, cliente archivado y receta incompatible', () => {
+    const first = context.database.clients.create(TEST_CLIENT);
+    const second = context.database.clients.create({ ...TEST_CLIENT, firstName: 'Otra' });
+    const recipe = context.database.prescriptions.createWithValues({
+      clientId: first.id,
+      prescriptionDate: '2026-04-01',
+      values: [{ distance: 'FAR', eye: 'OD', sphere: '1.00' }],
+    });
+    const handlers = createOpticalJobIpcHandlers(context.database);
+    handlers.create({ clientId: first.id, jobNumber: 'DUP-1' });
+    expect(handlers.create({ clientId: first.id, jobNumber: 'DUP-1' })).toMatchObject({
+      ok: false,
+      error: { code: 'DUPLICATE_JOB_NUMBER' },
+    });
+    expect(handlers.create({ clientId: second.id, prescriptionId: recipe.id })).toMatchObject({
+      ok: false,
+      error: { code: 'PRESCRIPTION_MISMATCH' },
+    });
+    context.database.clients.archive(second.id);
+    expect(handlers.create({ clientId: second.id })).toMatchObject({
+      ok: false,
+      error: { code: 'ARCHIVED_CLIENT' },
+    });
+  });
+
+  it('diferencia tratamiento inexistente y ficha inexistente', () => {
+    const owner = context.database.clients.create(TEST_CLIENT);
+    const handlers = createOpticalJobIpcHandlers(context.database);
+    expect(handlers.create({ clientId: owner.id, treatmentIds: ['inexistente'] })).toMatchObject({
+      ok: false,
+      error: { code: 'TREATMENT_NOT_FOUND' },
+    });
+    expect(handlers.get(999_999)).toEqual({
+      ok: false,
+      error: { code: 'NOT_FOUND', message: 'No existe la ficha solicitada.' },
+    });
+  });
+
+  it('oculta detalles internos de persistencia', () => {
+    vi.spyOn(context.database.opticalJobs, 'search').mockImplementation(() => {
+      throw new Error('C:\\ruta-privada\\base.sqlite3');
+    });
+    expect(createOpticalJobIpcHandlers(context.database).list({})).toEqual({
+      ok: false,
+      error: {
+        code: 'PERSISTENCE',
+        message: 'No se pudo completar la operación. Volvé a intentarlo.',
+      },
+    });
   });
 });
 

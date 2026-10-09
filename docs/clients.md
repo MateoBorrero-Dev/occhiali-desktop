@@ -41,6 +41,10 @@ al listado y el historial real de recetas paginado. “Nueva receta” abre
 `/clientes/:id/recetas/nueva` con el cliente preseleccionado. Una edición conserva el ID y omite la
 escritura si los valores normalizados no cambiaron.
 
+La misma ficha incorpora un historial paginado de trabajos. “Nueva ficha” abre
+`/clientes/:id/trabajos/nuevo` con el cliente fijo; al archivarlo, recetas y fichas siguen visibles,
+pero se bloquean nuevas altas hasta su reactivación.
+
 ## Archivado lógico
 
 Archivar cambia `is_archived` y nunca elimina la fila. La acción requiere confirmación e informa que

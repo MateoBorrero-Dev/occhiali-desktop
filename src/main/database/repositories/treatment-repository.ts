@@ -14,6 +14,13 @@ interface OpticalJobTreatmentRow {
   created_at: string;
 }
 
+export class TreatmentNotFoundError extends Error {
+  public constructor() {
+    super('Uno de los tratamientos o acabados seleccionados no existe.');
+    this.name = 'TreatmentNotFoundError';
+  }
+}
+
 function mapTreatment(row: TreatmentRow): Treatment {
   return {
     id: row.id,
@@ -31,6 +38,31 @@ export class TreatmentRepository {
       .prepare('SELECT * FROM treatments ORDER BY name COLLATE NOCASE, id')
       .all() as TreatmentRow[];
     return rows.map(mapTreatment);
+  }
+
+  public listActive(): Treatment[] {
+    const rows = this.database
+      .prepare('SELECT * FROM treatments WHERE is_active = 1 ORDER BY name COLLATE NOCASE, id')
+      .all() as TreatmentRow[];
+    return rows.map(mapTreatment);
+  }
+
+  public assertIdsExist(treatmentIds: readonly string[]): void {
+    const statement = this.database.prepare(
+      'SELECT 1 FROM treatments WHERE id = ? AND is_active = 1',
+    );
+    for (const treatmentId of treatmentIds) {
+      if (!statement.get(treatmentId)) {
+        throw new TreatmentNotFoundError();
+      }
+    }
+  }
+
+  public replaceForJob(opticalJobId: number, treatmentIds: readonly string[]): void {
+    this.database
+      .prepare('DELETE FROM optical_job_treatments WHERE optical_job_id = ?')
+      .run(opticalJobId);
+    for (const treatmentId of treatmentIds) this.addToJob(opticalJobId, treatmentId);
   }
 
   public listByJob(opticalJobId: number): Treatment[] {

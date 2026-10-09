@@ -34,9 +34,10 @@ OD/OI, correcciones con ID estable y revisiones históricas transaccionales.
 
 ## Fase 6 — Fichas completas de trabajo
 
-**Estado:** pendiente.
+**Estado:** implementación y pruebas automatizadas completadas; QA visual manual pendiente.
 
-Armazones, tratamientos, productos y observaciones.
+Productos, armazones, receta opcional, tratamientos y acabados de lentes, coloración, observaciones,
+búsqueda, edición e historial por cliente.
 
 ## Fase 7 — Búsquedas y consultas
 
