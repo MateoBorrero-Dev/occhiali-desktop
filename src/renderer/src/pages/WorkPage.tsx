@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Search,
   UserRound,
+  X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -71,7 +72,7 @@ export function WorkPage(): React.JSX.Element {
             />
             <input
               type="search"
-              className="min-h-10 w-full rounded-lg border border-slate-300 bg-white pr-3 pl-10 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              className="min-h-10 w-full rounded-lg border border-slate-300 bg-white pr-10 pl-10 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
               placeholder="Número, cliente, producto o modelo"
               value={query}
               onChange={(event) => {
@@ -80,6 +81,16 @@ export function WorkPage(): React.JSX.Element {
                 setOffset(0);
               }}
             />
+            {query && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="absolute top-1/2 right-2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-teal-700"
+                aria-label="Limpiar búsqueda"
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </label>
       </Card>
@@ -109,19 +120,19 @@ export function WorkPage(): React.JSX.Element {
         )}
         {state.status === 'ready' && state.page.items.length === 0 && (
           <EmptyState
-            icon={query ? Search : BriefcaseBusiness}
+            icon={debouncedQuery ? Search : BriefcaseBusiness}
             title={
-              query
+              debouncedQuery
                 ? 'No encontramos fichas con esa búsqueda.'
                 : 'Todavía no hay fichas de trabajo.'
             }
             description={
-              query
+              debouncedQuery
                 ? 'Probá con otro número, cliente o producto.'
                 : 'Registrá la primera ficha de producto o pedido óptico.'
             }
             action={
-              query ? (
+              debouncedQuery ? (
                 <Button variant="secondary" onClick={clearSearch}>
                   Limpiar búsqueda
                 </Button>
@@ -197,7 +208,10 @@ export function WorkPage(): React.JSX.Element {
                   size="sm"
                   variant="secondary"
                   disabled={offset === 0}
-                  onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))}
+                  onClick={() => {
+                    setState({ status: 'loading' });
+                    setOffset((value) => Math.max(0, value - PAGE_SIZE));
+                  }}
                 >
                   <ChevronLeft size={16} />
                   Anterior
@@ -206,7 +220,10 @@ export function WorkPage(): React.JSX.Element {
                   size="sm"
                   variant="secondary"
                   disabled={offset + PAGE_SIZE >= state.page.total}
-                  onClick={() => setOffset((value) => value + PAGE_SIZE)}
+                  onClick={() => {
+                    setState({ status: 'loading' });
+                    setOffset((value) => value + PAGE_SIZE);
+                  }}
                 >
                   Siguiente <ChevronRight size={16} />
                 </Button>

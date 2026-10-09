@@ -6,6 +6,8 @@ import type {
   OpticalJobApi,
   PrescriptionApi,
   TreatmentApi,
+  DashboardApi,
+  SearchApi,
 } from '../../shared/ipc-contracts';
 
 declare global {
@@ -16,6 +18,8 @@ declare global {
       prescriptions: PrescriptionApi;
       opticalJobs: OpticalJobApi;
       treatments: TreatmentApi;
+      dashboard: DashboardApi;
+      search: SearchApi;
     };
   }
 }

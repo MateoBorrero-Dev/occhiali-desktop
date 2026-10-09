@@ -87,11 +87,17 @@ export function OpticalJobForm({
   const [clientQuery, setClientQuery] = useState('');
   const [clientResults, setClientResults] = useState<Client[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionSummary[]>([]);
+  const [prescriptionTotal, setPrescriptionTotal] = useState(0);
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(
+    Boolean(fixedClient || initialJob),
+  );
   const [treatments, setTreatments] = useState<Treatment[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const clientSearchSequence = useRef(0);
+  const prescriptionSequence = useRef(0);
   const editing = Boolean(initialJob);
 
   useEffect(() => {
@@ -117,12 +123,18 @@ export function OpticalJobForm({
   }, []);
 
   useEffect(() => {
-    if (fixedClient || editing || clientQuery.trim().length < 2) return;
+    if (fixedClient || editing || clientQuery.trim().length < 2) {
+      clientSearchSequence.current += 1;
+      return;
+    }
     const timer = window.setTimeout(() => {
+      const request = ++clientSearchSequence.current;
       void window.optica.clients
         .list({ query: clientQuery, status: 'active', limit: 10, offset: 0 })
         .then(unwrapClientResult)
-        .then((page) => setClientResults(page.items))
+        .then((page) => {
+          if (clientSearchSequence.current === request) setClientResults(page.items);
+        })
         .catch(() =>
           setErrors((current) => ({ ...current, clientId: 'No se pudo buscar clientes.' })),
         );
@@ -132,25 +144,61 @@ export function OpticalJobForm({
 
   useEffect(() => {
     const clientId = Number(values.clientId);
-    if (!Number.isSafeInteger(clientId) || clientId < 1) return;
+    if (!Number.isSafeInteger(clientId) || clientId < 1) {
+      prescriptionSequence.current += 1;
+      return;
+    }
     let active = true;
+    const request = ++prescriptionSequence.current;
     void window.optica.prescriptions
-      .listByClient({ clientId, limit: 100, offset: 0 })
+      .listByClient({ clientId, limit: 50, offset: 0 })
       .then(unwrapPrescriptionResult)
       .then((page) => {
-        if (active) setPrescriptions(page.items);
+        if (active && prescriptionSequence.current === request) {
+          setPrescriptions(page.items);
+          setPrescriptionTotal(page.total);
+          setPrescriptionsLoading(false);
+        }
       })
       .catch(() => {
-        if (active)
+        if (active && prescriptionSequence.current === request) {
+          setPrescriptionsLoading(false);
           setErrors((current) => ({
             ...current,
             prescriptionId: 'No se pudieron cargar las recetas del cliente.',
           }));
+        }
       });
     return () => {
       active = false;
     };
   }, [values.clientId]);
+
+  const loadMorePrescriptions = (): void => {
+    const clientId = Number(values.clientId);
+    if (!Number.isSafeInteger(clientId) || prescriptionsLoading) return;
+    const request = ++prescriptionSequence.current;
+    setPrescriptionsLoading(true);
+    void window.optica.prescriptions
+      .listByClient({ clientId, limit: 50, offset: prescriptions.length })
+      .then(unwrapPrescriptionResult)
+      .then((page) => {
+        if (prescriptionSequence.current === request) {
+          setPrescriptions((current) => [...current, ...page.items]);
+          setPrescriptionTotal(page.total);
+          setPrescriptionsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (prescriptionSequence.current === request) {
+          setPrescriptionsLoading(false);
+          setErrors((current) => ({
+            ...current,
+            prescriptionId: 'No se pudieron cargar más recetas del cliente.',
+          }));
+        }
+      });
+  };
 
   const update = (field: keyof FormValues, value: string | string[]): void => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -163,6 +211,8 @@ export function OpticalJobForm({
     setClientResults([]);
     setValues((current) => ({ ...current, clientId: String(client.id), prescriptionId: '' }));
     setPrescriptions([]);
+    setPrescriptionTotal(0);
+    setPrescriptionsLoading(true);
     setErrors((current) => ({ ...current, clientId: undefined, prescriptionId: undefined }));
   };
 
@@ -236,6 +286,9 @@ export function OpticalJobForm({
                   onClick={() => {
                     setSelectedClient(undefined);
                     setValues((current) => ({ ...current, clientId: '', prescriptionId: '' }));
+                    setPrescriptions([]);
+                    setPrescriptionTotal(0);
+                    setPrescriptionsLoading(false);
                   }}
                 >
                   Cambiar cliente
@@ -359,6 +412,17 @@ export function OpticalJobForm({
               ))}
             </select>
             <FieldError message={errors.prescriptionId} />
+            {prescriptions.length < prescriptionTotal && (
+              <Button
+                className="mt-2"
+                size="sm"
+                variant="secondary"
+                onClick={loadMorePrescriptions}
+                disabled={prescriptionsLoading}
+              >
+                {prescriptionsLoading ? 'Cargando recetas…' : 'Cargar recetas anteriores'}
+              </Button>
+            )}
           </label>
         </section>
         <div className="my-6 border-t border-slate-200" />

@@ -1,155 +1,178 @@
 import {
-  ArrowRight,
   BriefcaseBusiness,
-  Database,
+  FilePlus2,
   FileText,
-  History,
-  ShieldCheck,
+  RefreshCw,
+  Search,
+  UserPlus,
   Users,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { DashboardSummary } from '../../../shared/database-models';
 import { PageHeader } from '../components/common/PageHeader';
+import { Button } from '../components/ui/Button';
 import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
+import { unwrapQueryResult } from '../lib/query-api';
 import type { LucideIcon } from 'lucide-react';
 
-interface QuickAccessItem {
-  title: string;
-  description: string;
-  action: string;
-  path: string;
+type DashboardState =
+  { status: 'loading' } | { status: 'error' } | { status: 'ready'; summary: DashboardSummary };
+
+interface Metric {
+  label: string;
+  value: number;
   icon: LucideIcon;
+  path: string;
 }
 
-const quickAccessItems: readonly QuickAccessItem[] = [
-  {
-    title: 'Clientes',
-    description: 'El espacio para organizar los datos básicos de cada persona.',
-    action: 'Ir a clientes',
-    path: '/clientes',
-    icon: Users,
-  },
-  {
-    title: 'Recetas',
-    description: 'Preparado para consultar graduaciones e historiales ópticos.',
-    action: 'Ir a recetas',
-    path: '/recetas',
-    icon: FileText,
-  },
-  {
-    title: 'Trabajos',
-    description: 'El futuro registro de productos, armazones y tratamientos.',
-    action: 'Ir a trabajos',
-    path: '/trabajos',
-    icon: BriefcaseBusiness,
-  },
-];
-
-const foundationItems = [
-  {
-    label: 'Información local',
-    detail: 'Los datos permanecen en esta computadora.',
-    icon: Database,
-  },
-  {
-    label: 'Historial preservado',
-    detail: 'La base está preparada para conservar cada ficha.',
-    icon: History,
-  },
-  {
-    label: 'Entorno protegido',
-    detail: 'La interfaz funciona sin acceso directo al sistema.',
-    icon: ShieldCheck,
-  },
+const quickActions = [
+  { label: 'Nuevo cliente', path: '/clientes/nuevo', icon: UserPlus },
+  { label: 'Buscar cliente', path: '/clientes', icon: Search },
+  { label: 'Nueva receta', path: '/recetas/nueva', icon: FilePlus2 },
+  { label: 'Nueva ficha óptica', path: '/trabajos/nuevo', icon: BriefcaseBusiness },
 ] as const;
 
 export function HomePage(): React.JSX.Element {
+  const [reloadToken, setReloadToken] = useState(0);
+  const [state, setState] = useState<DashboardState>({ status: 'loading' });
+
+  useEffect(() => {
+    let active = true;
+    void window.optica.dashboard
+      .getSummary()
+      .then(unwrapQueryResult)
+      .then((summary) => {
+        if (active) setState({ status: 'ready', summary });
+      })
+      .catch(() => {
+        if (active) setState({ status: 'error' });
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadToken]);
+
+  const metrics: Metric[] =
+    state.status === 'ready'
+      ? [
+          {
+            label: 'Clientes activos',
+            value: state.summary.activeClients,
+            icon: Users,
+            path: '/clientes',
+          },
+          {
+            label: 'Recetas registradas',
+            value: state.summary.totalPrescriptions,
+            icon: FileText,
+            path: '/recetas',
+          },
+          {
+            label: 'Fichas ópticas',
+            value: state.summary.totalOpticalJobs,
+            icon: BriefcaseBusiness,
+            path: '/trabajos',
+          },
+        ]
+      : [];
+
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Inicio"
-        title="Bienvenida a Occhiali"
-        description="Un espacio simple y ordenado para gestionar la información cotidiana de la óptica."
+        title="Resumen de Occhiali"
+        description="Accedé rápidamente a la información cotidiana de la óptica."
       />
 
-      <Card variant="brand" className="overflow-hidden">
-        <div className="grid min-h-40 gap-8 px-6 py-7 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
-          <div>
-            <p className="text-xs font-bold tracking-[0.14em] text-teal-300 uppercase">
-              Base de trabajo
+      <section aria-labelledby="activity-title">
+        <h2 id="activity-title" className="text-base font-bold text-slate-900">
+          Actividad registrada
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Indicadores calculados directamente desde la base local.
+        </p>
+        {state.status === 'loading' && (
+          <Card
+            className="mt-3 py-16 text-center text-sm font-semibold text-slate-600"
+            role="status"
+          >
+            Cargando indicadores…
+          </Card>
+        )}
+        {state.status === 'error' && (
+          <Card className="mt-3 py-12 text-center" role="alert">
+            <p className="text-sm font-semibold text-red-800">
+              No se pudieron consultar los indicadores locales.
             </p>
-            <h2 className="mt-2 text-xl font-bold tracking-tight">Todo listo para empezar</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-              La navegación y la base local están preparadas. Los módulos funcionales se
-              incorporarán de forma gradual en las próximas etapas.
-            </p>
-          </div>
-          <div className="hidden h-20 w-20 items-center justify-center rounded-2xl border border-teal-700/70 bg-teal-900/60 text-teal-300 lg:flex">
-            <ShieldCheck size={36} strokeWidth={1.5} aria-hidden="true" />
-          </div>
-        </div>
-      </Card>
-
-      <section aria-labelledby="quick-access-title">
-        <div className="mb-3 flex items-end justify-between gap-4">
-          <div>
-            <h2 id="quick-access-title" className="text-base font-bold text-slate-900">
-              Accesos rápidos
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Ingresá directamente a cada sección principal.
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          {quickAccessItems.map((item) => (
-            <Card key={item.path} className="flex min-h-52 flex-col p-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
-                <item.icon size={21} strokeWidth={1.8} aria-hidden="true" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-slate-900">{item.title}</h3>
-              <p className="mt-2 flex-1 text-sm leading-6 text-slate-600">{item.description}</p>
+            <Button
+              className="mt-4"
+              variant="secondary"
+              onClick={() => {
+                setState({ status: 'loading' });
+                setReloadToken((value) => value + 1);
+              }}
+            >
+              <RefreshCw size={16} aria-hidden="true" /> Reintentar
+            </Button>
+          </Card>
+        )}
+        {state.status === 'ready' && (
+          <div className="mt-3 grid gap-4 md:grid-cols-3">
+            {metrics.map((metric) => (
               <Link
-                to={item.path}
-                className={buttonStyles({
-                  variant: 'secondary',
-                  size: 'sm',
-                  className: 'mt-5 self-start',
-                })}
+                key={metric.label}
+                to={metric.path}
+                className="group focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
               >
-                {item.action}
-                <ArrowRight size={16} aria-hidden="true" />
+                <Card className="flex min-h-36 items-center gap-4 p-5 transition group-hover:border-teal-300 group-hover:shadow-sm">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                    <metric.icon size={22} strokeWidth={1.8} aria-hidden="true" />
+                  </span>
+                  <span>
+                    <strong className="block text-3xl font-bold tracking-tight text-slate-950">
+                      {metric.value}
+                    </strong>
+                    <span className="mt-1 block text-sm font-semibold text-slate-600">
+                      {metric.label}
+                    </span>
+                  </span>
+                </Card>
               </Link>
-            </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      <Card className="p-5">
-        <div className="grid gap-5 lg:grid-cols-3">
-          {foundationItems.map((item) => (
-            <div
-              key={item.label}
-              className="flex gap-3 lg:border-r lg:border-slate-200 lg:pr-5 lg:last:border-r-0"
-            >
-              <item.icon
-                className="mt-0.5 shrink-0 text-teal-700"
-                size={19}
-                strokeWidth={1.8}
-                aria-hidden="true"
-              />
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">{item.label}</h3>
-                <p className="mt-1 text-sm leading-5 text-slate-600">{item.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <section aria-labelledby="quick-actions-title">
+        <h2 id="quick-actions-title" className="text-base font-bold text-slate-900">
+          Accesos rápidos
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Iniciá las tareas más frecuentes sin recorrer otros menús.
+        </p>
+        <Card className="mt-3 p-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {quickActions.map((action, index) => (
+              <Link
+                key={action.path + action.label}
+                to={action.path}
+                className={buttonStyles({
+                  variant: index === 0 ? 'primary' : 'secondary',
+                  className: 'justify-start',
+                })}
+              >
+                <action.icon size={17} aria-hidden="true" /> {action.label}
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </section>
 
       <p className="text-xs leading-5 text-slate-500">
-        Los indicadores de actividad aparecerán cuando los módulos de gestión estén disponibles. No
-        se muestran cifras hasta contar con datos reales.
+        Las recetas y fichas históricas permanecen contabilizadas aunque su cliente esté archivado.
+        No se muestran datos de ventas, caja ni ingresos.
       </p>
     </div>
   );

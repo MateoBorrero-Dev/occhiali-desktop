@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClientIpcHandlers } from '../src/main/ipc/client-handlers';
 import { createPrescriptionIpcHandlers } from '../src/main/ipc/prescription-handlers';
 import { createOpticalJobIpcHandlers } from '../src/main/ipc/optical-job-handlers';
+import { createQueryIpcHandlers } from '../src/main/ipc/query-handlers';
 import { assertArgumentCount, assertNoArguments, IPC_CHANNELS } from '../src/shared/ipc-contracts';
 import { createTestDatabase, destroyTestDatabase, TEST_CLIENT } from './database/helpers';
 import type { TestDatabase } from './database/helpers';
@@ -24,10 +25,13 @@ describe('contratos IPC', () => {
       prescriptionsRevisions: 'prescriptions:revisions',
       opticalJobsList: 'optical-jobs:list',
       opticalJobsListByClient: 'optical-jobs:list-by-client',
+      opticalJobsListByPrescription: 'optical-jobs:list-by-prescription',
       opticalJobsGet: 'optical-jobs:get',
       opticalJobsCreate: 'optical-jobs:create',
       opticalJobsUpdate: 'optical-jobs:update',
       treatmentsList: 'treatments:list',
+      dashboardSummary: 'dashboard:get-summary',
+      globalSearch: 'search:global',
     });
   });
 
@@ -67,6 +71,12 @@ describe('handlers IPC de fichas de trabajo', () => {
     expect(handlers.listByClient({ clientId: owner.id })).toMatchObject({
       ok: true,
       data: { total: 1 },
+    });
+    expect(
+      handlers.listByPrescription({ prescriptionId: created.data.prescriptionId }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
     });
     expect(handlers.update(created.data.id, { product: 'Producto actualizado' })).toMatchObject({
       ok: true,
@@ -145,6 +155,60 @@ describe('handlers IPC de fichas de trabajo', () => {
         code: 'PERSISTENCE',
         message: 'No se pudo completar la operación. Volvé a intentarlo.',
       },
+    });
+  });
+});
+
+describe('handlers IPC de dashboard y búsqueda', () => {
+  let context: TestDatabase;
+  beforeEach(() => {
+    context = createTestDatabase();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    destroyTestDatabase(context);
+  });
+
+  it('expone conteos y resultados agrupados mediante canales específicos', () => {
+    const client = context.database.clients.create({ ...TEST_CLIENT, firstName: 'Búsqueda' });
+    const prescription = context.database.prescriptions.createWithValues({
+      clientId: client.id,
+      prescriptionDate: '2026-10-01',
+      values: [{ distance: 'FAR', eye: 'OD', sphere: '0.25' }],
+    });
+    context.database.opticalJobs.createWithTreatments({
+      clientId: client.id,
+      prescriptionId: prescription.id,
+      product: 'Búsqueda solar',
+    });
+    const handlers = createQueryIpcHandlers(context.database);
+    expect(handlers.dashboard()).toEqual({
+      ok: true,
+      data: { activeClients: 1, totalPrescriptions: 1, totalOpticalJobs: 1 },
+    });
+    expect(handlers.globalSearch({ query: 'Búsqueda' })).toMatchObject({
+      ok: true,
+      data: {
+        clients: [{ id: client.id }],
+        prescriptions: [{ id: prescription.id }],
+        opticalJobs: [{ product: 'Búsqueda solar' }],
+      },
+    });
+  });
+
+  it('rechaza argumentos y búsquedas inválidas sin exponer detalles internos', () => {
+    const handlers = createQueryIpcHandlers(context.database);
+    expect(handlers.dashboard('extra')).toMatchObject({ ok: false, error: { code: 'VALIDATION' } });
+    expect(handlers.globalSearch({ query: 'a' })).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+    vi.spyOn(context.database.queries, 'dashboard').mockImplementation(() => {
+      throw new Error('C:\\datos\\privados\\optica.sqlite3');
+    });
+    expect(handlers.dashboard()).toEqual({
+      ok: false,
+      error: { code: 'PERSISTENCE', message: 'No se pudo consultar la información local.' },
     });
   });
 });

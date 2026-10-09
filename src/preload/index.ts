@@ -6,6 +6,8 @@ import type {
   OpticalJobApi,
   PrescriptionApi,
   TreatmentApi,
+  DashboardApi,
+  SearchApi,
 } from '../shared/ipc-contracts';
 
 const clientMethods: ClientApi = {
@@ -33,6 +35,8 @@ const prescriptions = Object.freeze(prescriptionMethods);
 const opticalJobMethods: OpticalJobApi = {
   list: (request = {}) => ipcRenderer.invoke(IPC_CHANNELS.opticalJobsList, request),
   listByClient: (request) => ipcRenderer.invoke(IPC_CHANNELS.opticalJobsListByClient, request),
+  listByPrescription: (request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.opticalJobsListByPrescription, request),
   get: (id) => ipcRenderer.invoke(IPC_CHANNELS.opticalJobsGet, id),
   create: (input) => ipcRenderer.invoke(IPC_CHANNELS.opticalJobsCreate, input),
   update: (id, input) => ipcRenderer.invoke(IPC_CHANNELS.opticalJobsUpdate, id, input),
@@ -46,12 +50,22 @@ const treatmentMethods: TreatmentApi = {
 
 const treatments = Object.freeze(treatmentMethods);
 
+const dashboard = Object.freeze<DashboardApi>({
+  getSummary: () => ipcRenderer.invoke(IPC_CHANNELS.dashboardSummary),
+});
+
+const search = Object.freeze<SearchApi>({
+  global: (request) => ipcRenderer.invoke(IPC_CHANNELS.globalSearch, request),
+});
+
 const opticaApi = Object.freeze({
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC_CHANNELS.appInfo),
   clients,
   prescriptions,
   opticalJobs,
   treatments,
+  dashboard,
+  search,
 });
 
 contextBridge.exposeInMainWorld('optica', opticaApi);

@@ -5,6 +5,7 @@ import type { Client, Prescription, PrescriptionRevision } from '../../../shared
 import { EmptyState } from '../components/common/EmptyState';
 import { PageHeader } from '../components/common/PageHeader';
 import { PrescriptionValuesTable } from '../components/prescriptions/PrescriptionValuesTable';
+import { PrescriptionOpticalJobs } from '../components/optical-jobs/PrescriptionOpticalJobs';
 import { Button } from '../components/ui/Button';
 import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
@@ -174,6 +175,7 @@ export function PrescriptionDetailPage(): React.JSX.Element {
           </p>
         </div>
       </Card>
+      <PrescriptionOpticalJobs prescriptionId={prescription.id} />
       <Card className="mt-5 p-6">
         <div className="flex items-center gap-3">
           <History className="text-teal-700" size={20} aria-hidden="true" />

@@ -214,6 +214,14 @@ Migraciones actuales:
 Fase 6 no agrega migraciones: las tres tablas de fichas y tratamientos ya representaban el dominio
 necesario.
 
+Fase 7 tampoco agrega migraciones. Los conteos usan subconsultas `count(*)`; clientes activos
+aprovecha el índice de archivado. La búsqueda global usa parámetros, límite por grupo y la función
+determinista `fold_text` para ignorar mayúsculas y acentos. Como contiene coincidencia parcial con
+comodín inicial, los índices B-tree convencionales de texto no mejorarían ese recorrido; agregar un
+índice nuevo hubiera aumentado complejidad sin un beneficio justificable para una base local pequeña.
+Los índices existentes siguen cubriendo relaciones, orden cronológico e historiales por cliente y
+receta.
+
 Una migración registrada que el código no conoce detiene la apertura para evitar ejecutar una
 versión antigua contra un esquema más nuevo.
 

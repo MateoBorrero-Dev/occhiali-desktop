@@ -57,6 +57,12 @@ function installApi() {
             data: { items: [], total: 0, limit: 10, offset: 0 },
           }),
         ),
+        listByPrescription: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 10, offset: 0 },
+          }),
+        ),
         get: vi.fn(),
         create: vi.fn(),
         correct: vi.fn(),
@@ -80,6 +86,8 @@ function installApi() {
         update: vi.fn(),
       },
       treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
+      dashboard: { getSummary: vi.fn() },
+      search: { global: vi.fn() },
     },
   });
   return clients;

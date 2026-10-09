@@ -41,9 +41,10 @@ búsqueda, edición e historial por cliente.
 
 ## Fase 7 — Búsquedas y consultas
 
-**Estado:** pendiente.
+**Estado:** implementación y pruebas automatizadas completadas; QA visual manual pendiente.
 
-Búsqueda rápida, filtros e historial consolidado.
+Dashboard con conteos SQLite, búsqueda global agrupada, navegación relacionada, filtros coherentes y
+selector incremental de recetas.
 
 ## Fase 8 — Seguridad, backups y restauración
 

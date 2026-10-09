@@ -74,6 +74,11 @@ de clientes agrega `ClientForm`, `ClientStatusBadge` y `ArchiveClientDialog`. Re
 `PrescriptionForm`, `PrescriptionValuesTable` y `ClientPrescriptionHistory`. Las fichas reutilizan
 `OpticalJobForm` y `ClientOpticalJobHistory` para alta, edición e historial.
 
+`AppLayout` incorpora `GlobalSearch` sobre el contenido principal. El componente espera dos
+caracteres, aplica debounce de 250 ms, descarta respuestas asíncronas obsoletas y agrupa resultados
+limitados. `Ctrl+K` enfoca el campo dentro de la aplicación y `Escape` cierra los resultados, sin
+registrar atajos globales del sistema operativo.
+
 La paleta usa verde petróleo como color de marca, fondos neutros cálidos, tipografía del sistema e
 iconos de Lucide. Los estilos incluyen foco visible, estados activos, soporte de movimiento reducido
 y una anchura mínima alineada con la ventana de Electron para evitar una interfaz inutilizable.
@@ -88,7 +93,8 @@ clientes son `clients:list`, `clients:get`, `clients:create`, `clients:update`, 
 No existe un método genérico `send`, `invoke` ni SQL accesible desde React.
 
 Fichas usa `optical-jobs:list`, `optical-jobs:list-by-client`, `optical-jobs:get`,
-`optical-jobs:create` y `optical-jobs:update`; el catálogo usa `treatments:list`. Main valida de
+`optical-jobs:list-by-prescription`, `optical-jobs:create` y `optical-jobs:update`; el catálogo usa
+`treatments:list`. Dashboard y búsqueda usan `dashboard:get-summary` y `search:global`. Main valida de
 nuevo cliente, receta, enumeraciones, textos y tratamientos antes de ejecutar repositorios.
 
 Los handlers convierten errores internos en resultados discriminados con códigos de validación,
@@ -130,6 +136,9 @@ de valores forman una sola transacción.
 
 El repositorio de fichas mantiene cliente e ID estables, valida la receta del mismo cliente y
 reemplaza las asociaciones de tratamientos dentro de la misma transacción que la actualización.
+
+`QueryRepository` contiene exclusivamente lecturas: una consulta agregada para el dashboard y tres
+consultas limitadas para la búsqueda agrupada. No comparte una conexión ni SQL con React.
 
 La estructura relacional, migraciones, índices y estrategia de backup futura están documentados en
 [database.md](database.md).

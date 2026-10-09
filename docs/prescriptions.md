@@ -36,6 +36,7 @@ exacta de dos decimales, sin usar `REAL` ni redondeo binario.
 - El historial de la ficha pagina recetas en orden cronológico descendente.
 - El listado general busca por nombre/apellido, filtra fechas y enlaza al cliente y al detalle.
 - El detalle muestra valores actuales, observaciones, fechas y revisiones anteriores.
+- El detalle lista y pagina las fichas ópticas que referencian la receta.
 - Un cliente archivado conserva su historial, pero debe reactivarse para nuevas recetas.
 
 La tabla del formulario tiene cuatro filas fijas y orden de tabulación natural. Solo se persisten las
@@ -72,3 +73,6 @@ backup y restauración corresponde a Fase 8.
 Una ficha de trabajo puede referenciar una receta existente del mismo cliente. La relación apunta al
 registro actual de la receta: una corrección posterior se refleja al abrirla y no modifica la ficha
 ni guarda una copia congelada de las graduaciones.
+
+La búsqueda global localiza recetas por los datos identificatorios del cliente y muestra solamente
+fecha y persona, sin exponer graduaciones en el panel de resultados.

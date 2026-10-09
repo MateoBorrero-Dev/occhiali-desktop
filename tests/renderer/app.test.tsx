@@ -41,6 +41,12 @@ function mockAppInfo(
             data: { items: [], total: 0, limit: 10, offset: 0 },
           }),
         ),
+        listByPrescription: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 10, offset: 0 },
+          }),
+        ),
         get: vi.fn(),
         create: vi.fn(),
         correct: vi.fn(),
@@ -64,6 +70,22 @@ function mockAppInfo(
         update: vi.fn(),
       },
       treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
+      dashboard: {
+        getSummary: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { activeClients: 0, totalPrescriptions: 0, totalOpticalJobs: 0 },
+          }),
+        ),
+      },
+      search: {
+        global: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { clients: [], prescriptions: [], opticalJobs: [], limit: 5 },
+          }),
+        ),
+      },
     },
   });
 }
@@ -87,7 +109,7 @@ describe('interfaz principal', () => {
     const navigation = screen.getByRole('navigation', { name: 'Navegación principal' });
     expect(within(navigation).getAllByRole('link')).toHaveLength(5);
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Bienvenida a Occhiali' }),
+      screen.getByRole('heading', { level: 1, name: 'Resumen de Occhiali' }),
     ).toBeInTheDocument();
   });
 
@@ -132,7 +154,7 @@ describe('interfaz principal', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('link', { name: /Ir a recetas/i }));
+    await user.click(await screen.findByRole('link', { name: /Recetas registradas/i }));
     expect(screen.getByRole('heading', { level: 1, name: 'Recetas' })).toBeInTheDocument();
   });
 
@@ -167,7 +189,7 @@ describe('interfaz principal', () => {
     ).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Volver al inicio' }));
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Bienvenida a Occhiali' }),
+      screen.getByRole('heading', { level: 1, name: 'Resumen de Occhiali' }),
     ).toBeInTheDocument();
   });
 });

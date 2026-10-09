@@ -10,6 +10,8 @@ import type {
   Prescription,
   PrescriptionListPage,
   PrescriptionRevision,
+  OpticalJobListPage,
+  OpticalJobsByPrescriptionRequest,
 } from '../../src/shared/database-models';
 import type { ClientIpcResult, PrescriptionIpcResult } from '../../src/shared/ipc-contracts';
 
@@ -62,6 +64,13 @@ const SUMMARY = {
   valueCount: 1,
 };
 
+const EMPTY_OPTICAL_JOB_PAGE: OpticalJobListPage = {
+  items: [],
+  total: 0,
+  limit: 10,
+  offset: 0,
+};
+
 function clientSuccess<T>(data: T): ClientIpcResult<T> {
   return { ok: true, data };
 }
@@ -101,6 +110,10 @@ function installApi(pageItems = [SUMMARY]) {
     listByClient: vi.fn(() =>
       Promise.resolve({ ok: true as const, data: { items: [], total: 0, limit: 10, offset: 0 } }),
     ),
+    listByPrescription: vi.fn((...args: [OpticalJobsByPrescriptionRequest]) => {
+      void args;
+      return Promise.resolve({ ok: true as const, data: EMPTY_OPTICAL_JOB_PAGE });
+    }),
     get: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -113,9 +126,11 @@ function installApi(pageItems = [SUMMARY]) {
       prescriptions,
       opticalJobs,
       treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
+      dashboard: { getSummary: vi.fn() },
+      search: { global: vi.fn() },
     },
   });
-  return { clients, prescriptions };
+  return { clients, prescriptions, opticalJobs };
 }
 
 describe('módulo de recetas', () => {
@@ -256,6 +271,28 @@ describe('módulo de recetas', () => {
         },
       ]),
     );
+    api.opticalJobs.listByPrescription.mockResolvedValue({
+      ok: true as const,
+      data: {
+        items: [
+          {
+            id: 91,
+            clientId: 7,
+            clientFirstName: 'Laura',
+            clientLastName: 'Ficticia',
+            prescriptionId: 11,
+            jobNumber: 'REC-91',
+            product: 'Anteojos recetados',
+            frameModel: null,
+            createdAt: '2026-04-01T00:00:00.000Z',
+            updatedAt: '2026-04-01T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      },
+    });
     render(<App />);
     expect(
       await screen.findByRole('heading', { name: 'Receta del 04/03/2026' }),
@@ -264,6 +301,10 @@ describe('módulo de recetas', () => {
     expect(screen.getByText('-0,50')).toBeInTheDocument();
     expect(screen.getByText(/Revisión 1/)).toBeInTheDocument();
     expect(screen.getByText(/Error de carga/)).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Ver ficha/ })).toHaveAttribute(
+      'href',
+      '#/trabajos/91',
+    );
   });
 
   it('corrige con motivo obligatorio y conserva el ID', async () => {

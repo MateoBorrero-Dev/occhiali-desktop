@@ -41,7 +41,8 @@ incompatibilidades.
 `/trabajos` pagina y busca por número, cliente, producto y modelo. El alta general busca clientes de
 a diez resultados mediante el repositorio existente, sin cargar miles. Desde `/clientes/:id`, el
 cliente queda preseleccionado. Al seleccionarlo se consultan solamente sus recetas, ordenadas desde
-la más reciente.
+la más reciente. Se cargan de a 50 y “Cargar recetas anteriores” permite superar cualquier límite
+inicial sin transferir todo el historial de una vez.
 
 El detalle enlaza cliente y receta, muestra campos vacíos como “Sin especificar” y diferencia los
 tratamientos comerciales. La edición conserva ID y cliente. La ficha del cliente muestra su
@@ -58,7 +59,8 @@ escribe ni cambia `updated_at`. No existe borrado permanente.
 
 ## IPC y privacidad
 
-El preload expone únicamente cinco operaciones `optical-jobs:*` y `treatments:list`. React no recibe
+El preload expone operaciones específicas `optical-jobs:*` y `treatments:list`. La lectura
+`optical-jobs:list-by-prescription` permite recorrer receta → fichas con paginación. React no recibe
 `ipcRenderer`, SQL o acceso al sistema de archivos. Los errores discriminados no exponen rutas ni
 detalles internos. La aplicación funciona offline, sin telemetría ni datos en `localStorage`.
 
@@ -73,4 +75,4 @@ recetas compatibles, selección múltiple, detalle, edición, doble envío y cli
 
 No se generan números consecutivos ni se gestionan marcas, inventario, precios, ventas, proveedores
 o estados logísticos. Esas ampliaciones deben conservar la separación entre producto comercial,
-persona y receta óptica. Fase 7 permanece pendiente.
+persona y receta óptica.

@@ -10,6 +10,7 @@ import type {
   OpticalJobListPage,
   OpticalJobListRequest,
   OpticalJobsByClientRequest,
+  OpticalJobsByPrescriptionRequest,
   Prescription,
   PrescriptionListPage,
   PrescriptionListRequest,
@@ -18,6 +19,9 @@ import type {
   PrescriptionsByClientRequest,
   UpdateClientInput,
   UpdateOpticalJobInput,
+  DashboardSummary,
+  GlobalSearchRequest,
+  GlobalSearchResults,
 } from './database-models';
 
 export const IPC_CHANNELS = {
@@ -36,10 +40,13 @@ export const IPC_CHANNELS = {
   prescriptionsRevisions: 'prescriptions:revisions',
   opticalJobsList: 'optical-jobs:list',
   opticalJobsListByClient: 'optical-jobs:list-by-client',
+  opticalJobsListByPrescription: 'optical-jobs:list-by-prescription',
   opticalJobsGet: 'optical-jobs:get',
   opticalJobsCreate: 'optical-jobs:create',
   opticalJobsUpdate: 'optical-jobs:update',
   treatmentsList: 'treatments:list',
+  dashboardSummary: 'dashboard:get-summary',
+  globalSearch: 'search:global',
 } as const;
 
 export interface AppInfo {
@@ -119,6 +126,9 @@ export interface OpticalJobApi {
   listByClient: (
     request: OpticalJobsByClientRequest,
   ) => Promise<OpticalJobIpcResult<OpticalJobListPage>>;
+  listByPrescription: (
+    request: OpticalJobsByPrescriptionRequest,
+  ) => Promise<OpticalJobIpcResult<OpticalJobListPage>>;
   get: (id: number) => Promise<OpticalJobIpcResult<OpticalJob>>;
   create: (input: CreateOpticalJobInput) => Promise<OpticalJobIpcResult<OpticalJob>>;
   update: (id: number, input: UpdateOpticalJobInput) => Promise<OpticalJobIpcResult<OpticalJob>>;
@@ -126,6 +136,23 @@ export interface OpticalJobApi {
 
 export interface TreatmentApi {
   list: () => Promise<OpticalJobIpcResult<Treatment[]>>;
+}
+
+export type QueryIpcErrorCode = 'VALIDATION' | 'CONFLICT' | 'PERSISTENCE';
+
+export interface QueryIpcError {
+  code: QueryIpcErrorCode;
+  message: string;
+}
+
+export type QueryIpcResult<T> = { ok: true; data: T } | { ok: false; error: QueryIpcError };
+
+export interface DashboardApi {
+  getSummary: () => Promise<QueryIpcResult<DashboardSummary>>;
+}
+
+export interface SearchApi {
+  global: (request: GlobalSearchRequest) => Promise<QueryIpcResult<GlobalSearchResults>>;
 }
 
 export function assertNoArguments(channel: string, args: readonly unknown[]): void {

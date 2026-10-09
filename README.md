@@ -71,6 +71,9 @@ visual manual pendiente.
 **Fase 6 — Gestión de pedidos y fichas ópticas:** implementación y validación automatizada
 completadas; QA visual manual pendiente.
 
+**Fase 7 — Consultas avanzadas, dashboard y optimización UX:** implementación y validación
+automatizada completadas; QA visual manual pendiente.
+
 La aplicación permite gestionar clientes y registrar, buscar, consultar y corregir recetas ópticas
 con historial de revisiones. Los valores FAR/NEAR y OD/OI se guardan como enteros escalados en
 SQLite mediante canales IPC específicos y validados; no se usan datos simulados ni `localStorage`.
@@ -78,6 +81,10 @@ Las fichas de trabajo registran productos, armazones, tratamientos y acabados co
 coloración y una receta opcional. Los tratamientos describen características de lentes, no
 procedimientos médicos. No se recopilan datos reales automáticamente: la única carga inicial es el
 catálogo de tratamientos.
+
+Inicio funciona como dashboard con conteos reales de clientes activos, recetas y fichas. El layout
+incluye una búsqueda global limitada y agrupada, accesible con `Ctrl+K`, que enlaza registros sin
+cargar tablas completas en React. El selector de recetas de una ficha usa carga incremental.
 
 Encontrá más información en:
 
@@ -87,4 +94,5 @@ Encontrá más información en:
 - [Gestión de clientes](docs/clients.md)
 - [Recetas ópticas](docs/prescriptions.md)
 - [Fichas de trabajo](docs/optical-jobs.md)
+- [Dashboard y búsqueda integrada](docs/search-and-dashboard.md)
 - [Roadmap](docs/roadmap.md)

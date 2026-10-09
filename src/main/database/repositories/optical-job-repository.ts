@@ -9,12 +9,14 @@ import type {
   OpticalJobListRequest,
   OpticalJobSummary,
   OpticalJobsByClientRequest,
+  OpticalJobsByPrescriptionRequest,
   UpdateOpticalJobInput,
 } from '../../../shared/database-models';
 import {
   parseCreateOpticalJobInput,
   parseOpticalJobListRequest,
   parseOpticalJobsByClientRequest,
+  parseOpticalJobsByPrescriptionRequest,
   parseUpdateOpticalJobInput,
 } from '../../../shared/optical-job-validation';
 import { escapedLike } from '../search';
@@ -195,6 +197,15 @@ export class OpticalJobRepository {
     const options = parseOpticalJobsByClientRequest(request);
     this.requireClient(options.clientId);
     return this.listSummaries('j.client_id = @clientId', options);
+  }
+
+  public listByPrescriptionPage(request: OpticalJobsByPrescriptionRequest): OpticalJobListPage {
+    const options = parseOpticalJobsByPrescriptionRequest(request);
+    const prescription = this.database
+      .prepare('SELECT id FROM prescriptions WHERE id = ?')
+      .get(options.prescriptionId);
+    if (!prescription) throw new OpticalJobPrescriptionNotFoundError();
+    return this.listSummaries('j.prescription_id = @prescriptionId', options);
   }
 
   public search(request: OpticalJobListRequest = {}): OpticalJobListPage {

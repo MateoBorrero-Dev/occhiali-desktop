@@ -10,6 +10,7 @@ import type {
   OpticalJob,
   OpticalJobListPage,
   PrescriptionListPage,
+  PrescriptionsByClientRequest,
   Treatment,
 } from '../../src/shared/database-models';
 
@@ -94,7 +95,10 @@ function installApi(items = [SUMMARY]) {
   };
   const prescriptions = {
     list: vi.fn(() => Promise.resolve(ok(PRESCRIPTION_PAGE))),
-    listByClient: vi.fn(() => Promise.resolve(ok(PRESCRIPTION_PAGE))),
+    listByClient: vi.fn((...args: [PrescriptionsByClientRequest]) => {
+      void args;
+      return Promise.resolve(ok(PRESCRIPTION_PAGE));
+    }),
     get: vi.fn(),
     create: vi.fn(),
     correct: vi.fn(),
@@ -103,6 +107,7 @@ function installApi(items = [SUMMARY]) {
   const opticalJobs = {
     list: vi.fn(() => Promise.resolve(ok(page))),
     listByClient: vi.fn(() => Promise.resolve(ok({ ...page, limit: 10 }))),
+    listByPrescription: vi.fn(() => Promise.resolve(ok({ ...page, limit: 10 }))),
     get: vi.fn(() => Promise.resolve(ok(JOB))),
     create: vi.fn(() => Promise.resolve(ok(JOB))),
     update: vi.fn(() => Promise.resolve(ok(JOB))),
@@ -116,6 +121,8 @@ function installApi(items = [SUMMARY]) {
       prescriptions,
       opticalJobs,
       treatments,
+      dashboard: { getSummary: vi.fn() },
+      search: { global: vi.fn() },
     },
   });
   return { clients, prescriptions, opticalJobs, treatments };
@@ -179,6 +186,40 @@ describe('módulo de fichas de trabajo', () => {
       expect.objectContaining({ query: 'Laura', limit: 10, status: 'active' }),
     );
     expect(await screen.findByRole('option', { name: /01\/03\/2026/ })).toBeInTheDocument();
+  });
+
+  it('permite cargar y seleccionar recetas posteriores al límite inicial', async () => {
+    window.location.hash = '#/clientes/5/trabajos/nuevo';
+    const api = installApi();
+    const allRecipes = Array.from({ length: 105 }, (_, index) => ({
+      ...PRESCRIPTION_PAGE.items[0]!,
+      id: index + 1,
+      prescriptionDate: `2026-${String(Math.floor(index / 28) + 1).padStart(2, '0')}-${String((index % 28) + 1).padStart(2, '0')}`,
+    }));
+    api.prescriptions.listByClient.mockImplementation((request) =>
+      Promise.resolve(
+        ok({
+          items: allRecipes.slice(
+            request.offset ?? 0,
+            (request.offset ?? 0) + (request.limit ?? 25),
+          ),
+          total: allRecipes.length,
+          limit: request.limit ?? 25,
+          offset: request.offset ?? 0,
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: 'Cargar recetas anteriores' }));
+    await user.click(await screen.findByRole('button', { name: 'Cargar recetas anteriores' }));
+    await user.selectOptions(screen.getByLabelText('Receta'), '105');
+    expect(screen.getByLabelText('Receta')).toHaveValue('105');
+    expect(api.prescriptions.listByClient).toHaveBeenLastCalledWith({
+      clientId: 5,
+      limit: 50,
+      offset: 100,
+    });
   });
 
   it('guarda producto libre, número, receta, armazón, tratamientos y coloración', async () => {

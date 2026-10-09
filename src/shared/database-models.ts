@@ -232,6 +232,12 @@ export interface OpticalJobsByClientRequest {
   offset?: number;
 }
 
+export interface OpticalJobsByPrescriptionRequest {
+  prescriptionId: number;
+  limit?: number;
+  offset?: number;
+}
+
 export interface OpticalJobListPage {
   items: OpticalJobSummary[];
   total: number;
@@ -250,4 +256,48 @@ export interface OpticalJobTreatment {
   opticalJobId: number;
   treatmentId: string;
   createdAt: IsoTimestamp;
+}
+
+export interface DashboardSummary {
+  activeClients: number;
+  totalPrescriptions: number;
+  totalOpticalJobs: number;
+}
+
+export interface GlobalSearchRequest {
+  query: string;
+  limit?: number;
+}
+
+export interface GlobalClientSearchResult {
+  id: number;
+  firstName: string;
+  lastName: string;
+  documentNumber: string | null;
+  phone: string | null;
+  isArchived: boolean;
+}
+
+export interface GlobalPrescriptionSearchResult {
+  id: number;
+  clientId: number;
+  clientFirstName: string;
+  clientLastName: string;
+  prescriptionDate: CalendarDate;
+}
+
+export interface GlobalOpticalJobSearchResult {
+  id: number;
+  clientId: number;
+  clientFirstName: string;
+  clientLastName: string;
+  jobNumber: string | null;
+  product: string | null;
+}
+
+export interface GlobalSearchResults {
+  clients: GlobalClientSearchResult[];
+  prescriptions: GlobalPrescriptionSearchResult[];
+  opticalJobs: GlobalOpticalJobSearchResult[];
+  limit: number;
 }

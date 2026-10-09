@@ -2,6 +2,7 @@ import type {
   CreateOpticalJobInput,
   OpticalJobListRequest,
   OpticalJobsByClientRequest,
+  OpticalJobsByPrescriptionRequest,
   UpdateOpticalJobInput,
 } from './database-models';
 
@@ -36,6 +37,7 @@ const CREATE_KEYS = [
 const UPDATE_KEYS = CREATE_KEYS.filter((key) => key !== 'clientId');
 const LIST_KEYS = ['query', 'limit', 'offset'] as const;
 const BY_CLIENT_KEYS = ['clientId', 'limit', 'offset'] as const;
+const BY_PRESCRIPTION_KEYS = ['prescriptionId', 'limit', 'offset'] as const;
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -221,4 +223,12 @@ export function parseOpticalJobsByClientRequest(
   const record = asRecord(value);
   assertOnlyKeys(record, BY_CLIENT_KEYS);
   return { clientId: parseOpticalJobClientId(record.clientId), ...page(record) };
+}
+
+export function parseOpticalJobsByPrescriptionRequest(
+  value: unknown,
+): Required<OpticalJobsByPrescriptionRequest> {
+  const record = asRecord(value);
+  assertOnlyKeys(record, BY_PRESCRIPTION_KEYS);
+  return { prescriptionId: parseOpticalJobId(record.prescriptionId), ...page(record) };
 }

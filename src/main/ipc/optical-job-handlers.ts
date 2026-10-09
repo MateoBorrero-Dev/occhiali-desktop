@@ -14,6 +14,7 @@ import {
   parseOpticalJobId,
   parseOpticalJobListRequest,
   parseOpticalJobsByClientRequest,
+  parseOpticalJobsByPrescriptionRequest,
   parseUpdateOpticalJobInput,
 } from '../../shared/optical-job-validation';
 import { assertArgumentCount, assertNoArguments, IPC_CHANNELS } from '../../shared/ipc-contracts';
@@ -23,6 +24,7 @@ import type { OpticalJob, OpticalJobListPage, Treatment } from '../../shared/dat
 export interface OpticalJobIpcHandlers {
   list: (...args: unknown[]) => OpticalJobIpcResult<OpticalJobListPage>;
   listByClient: (...args: unknown[]) => OpticalJobIpcResult<OpticalJobListPage>;
+  listByPrescription: (...args: unknown[]) => OpticalJobIpcResult<OpticalJobListPage>;
   get: (...args: unknown[]) => OpticalJobIpcResult<OpticalJob>;
   create: (...args: unknown[]) => OpticalJobIpcResult<OpticalJob>;
   update: (...args: unknown[]) => OpticalJobIpcResult<OpticalJob>;
@@ -89,6 +91,13 @@ export function createOpticalJobIpcHandlers(database: ApplicationDatabase): Opti
       perform(() => {
         assertArgumentCount(IPC_CHANNELS.opticalJobsListByClient, args, 1);
         return database.opticalJobs.listByClientPage(parseOpticalJobsByClientRequest(args[0]));
+      }),
+    listByPrescription: (...args) =>
+      perform(() => {
+        assertArgumentCount(IPC_CHANNELS.opticalJobsListByPrescription, args, 1);
+        return database.opticalJobs.listByPrescriptionPage(
+          parseOpticalJobsByPrescriptionRequest(args[0]),
+        );
       }),
     get: (...args) =>
       perform(() => {

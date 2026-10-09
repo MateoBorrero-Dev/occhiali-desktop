@@ -94,6 +94,19 @@ Con un perfil temporal aislado:
 6. Archivar el cliente, consultar sus fichas y verificar el bloqueo de nuevas altas.
 7. Reactivar el cliente y eliminar el perfil temporal después de cerrar Electron.
 
+### Flujo de QA de dashboard y búsqueda
+
+Siempre con `OPTICA_QA_USER_DATA_PATH` apuntando a un perfil temporal:
+
+1. Confirmar ceros en Inicio y registrar cliente, receta y ficha ficticios.
+2. Volver a Inicio y comprobar los tres conteos.
+3. Buscar por nombre, DNI, teléfono, número de ficha y producto.
+4. Abrir cliente, receta y ficha desde los grupos de resultados.
+5. Probar `Ctrl+K`, `Escape`, limpieza, filtros y paginación.
+6. Archivar el cliente: el indicador activo disminuye y los historiales siguen contabilizados.
+7. En una ficha con más de 100 recetas, cargar páginas adicionales y elegir una receta anterior.
+8. Reiniciar con el mismo perfil, confirmar persistencia y eliminarlo solo tras cerrar Electron.
+
 ## Interfaz y navegación
 
 La aplicación usa `HashRouter`, de modo que las URLs permanecen dentro del archivo HTML local al
@@ -133,6 +146,8 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
   `asarUnpack`; todavía no se generó un instalador.
 - DIP y ALT se conservan por combinación distancia-ojo, pero su interpretación clínica exacta debe
   confirmarse con la dueña antes de imponer nuevas reglas.
-- No existen precios, ventas, stock, pagos ni estados logísticos; son dominios fuera de Fase 6.
+- No existen precios, ventas, stock, pagos ni estados logísticos; son dominios fuera de Fase 7.
 - El QA visual de Fase 4 requiere un entorno Windows cuya ventana de Electron pueda ser capturada por
   la herramienta de automatización.
+- El controlador gráfico disponible en las últimas validaciones devolvió un inventario nativo vacío;
+  el recorrido visual y funcional completo de Fase 7 debe repetirse manualmente con un perfil aislado.

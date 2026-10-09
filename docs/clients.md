@@ -31,6 +31,9 @@ debounce de 300 ms, parámetros enlazados y paginación de 25 elementos. Una fun
 SQLite normaliza mayúsculas y acentos sin concatenar entradas dentro del SQL. Los filtros disponibles
 son Activos, Archivados y Todos.
 
+La búsqueda global del layout reutiliza los mismos campos y también identifica claramente clientes
+archivados. Sus resultados se limitan en Main y abren directamente la ficha individual.
+
 ## Alta, ficha y edición
 
 `/clientes/nuevo` contiene el formulario de alta. El botón se deshabilita durante el guardado y una
