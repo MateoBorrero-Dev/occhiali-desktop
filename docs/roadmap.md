@@ -14,9 +14,10 @@ Motor SQLite, conexión local, esquema inicial, migraciones reales y estrategia 
 
 ## Fase 3 — Diseño de interfaz y navegación
 
-**Estado:** pendiente.
+**Estado:** completada.
 
-Sistema visual, layout definitivo, navegación y patrones accesibles.
+Identidad OCCHIALI, layout de escritorio, navegación local, componentes reutilizables, estados
+vacíos y patrones accesibles validados en Electron.
 
 ## Fase 4 — Gestión de clientes
 

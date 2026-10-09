@@ -17,5 +17,10 @@
     "target": "ES2023",
     "types": ["vite/client"]
   },
-  "include": ["src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx", "src/shared/**/*.ts"]
+  "include": [
+    "src/renderer/src/**/*.ts",
+    "src/renderer/src/**/*.tsx",
+    "src/shared/**/*.ts",
+    "tests/renderer/**/*.tsx"
+  ]
 }

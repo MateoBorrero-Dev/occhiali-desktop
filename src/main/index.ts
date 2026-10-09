@@ -5,6 +5,7 @@ import { applyQaUserDataPathOverride, getDatabaseFilePath } from './database/pat
 import { registerIpcHandlers } from './ipc/register-handlers';
 
 const isDevelopment = process.env.ELECTRON_RENDERER_URL !== undefined;
+const useMinimumQaWindow = process.env.OPTICA_QA_WINDOW_SIZE === 'minimum';
 let applicationDatabase: ApplicationDatabase | null = null;
 let qaConfigurationError: unknown = null;
 
@@ -54,12 +55,12 @@ function configureSecurity(): void {
 
 function createMainWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 760,
+    width: useMinimumQaWindow ? 820 : 1180,
+    height: useMinimumQaWindow ? 600 : 760,
     minWidth: 820,
     minHeight: 600,
     show: false,
-    title: 'Sistema de Gestión Óptica',
+    title: 'OCCHIALI — Sistema de Gestión Óptica',
     backgroundColor: '#f8fafc',
     autoHideMenuBar: true,
     webPreferences: {

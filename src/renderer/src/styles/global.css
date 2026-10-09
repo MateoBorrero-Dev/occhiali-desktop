@@ -12,6 +12,8 @@
       sans-serif;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
+    color: #0f172a;
+    background: #f1f5f9;
   }
 
   * {
@@ -20,7 +22,13 @@
 
   body {
     margin: 0;
-    min-width: 320px;
+    min-width: 820px;
+    min-height: 100vh;
+    overflow: hidden;
+    background: #f1f5f9;
+  }
+
+  #root {
     min-height: 100vh;
   }
 
@@ -30,10 +38,25 @@
   select {
     font: inherit;
   }
+
+  ::selection {
+    color: #134e4a;
+    background: #ccfbf1;
+  }
+
+  * {
+    scrollbar-color: #94a3b8 transparent;
+    scrollbar-width: thin;
+  }
 }
 
-@layer components {
-  .status-pill {
-    @apply rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

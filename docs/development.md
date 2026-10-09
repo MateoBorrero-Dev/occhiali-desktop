@@ -44,6 +44,30 @@ Las pruebas Vitest crean cada base debajo del directorio temporal del sistema. N
 `app.getPath('userData')`. Para QA manual del arranque completo se puede establecer
 `OPTICA_QA_USER_DATA_PATH` con una ruta absoluta temporal antes de iniciar Electron.
 
+Para inspeccionar expresamente el layout en el tamaño mínimo de ventana se puede agregar
+`OPTICA_QA_WINDOW_SIZE=minimum`. Esta opción solo modifica el tamaño inicial durante QA; no altera el
+mínimo permitido ni el tamaño normal de producción. Ambas variables deben apuntar a un entorno
+temporal aislado y no se usan en la operación cotidiana.
+
+Las pruebas de `tests/renderer` usan Testing Library y jsdom para verificar rutas, estado activo,
+accesos rápidos, estados vacíos y comportamiento accesible de los controles. Complementan, pero no
+reemplazan, la inspección visual real en Electron.
+
+## Interfaz y navegación
+
+La aplicación usa `HashRouter`, de modo que las URLs permanecen dentro del archivo HTML local al
+ejecutarse empaquetada. Las rutas se declaran en `src/renderer/src/app/App.tsx`; todas comparten
+`AppLayout`, y el sidebar usa `NavLink` para exponer el estado activo.
+
+Al crear una página nueva:
+
+1. Agregar el componente en `src/renderer/src/pages`.
+2. Declarar la ruta dentro de `AppLayout`.
+3. Incorporar el acceso al sidebar solo si será un módulo principal.
+4. Reutilizar `PageHeader`, `Card`, `EmptyState`, `ModulePlaceholder` y `Button` antes de crear una
+   variante específica.
+5. Añadir pruebas de navegación y teclado acordes al cambio.
+
 ## Estructura de salida
 
 Los artefactos generados se guardan en `out/` y no se versionan. El punto de entrada de Electron es
@@ -56,6 +80,8 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
 - La base de datos solo se abrirá desde el proceso principal.
 - No deben guardarse datos del negocio dentro del repositorio o del paquete instalado.
 - No deben usarse datos reales en pruebas automatizadas.
+- Los módulos sin persistencia funcional deben usar estados vacíos explícitos, no datos simulados.
+- Los controles interactivos deben conservar foco visible y semántica de teclado.
 - Las copias futuras deben usar la API de backup de SQLite, no copiar en caliente solo el archivo
   principal mientras WAL esté activo.
 
@@ -64,4 +90,5 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
 - No hay instalador en esta fase; su configuración corresponde a la Fase 9.
 - El futuro empaquetado debe conservar el binario `.node` fuera de `app.asar` mediante
   `asarUnpack`; todavía no se generó un instalador.
-- La pantalla inicial no contiene flujos de negocio por decisión de alcance.
+- Clientes, recetas y trabajos todavía no permiten altas ni edición; esos flujos corresponden a las
+  Fases 4 a 6.

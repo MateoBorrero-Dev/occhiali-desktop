@@ -7,7 +7,7 @@ export function registerIpcHandlers(): void {
     assertNoArguments(IPC_CHANNELS.appInfo, args);
 
     return Object.freeze({
-      name: 'Sistema de Gestión Óptica',
+      name: 'OCCHIALI',
       version: app.getVersion(),
     });
   });
