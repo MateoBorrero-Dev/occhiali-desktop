@@ -44,6 +44,24 @@ function installApi() {
     value: {
       getAppInfo: vi.fn(() => Promise.resolve({ name: 'OCCHIALI', version: '0.1.0' })),
       clients,
+      prescriptions: {
+        list: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 25, offset: 0 },
+          }),
+        ),
+        listByClient: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 10, offset: 0 },
+          }),
+        ),
+        get: vi.fn(),
+        create: vi.fn(),
+        correct: vi.fn(),
+        revisions: vi.fn(),
+      },
     },
   });
   return clients;
@@ -262,13 +280,19 @@ describe('módulo de clientes', () => {
     expect(api.restore).toHaveBeenCalledWith(1);
   });
 
-  it('informa que las recetas se integrarán en Fase 5 sin inventar datos', async () => {
+  it('muestra el historial de recetas real sin inventar datos', async () => {
     window.location.hash = '#/clientes/1';
     installApi();
     render(<App />);
     expect(
       await screen.findByRole('heading', { name: 'Historial de recetas' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/se integrarán en la Fase 5/)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Todavía no hay recetas registradas.' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Nueva receta/ })).toHaveAttribute(
+      'href',
+      '#/clientes/1/recetas/nueva',
+    );
   });
 });

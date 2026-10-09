@@ -21,15 +21,16 @@ vacíos y patrones accesibles validados en Electron.
 
 ## Fase 4 — Gestión de clientes
 
-**Estado:** implementación completada; QA visual manual pendiente.
+**Estado:** completada y aprobada.
 
 Alta, edición, búsqueda, consulta, archivado y reactivación de clientes con SQLite e IPC seguro.
 
 ## Fase 5 — Historial de recetas ópticas
 
-**Estado:** pendiente.
+**Estado:** implementación y pruebas automatizadas completadas; QA visual manual pendiente.
 
-Registro y consulta de múltiples recetas por cliente.
+Registro y consulta de múltiples recetas por cliente, búsqueda y filtros, graduaciones FAR/NEAR y
+OD/OI, correcciones con ID estable y revisiones históricas transaccionales.
 
 ## Fase 6 — Fichas completas de trabajo
 

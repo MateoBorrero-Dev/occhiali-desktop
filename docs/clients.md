@@ -37,14 +37,16 @@ son Activos, Archivados y Todos.
 protección adicional evita envíos simultáneos. Un alta correcta navega a `/clientes/:id`.
 
 La ficha muestra todos los campos, fechas y estado. Incluye edición en `/clientes/:id/editar`, retorno
-al listado y una sección informativa para el historial de recetas de Fase 5. Una edición conserva el
-ID y omite la escritura si los valores normalizados no cambiaron.
+al listado y el historial real de recetas paginado. “Nueva receta” abre
+`/clientes/:id/recetas/nueva` con el cliente preseleccionado. Una edición conserva el ID y omite la
+escritura si los valores normalizados no cambiaron.
 
 ## Archivado lógico
 
 Archivar cambia `is_archived` y nunca elimina la fila. La acción requiere confirmación e informa que
 el historial se conserva. Recetas y trabajos relacionados permanecen intactos por diseño. Los
 clientes archivados pueden consultarse con el filtro correspondiente y reactivarse desde su ficha.
+Su historial óptico sigue visible, pero el alta de recetas queda bloqueada hasta la reactivación.
 
 ## IPC y manejo de errores
 
@@ -64,5 +66,4 @@ mensajes en español y no detalles de SQLite, rutas locales ni trazas internas.
 ## Privacidad y limitaciones
 
 No se usa `localStorage`, analítica, red ni servicios externos. Las pruebas contienen únicamente
-personas ficticias y bases temporales. El historial de recetas es informativo hasta la Fase 5 y no
-existe borrado permanente en esta fase.
+personas ficticias y bases temporales. No existe borrado permanente de clientes ni recetas.

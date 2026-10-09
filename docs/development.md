@@ -67,6 +67,21 @@ Con `OPTICA_QA_USER_DATA_PATH` apuntando a un directorio temporal nuevo:
 Eliminar el perfil temporal únicamente después de cerrar Electron y verificar que su ruta pertenece
 al directorio temporal del sistema.
 
+### Flujo de QA de recetas
+
+Con el mismo mecanismo de perfil temporal aislado:
+
+1. Crear un cliente ficticio y registrar una receta con una fila de lejos.
+2. Reiniciar Electron con la misma ruta y confirmar persistencia.
+3. Crear una segunda receta y buscarla por cliente y fecha.
+4. Abrir el detalle, corregir un valor con motivo y consultar la revisión anterior.
+5. Confirmar que la segunda receta no cambió.
+6. Archivar el cliente, comprobar que el historial sigue visible y que el alta queda bloqueada.
+7. Reactivar el cliente.
+
+Las pruebas de Fase 5 también construyen una base con solo las migraciones 001/002 y comprueban que
+003 se aplica sin perder recetas ni graduaciones.
+
 ## Interfaz y navegación
 
 La aplicación usa `HashRouter`, de modo que las URLs permanecen dentro del archivo HTML local al
@@ -104,6 +119,8 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
 - No hay instalador en esta fase; su configuración corresponde a la Fase 9.
 - El futuro empaquetado debe conservar el binario `.node` fuera de `app.asar` mediante
   `asarUnpack`; todavía no se generó un instalador.
-- Recetas y trabajos todavía no permiten altas ni edición; esos flujos corresponden a las Fases 5 y 6.
+- Trabajos todavía no permite altas ni edición; ese flujo corresponde a la Fase 6.
+- DIP y ALT se conservan por combinación distancia-ojo, pero su interpretación clínica exacta debe
+  confirmarse con la dueña antes de imponer nuevas reglas.
 - El QA visual de Fase 4 requiere un entorno Windows cuya ventana de Electron pueda ser capturada por
   la herramienta de automatización.

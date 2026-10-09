@@ -97,6 +97,71 @@ export interface CreatePrescriptionInput {
   values?: CreatePrescriptionValueInput[];
 }
 
+export interface CorrectPrescriptionInput {
+  prescriptionDate: CalendarDate;
+  prescriberName?: string | null;
+  notes?: string | null;
+  values: CreatePrescriptionValueInput[];
+  reason: string;
+}
+
+export interface PrescriptionSummary {
+  id: number;
+  clientId: number;
+  clientFirstName: string;
+  clientLastName: string;
+  prescriptionDate: CalendarDate;
+  prescriberName: string | null;
+  createdAt: IsoTimestamp;
+  updatedAt: IsoTimestamp;
+  valueCount: number;
+}
+
+export interface PrescriptionListRequest {
+  query?: string;
+  dateFrom?: CalendarDate | null;
+  dateTo?: CalendarDate | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PrescriptionsByClientRequest {
+  clientId: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PrescriptionListPage {
+  items: PrescriptionSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface PrescriptionRevisionValue {
+  id: number;
+  revisionId: number;
+  distance: PrescriptionDistance;
+  eye: Eye;
+  sphere: DecimalValue | null;
+  cylinder: DecimalValue | null;
+  axis: number | null;
+  dip: DecimalValue | null;
+  height: DecimalValue | null;
+}
+
+export interface PrescriptionRevision {
+  id: number;
+  prescriptionId: number;
+  revisionNumber: number;
+  reason: string;
+  prescriptionDate: CalendarDate;
+  prescriberName: string | null;
+  notes: string | null;
+  correctedAt: IsoTimestamp;
+  values: PrescriptionRevisionValue[];
+}
+
 export type FrameCondition = 'NEW' | 'USED';
 export type FrameMaterial = 'ZILO' | 'METAL';
 export type ColorType = 'FULL' | 'GRADIENT';

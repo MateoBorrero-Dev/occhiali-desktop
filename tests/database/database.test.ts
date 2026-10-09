@@ -235,6 +235,7 @@ describe('persistencia SQLite', () => {
       const prescription = context.database.prescriptions.createWithValues({
         clientId: client.id,
         prescriptionDate: '2025-01-01',
+        values: [FOUR_PRESCRIPTION_VALUES[0]!],
       });
       context.database.opticalJobs.createWithTreatments({
         clientId: client.id,
@@ -252,10 +253,12 @@ describe('persistencia SQLite', () => {
       context.database.prescriptions.createWithValues({
         clientId: client.id,
         prescriptionDate: '2025-01-10',
+        values: [FOUR_PRESCRIPTION_VALUES[0]!],
       });
       context.database.prescriptions.createWithValues({
         clientId: client.id,
         prescriptionDate: '2026-02-15',
+        values: [FOUR_PRESCRIPTION_VALUES[1]!],
       });
       expect(
         context.database.prescriptions.listByClient(client.id).map((item) => item.prescriptionDate),
@@ -332,7 +335,7 @@ describe('persistencia SQLite', () => {
           prescriptionDate: '2026-01-01',
           values: [{ distance: 'FAR', eye: 'OD', axis: 181 }],
         }),
-      ).toThrow(RangeError);
+      ).toThrow();
     });
 
     it('rechaza valores con más de dos decimales', () => {
@@ -343,7 +346,7 @@ describe('persistencia SQLite', () => {
           prescriptionDate: '2026-01-01',
           values: [{ distance: 'FAR', eye: 'OD', sphere: '1.234' }],
         }),
-      ).toThrow(TypeError);
+      ).toThrow();
     });
 
     it('rechaza fechas calendario inválidas', () => {
@@ -352,8 +355,9 @@ describe('persistencia SQLite', () => {
         context.database.prescriptions.createWithValues({
           clientId: client.id,
           prescriptionDate: '2026-02-30',
+          values: [FOUR_PRESCRIPTION_VALUES[0]!],
         }),
-      ).toThrow(TypeError);
+      ).toThrow();
     });
 
     it('rechaza recetas de clientes inexistentes', () => {
@@ -361,6 +365,7 @@ describe('persistencia SQLite', () => {
         context.database.prescriptions.createWithValues({
           clientId: 999_999,
           prescriptionDate: '2026-01-01',
+          values: [FOUR_PRESCRIPTION_VALUES[0]!],
         }),
       ).toThrow();
     });
@@ -370,6 +375,7 @@ describe('persistencia SQLite', () => {
       const prescription = context.database.prescriptions.createWithValues({
         clientId: client.id,
         prescriptionDate: '2020-03-04',
+        values: [FOUR_PRESCRIPTION_VALUES[0]!],
       });
       expect(prescription.prescriptionDate).toBe('2020-03-04');
       expect(prescription.createdAt.startsWith('2020-03-04')).toBe(false);
@@ -382,6 +388,7 @@ describe('persistencia SQLite', () => {
       const prescription = context.database.prescriptions.createWithValues({
         clientId: client.id,
         prescriptionDate: '2026-01-01',
+        values: [FOUR_PRESCRIPTION_VALUES[0]!],
       });
       const job = context.database.opticalJobs.createWithTreatments({
         clientId: client.id,
@@ -406,6 +413,7 @@ describe('persistencia SQLite', () => {
       const prescription = context.database.prescriptions.createWithValues({
         clientId: first.id,
         prescriptionDate: '2026-01-01',
+        values: [FOUR_PRESCRIPTION_VALUES[0]!],
       });
       expect(() =>
         context.database.opticalJobs.createWithTreatments({

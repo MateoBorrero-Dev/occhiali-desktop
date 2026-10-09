@@ -11,6 +11,7 @@ import type {
   CreateClientInput,
   UpdateClientInput,
 } from '../../../shared/database-models';
+import { escapedLike } from '../search';
 
 interface ClientRow {
   id: number;
@@ -68,18 +69,6 @@ function insertedId(result: Database.RunResult): number {
   return id;
 }
 
-function foldSearchText(value: unknown): string {
-  const text = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('es-AR');
-}
-
-function escapedLike(value: string): string {
-  return `%${foldSearchText(value).replace(/[\\%_]/g, '\\$&')}%`;
-}
-
 function isDuplicateDocumentError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -106,9 +95,7 @@ function sameEditableValues(
 }
 
 export class ClientRepository {
-  public constructor(private readonly database: Database.Database) {
-    database.function('fold_text', { deterministic: true }, foldSearchText);
-  }
+  public constructor(private readonly database: Database.Database) {}
 
   public create(input: CreateClientInput): Client {
     const normalized = parseCreateClientInput(input);

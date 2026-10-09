@@ -7,6 +7,9 @@ import { ClientEditPage } from '../pages/ClientEditPage';
 import { HomePage } from '../pages/HomePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { PrescriptionsPage } from '../pages/PrescriptionsPage';
+import { PrescriptionCreatePage } from '../pages/PrescriptionCreatePage';
+import { PrescriptionDetailPage } from '../pages/PrescriptionDetailPage';
+import { PrescriptionCorrectionPage } from '../pages/PrescriptionCorrectionPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { WorkPage } from '../pages/WorkPage';
 
@@ -20,7 +23,11 @@ export function App(): React.JSX.Element {
           <Route path="clientes/nuevo" element={<ClientCreatePage />} />
           <Route path="clientes/:id" element={<ClientDetailPage />} />
           <Route path="clientes/:id/editar" element={<ClientEditPage />} />
+          <Route path="clientes/:id/recetas/nueva" element={<PrescriptionCreatePage />} />
           <Route path="recetas" element={<PrescriptionsPage />} />
+          <Route path="recetas/nueva" element={<PrescriptionCreatePage />} />
+          <Route path="recetas/:id" element={<PrescriptionDetailPage />} />
+          <Route path="recetas/:id/corregir" element={<PrescriptionCorrectionPage />} />
           <Route path="trabajos" element={<WorkPage />} />
           <Route path="configuracion" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

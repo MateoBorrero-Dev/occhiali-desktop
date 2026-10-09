@@ -2,7 +2,7 @@
 
 Aplicación de escritorio offline para digitalizar la gestión cotidiana de una óptica pequeña de
 Argentina. Dispone de una base técnica y de persistencia, además de una interfaz de escritorio con
-navegación y un módulo de clientes conectado al almacenamiento local.
+navegación y módulos de clientes y recetas conectados al almacenamiento local.
 
 ## Tecnologías
 
@@ -63,13 +63,16 @@ npm run format
 
 **Fase 3 — Diseño de interfaz y navegación:** completada.
 
-**Fase 4 — Gestión de clientes:** implementación completada; QA visual manual pendiente.
+**Fase 4 — Gestión de clientes:** completada y aprobada.
 
-La aplicación permite registrar, buscar, consultar, editar, archivar y reactivar clientes. Los
-datos se guardan en SQLite mediante canales IPC específicos y validados; no se usan datos simulados
-ni `localStorage`. Los módulos de recetas y trabajos continúan mostrando estados vacíos honestos.
-No se recopilan datos reales automáticamente: la única carga inicial es el catálogo de
-tratamientos.
+**Fase 5 — Historial de recetas ópticas:** implementación y validación automatizada completadas; QA
+visual manual pendiente.
+
+La aplicación permite gestionar clientes y registrar, buscar, consultar y corregir recetas ópticas
+con historial de revisiones. Los valores FAR/NEAR y OD/OI se guardan como enteros escalados en
+SQLite mediante canales IPC específicos y validados; no se usan datos simulados ni `localStorage`.
+El módulo de trabajos continúa mostrando un estado vacío honesto. No se recopilan datos reales
+automáticamente: la única carga inicial es el catálogo de tratamientos.
 
 Encontrá más información en:
 
@@ -77,4 +80,5 @@ Encontrá más información en:
 - [Desarrollo](docs/development.md)
 - [Base de datos](docs/database.md)
 - [Gestión de clientes](docs/clients.md)
+- [Recetas ópticas](docs/prescriptions.md)
 - [Roadmap](docs/roadmap.md)

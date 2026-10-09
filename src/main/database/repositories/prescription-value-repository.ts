@@ -70,4 +70,13 @@ export class PrescriptionValueRepository {
       .all(prescriptionId) as PrescriptionValueRow[];
     return rows.map(mapValue);
   }
+
+  public replace(prescriptionId: number, values: readonly CreatePrescriptionValueInput[]): void {
+    this.database
+      .prepare('DELETE FROM prescription_values WHERE prescription_id = ?')
+      .run(prescriptionId);
+    for (const value of values) {
+      this.create(prescriptionId, value);
+    }
+  }
 }

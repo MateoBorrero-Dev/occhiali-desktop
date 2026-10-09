@@ -24,6 +24,8 @@ erDiagram
     CLIENTS ||--o{ OPTICAL_JOBS : encarga
     PRESCRIPTIONS o|--o{ OPTICAL_JOBS : referencia
     PRESCRIPTIONS ||--o{ PRESCRIPTION_VALUES : contiene
+    PRESCRIPTIONS ||--o{ PRESCRIPTION_REVISIONS : conserva
+    PRESCRIPTION_REVISIONS ||--o{ PRESCRIPTION_REVISION_VALUES : contiene
     OPTICAL_JOBS ||--o{ OPTICAL_JOB_TREATMENTS : recibe
     TREATMENTS ||--o{ OPTICAL_JOB_TREATMENTS : clasifica
 
@@ -42,6 +44,25 @@ erDiagram
     PRESCRIPTION_VALUES {
         INTEGER id PK
         INTEGER prescription_id FK
+        TEXT distance
+        TEXT eye
+        INTEGER sphere
+        INTEGER cylinder
+        INTEGER axis
+        INTEGER dip
+        INTEGER height
+    }
+    PRESCRIPTION_REVISIONS {
+        INTEGER id PK
+        INTEGER prescription_id FK
+        INTEGER revision_number
+        TEXT reason
+        TEXT prescription_date
+        TEXT corrected_at
+    }
+    PRESCRIPTION_REVISION_VALUES {
+        INTEGER id PK
+        INTEGER revision_id FK
         TEXT distance
         TEXT eye
         INTEGER sphere
@@ -102,6 +123,15 @@ TypeScript acepta y devuelve cadenas decimales con hasta dos cifras para evitar 
 mantener clara la diferencia entre cero y ausencia de información.
 
 No se impusieron límites clínicos a esfera, cilindro, DIP o altura porque no fueron confirmados.
+
+### Revisiones de recetas
+
+`prescription_revisions` conserva el encabezado anterior, número correlativo, fecha de corrección y
+motivo obligatorio. `prescription_revision_values` conserva la instantánea completa de las filas
+ópticas anteriores con la misma precisión escalada. Una corrección mantiene el ID de la receta y se
+ejecuta en una transacción: insertar revisión, copiar valores, actualizar encabezado y reemplazar
+valores actuales. Si cualquier paso falla, todo se revierte. Una solicitud sin cambios no crea una
+revisión innecesaria. No existe borrado permanente de recetas.
 
 ### `optical_jobs`
 
@@ -168,6 +198,8 @@ Migraciones actuales:
 
 1. `001_initial_schema`: tablas, claves, restricciones e índices.
 2. `002_seed_treatments`: catálogo inicial idempotente.
+3. `003_prescription_revisions`: tablas e índices de revisiones históricas, sin alterar las
+   migraciones anteriores.
 
 Una migración registrada que el código no conoce detiene la apertura para evitar ejecutar una
 versión antigua contra un esquema más nuevo.

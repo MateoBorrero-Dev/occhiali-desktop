@@ -129,6 +129,48 @@ const migrations: readonly Migration[] = [
         .run();
     },
   },
+  {
+    id: '003_prescription_revisions',
+    up: (database) => {
+      database.exec(`
+        CREATE TABLE prescription_revisions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          prescription_id INTEGER NOT NULL,
+          revision_number INTEGER NOT NULL CHECK (revision_number > 0),
+          reason TEXT NOT NULL CHECK (length(trim(reason)) > 0),
+          prescription_date TEXT NOT NULL CHECK (
+            prescription_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND
+            date(prescription_date) = prescription_date
+          ),
+          prescriber_name TEXT,
+          notes TEXT,
+          corrected_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          UNIQUE (prescription_id, revision_number),
+          FOREIGN KEY (prescription_id) REFERENCES prescriptions(id) ON UPDATE RESTRICT ON DELETE RESTRICT
+        ) STRICT;
+
+        CREATE INDEX prescription_revisions_prescription_index
+          ON prescription_revisions(prescription_id, revision_number DESC);
+
+        CREATE TABLE prescription_revision_values (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          revision_id INTEGER NOT NULL,
+          distance TEXT NOT NULL CHECK (distance IN ('FAR', 'NEAR')),
+          eye TEXT NOT NULL CHECK (eye IN ('OD', 'OI')),
+          sphere INTEGER,
+          cylinder INTEGER,
+          axis INTEGER CHECK (axis IS NULL OR axis BETWEEN 0 AND 180),
+          dip INTEGER,
+          height INTEGER,
+          UNIQUE (revision_id, distance, eye),
+          FOREIGN KEY (revision_id) REFERENCES prescription_revisions(id) ON UPDATE RESTRICT ON DELETE RESTRICT
+        ) STRICT;
+
+        CREATE INDEX prescription_revision_values_revision_index
+          ON prescription_revision_values(revision_id);
+      `);
+    },
+  },
 ];
 
 interface AppliedMigrationRow {
@@ -174,4 +216,8 @@ export function applyMigrations(
 
 export function getMigrationIds(): readonly string[] {
   return migrations.map((migration) => migration.id);
+}
+
+export function getAvailableMigrations(): readonly Migration[] {
+  return migrations;
 }

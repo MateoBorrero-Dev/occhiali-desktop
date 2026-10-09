@@ -6,6 +6,7 @@ import { OpticalJobRepository } from './repositories/optical-job-repository';
 import { PrescriptionRepository } from './repositories/prescription-repository';
 import { PrescriptionValueRepository } from './repositories/prescription-value-repository';
 import { TreatmentRepository } from './repositories/treatment-repository';
+import { registerSearchFunction } from './search';
 
 interface MigrationRow {
   id: string;
@@ -19,6 +20,7 @@ export class ApplicationDatabase {
   public readonly opticalJobs: OpticalJobRepository;
 
   private constructor(private readonly database: Database.Database) {
+    registerSearchFunction(database);
     this.clients = new ClientRepository(database);
     this.prescriptionValues = new PrescriptionValueRepository(database);
     this.prescriptions = new PrescriptionRepository(database, this.prescriptionValues);

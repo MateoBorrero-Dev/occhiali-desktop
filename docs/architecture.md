@@ -32,7 +32,8 @@ HTML compilado y local.
 ## Preload
 
 `src/preload/index.ts` expone `window.optica`, un objeto congelado. Incluye `getAppInfo()` y una API
-de clientes con operaciones concretas para listar, obtener, crear, actualizar, archivar y reactivar.
+de clientes con operaciones concretas para listar, obtener, crear, actualizar, archivar y reactivar,
+y una API de recetas para listar, obtener, crear, corregir y consultar revisiones.
 No se expone `ipcRenderer`, nombres de canales arbitrarios, acceso al sistema de archivos ni objetos
 completos de Electron.
 
@@ -53,15 +54,20 @@ Las rutas actuales son:
 - `/clientes/nuevo`: alta de cliente.
 - `/clientes/:id`: ficha individual.
 - `/clientes/:id/editar`: edición.
+- `/clientes/:id/recetas/nueva`: alta con cliente preseleccionado.
 - `/recetas`: Recetas.
+- `/recetas/nueva`: alta general de receta.
+- `/recetas/:id`: detalle y revisiones.
+- `/recetas/:id/corregir`: corrección administrativa trazable.
 - `/trabajos`: Trabajos.
 - `/configuracion`: Configuración.
 - cualquier otra ruta: pantalla de recurso no encontrado con retorno seguro al inicio.
 
 Los bloques visuales reutilizables se agrupan por responsabilidad: `Button` y `Card` en `ui`,
 `PageHeader`, `EmptyState` y `ModulePlaceholder` en `common`, y `Sidebar` en `navigation`. El módulo
-de clientes agrega `ClientForm`, `ClientStatusBadge` y `ArchiveClientDialog`. Recetas y trabajos
-mantienen estados vacíos reales hasta que sus fases implementen los flujos correspondientes.
+de clientes agrega `ClientForm`, `ClientStatusBadge` y `ArchiveClientDialog`. Recetas agrega
+`PrescriptionForm`, `PrescriptionValuesTable` y `ClientPrescriptionHistory`. Trabajos mantiene un
+estado vacío real hasta que su fase implemente los flujos correspondientes.
 
 La paleta usa verde petróleo como color de marca, fondos neutros cálidos, tipografía del sistema e
 iconos de Lucide. Los estilos incluyen foco visible, estados activos, soporte de movimiento reducido
@@ -72,7 +78,9 @@ y una anchura mínima alineada con la ventana de Electron para evitar una interf
 Los canales se enumeran en `src/shared/ipc-contracts.ts`. Cada handler se registra de forma explícita
 y valida tipos, cantidad de argumentos, longitudes, fechas, DNI y filtros en runtime. Los canales de
 clientes son `clients:list`, `clients:get`, `clients:create`, `clients:update`, `clients:archive` y
-`clients:restore`. No existe un método genérico `send`, `invoke` ni SQL accesible desde React.
+`clients:restore`. Recetas usa `prescriptions:list`, `prescriptions:list-by-client`,
+`prescriptions:get`, `prescriptions:create`, `prescriptions:correct` y `prescriptions:revisions`.
+No existe un método genérico `send`, `invoke` ni SQL accesible desde React.
 
 Los handlers convierten errores internos en resultados discriminados con códigos de validación,
 DNI duplicado, registro inexistente, conflicto o persistencia. Las respuestas nunca exponen rutas
@@ -105,6 +113,11 @@ La conexión se cierra durante `before-quit`. React no recibe la conexión ni un
 repositorio de clientes reutiliza la tabla e índices de la migración inicial, normaliza las entradas,
 pagina los resultados y ejecuta búsquedas parametrizadas mediante una función local determinista que
 ignora mayúsculas y acentos.
+
+El repositorio de recetas crea encabezado y graduaciones en una transacción, pagina historiales,
+filtra por cliente y fechas, y corrige con ID estable. Antes de una corrección guarda una
+instantánea relacional del encabezado y valores anteriores; la revisión, actualización y reemplazo
+de valores forman una sola transacción.
 
 La estructura relacional, migraciones, índices y estrategia de backup futura están documentados en
 [database.md](database.md).

@@ -1,12 +1,4 @@
-import {
-  Archive,
-  ArrowLeft,
-  FileText,
-  Pencil,
-  RefreshCw,
-  RotateCcw,
-  UserRoundX,
-} from 'lucide-react';
+import { Archive, ArrowLeft, Pencil, RefreshCw, RotateCcw, UserRoundX } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import type { Client } from '../../../shared/database-models';
@@ -14,6 +6,7 @@ import { EmptyState } from '../components/common/EmptyState';
 import { PageHeader } from '../components/common/PageHeader';
 import { ArchiveClientDialog } from '../components/clients/ArchiveClientDialog';
 import { ClientStatusBadge } from '../components/clients/ClientStatusBadge';
+import { ClientPrescriptionHistory } from '../components/prescriptions/ClientPrescriptionHistory';
 import { Button } from '../components/ui/Button';
 import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
@@ -248,20 +241,7 @@ export function ClientDetailPage(): React.JSX.Element {
         </Card>
       </div>
 
-      <Card className="mt-5 p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-            <FileText size={19} aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-950">Historial de recetas</h2>
-            <p className="mt-1.5 text-sm leading-6 text-slate-600">
-              Las recetas ópticas de este cliente se integrarán en la Fase 5. Todavía no hay
-              información clínica para mostrar.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <ClientPrescriptionHistory client={client} />
 
       {showArchiveDialog && (
         <ArchiveClientDialog
