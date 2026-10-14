@@ -69,6 +69,11 @@ function insertedId(result: Database.RunResult): number {
   return id;
 }
 
+function monotonicTimestamp(previous: string): string {
+  const now = new Date().toISOString();
+  return now >= previous ? now : previous;
+}
+
 function isDuplicateDocumentError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -202,7 +207,7 @@ export class ClientRepository {
           ...next,
           id,
           isArchived: Number(next.isArchived),
-          updatedAt: new Date().toISOString(),
+          updatedAt: monotonicTimestamp(current.updatedAt),
         });
       return this.requireById(id);
     } catch (error: unknown) {

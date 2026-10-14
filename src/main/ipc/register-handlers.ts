@@ -1,82 +1,129 @@
 import { app, ipcMain } from 'electron';
 import type { ApplicationDatabase } from '../database';
-import { assertNoArguments, IPC_CHANNELS } from '../../shared/ipc-contracts';
+import { assertArgumentCount, assertNoArguments, IPC_CHANNELS } from '../../shared/ipc-contracts';
 import type { AppInfo } from '../../shared/ipc-contracts';
 import { createClientIpcHandlers } from './client-handlers';
 import { createPrescriptionIpcHandlers } from './prescription-handlers';
 import { createOpticalJobIpcHandlers } from './optical-job-handlers';
 import { createQueryIpcHandlers } from './query-handlers';
+import { createSecurityIpcHandlers } from './security-handlers';
+import type { SecurityManager } from '../security/security-manager';
+import type { BackupService } from '../backup/backup-service';
 
-export function registerIpcHandlers(database: ApplicationDatabase): void {
+export function registerIpcHandlers(
+  database: ApplicationDatabase,
+  security: SecurityManager,
+  backups: BackupService,
+  databasePath: string,
+): void {
+  const authorized = <T>(operation: () => T): T => {
+    security.requireAuthenticated();
+    return operation();
+  };
   ipcMain.handle(IPC_CHANNELS.appInfo, (_event, ...args: unknown[]): AppInfo => {
     assertNoArguments(IPC_CHANNELS.appInfo, args);
     return Object.freeze({ name: 'OCCHIALI', version: app.getVersion() });
   });
 
   const clients = createClientIpcHandlers(database);
-  ipcMain.handle(IPC_CHANNELS.clientsList, (_event, ...args: unknown[]) => clients.list(...args));
-  ipcMain.handle(IPC_CHANNELS.clientsGet, (_event, ...args: unknown[]) => clients.get(...args));
+  ipcMain.handle(IPC_CHANNELS.clientsList, (_event, ...args: unknown[]) =>
+    authorized(() => clients.list(...args)),
+  );
+  ipcMain.handle(IPC_CHANNELS.clientsGet, (_event, ...args: unknown[]) =>
+    authorized(() => clients.get(...args)),
+  );
   ipcMain.handle(IPC_CHANNELS.clientsCreate, (_event, ...args: unknown[]) =>
-    clients.create(...args),
+    authorized(() => clients.create(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.clientsUpdate, (_event, ...args: unknown[]) =>
-    clients.update(...args),
+    authorized(() => clients.update(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.clientsArchive, (_event, ...args: unknown[]) =>
-    clients.archive(...args),
+    authorized(() => clients.archive(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.clientsRestore, (_event, ...args: unknown[]) =>
-    clients.restore(...args),
+    authorized(() => clients.restore(...args)),
   );
 
   const prescriptions = createPrescriptionIpcHandlers(database);
   ipcMain.handle(IPC_CHANNELS.prescriptionsList, (_event, ...args: unknown[]) =>
-    prescriptions.list(...args),
+    authorized(() => prescriptions.list(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.prescriptionsListByClient, (_event, ...args: unknown[]) =>
-    prescriptions.listByClient(...args),
+    authorized(() => prescriptions.listByClient(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.prescriptionsGet, (_event, ...args: unknown[]) =>
-    prescriptions.get(...args),
+    authorized(() => prescriptions.get(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.prescriptionsCreate, (_event, ...args: unknown[]) =>
-    prescriptions.create(...args),
+    authorized(() => prescriptions.create(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.prescriptionsCorrect, (_event, ...args: unknown[]) =>
-    prescriptions.correct(...args),
+    authorized(() => prescriptions.correct(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.prescriptionsRevisions, (_event, ...args: unknown[]) =>
-    prescriptions.revisions(...args),
+    authorized(() => prescriptions.revisions(...args)),
   );
 
   const opticalJobs = createOpticalJobIpcHandlers(database);
   ipcMain.handle(IPC_CHANNELS.opticalJobsList, (_event, ...args: unknown[]) =>
-    opticalJobs.list(...args),
+    authorized(() => opticalJobs.list(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.opticalJobsListByClient, (_event, ...args: unknown[]) =>
-    opticalJobs.listByClient(...args),
+    authorized(() => opticalJobs.listByClient(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.opticalJobsListByPrescription, (_event, ...args: unknown[]) =>
-    opticalJobs.listByPrescription(...args),
+    authorized(() => opticalJobs.listByPrescription(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.opticalJobsGet, (_event, ...args: unknown[]) =>
-    opticalJobs.get(...args),
+    authorized(() => opticalJobs.get(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.opticalJobsCreate, (_event, ...args: unknown[]) =>
-    opticalJobs.create(...args),
+    authorized(() => opticalJobs.create(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.opticalJobsUpdate, (_event, ...args: unknown[]) =>
-    opticalJobs.update(...args),
+    authorized(() => opticalJobs.update(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.treatmentsList, (_event, ...args: unknown[]) =>
-    opticalJobs.treatments(...args),
+    authorized(() => opticalJobs.treatments(...args)),
   );
 
   const queries = createQueryIpcHandlers(database);
   ipcMain.handle(IPC_CHANNELS.dashboardSummary, (_event, ...args: unknown[]) =>
-    queries.dashboard(...args),
+    authorized(() => queries.dashboard(...args)),
   );
   ipcMain.handle(IPC_CHANNELS.globalSearch, (_event, ...args: unknown[]) =>
-    queries.globalSearch(...args),
+    authorized(() => queries.globalSearch(...args)),
+  );
+
+  const secure = createSecurityIpcHandlers(security, backups, database, databasePath);
+  const strict = (
+    channel: string,
+    expected: number,
+    operation: (...args: unknown[]) => unknown,
+  ): void => {
+    ipcMain.handle(channel, (_event, ...args: unknown[]) => {
+      assertArgumentCount(channel, args, expected);
+      return operation(...args);
+    });
+  };
+  strict(IPC_CHANNELS.securityStatus, 0, () => secure.status());
+  strict(IPC_CHANNELS.securitySetup, 2, (password, minutes) => secure.setup(password, minutes));
+  strict(IPC_CHANNELS.securityLogin, 1, (password) => secure.login(password));
+  strict(IPC_CHANNELS.securityLogout, 0, () => secure.logout());
+  strict(IPC_CHANNELS.securityTouch, 0, () => secure.touch());
+  strict(IPC_CHANNELS.securityChangePassword, 2, (current, next) =>
+    secure.changePassword(current, next),
+  );
+  strict(IPC_CHANNELS.securitySetInactivity, 1, (minutes) => secure.setInactivity(minutes));
+  strict(IPC_CHANNELS.backupStatus, 0, () => secure.backupStatus());
+  strict(IPC_CHANNELS.backupConfigure, 1, (input) => secure.configureBackup(input));
+  strict(IPC_CHANNELS.backupSelectExportDirectory, 0, () => secure.selectExportDirectory());
+  strict(IPC_CHANNELS.backupCreate, 1, (password) => secure.createBackup(password));
+  strict(IPC_CHANNELS.backupOpenDirectory, 0, () => secure.openBackupDirectory());
+  strict(IPC_CHANNELS.backupSelectRestoreFile, 0, () => secure.selectRestoreFile());
+  strict(IPC_CHANNELS.backupVerify, 1, (password) => secure.verifyBackup(password));
+  strict(IPC_CHANNELS.backupRestore, 2, (password, confirmed) =>
+    secure.restoreBackup(password, confirmed),
   );
 }

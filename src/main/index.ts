@@ -3,6 +3,9 @@ import { join } from 'node:path';
 import { ApplicationDatabase } from './database';
 import { applyQaUserDataPathOverride, getDatabaseFilePath } from './database/paths';
 import { registerIpcHandlers } from './ipc/register-handlers';
+import { SecurityManager } from './security/security-manager';
+import { BackupService } from './backup/backup-service';
+import { recoverInterruptedRestore } from './backup/restore-recovery';
 
 const isDevelopment = process.env.ELECTRON_RENDERER_URL !== undefined;
 const useMinimumQaWindow = process.env.OPTICA_QA_WINDOW_SIZE === 'minimum';
@@ -93,9 +96,16 @@ app
       throw new Error('La ruta aislada de QA no es válida.', { cause: qaConfigurationError });
     }
 
-    applicationDatabase = ApplicationDatabase.open(getDatabaseFilePath());
+    const databasePath = getDatabaseFilePath();
+    recoverInterruptedRestore(databasePath);
+    applicationDatabase = ApplicationDatabase.open(databasePath);
+    const securityManager = new SecurityManager(join(app.getPath('userData'), 'security.json'));
+    const backupService = new BackupService(
+      join(app.getPath('userData'), 'backup-settings.json'),
+      app.getVersion(),
+    );
     configureSecurity();
-    registerIpcHandlers(applicationDatabase);
+    registerIpcHandlers(applicationDatabase, securityManager, backupService, databasePath);
     createMainWindow();
 
     app.on('activate', () => {

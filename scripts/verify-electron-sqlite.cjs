@@ -26,7 +26,12 @@ app
       );
     } finally {
       database.close();
-      rmSync(temporaryDirectory, { recursive: true, force: true });
+      rmSync(temporaryDirectory, {
+        recursive: true,
+        force: true,
+        maxRetries: 5,
+        retryDelay: 100,
+      });
     }
   })
   .then(() => app.quit())

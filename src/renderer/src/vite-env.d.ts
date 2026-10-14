@@ -8,6 +8,8 @@ import type {
   TreatmentApi,
   DashboardApi,
   SearchApi,
+  SecurityApi,
+  BackupApi,
 } from '../../shared/ipc-contracts';
 
 declare global {
@@ -20,6 +22,8 @@ declare global {
       treatments: TreatmentApi;
       dashboard: DashboardApi;
       search: SearchApi;
+      security: SecurityApi;
+      backup: BackupApi;
     };
   }
 }

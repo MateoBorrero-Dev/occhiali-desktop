@@ -107,6 +107,25 @@ Siempre con `OPTICA_QA_USER_DATA_PATH` apuntando a un perfil temporal:
 7. En una ficha con más de 100 recetas, cargar páginas adicionales y elegir una receta anterior.
 8. Reiniciar con el mismo perfil, confirmar persistencia y eliminarlo solo tras cerrar Electron.
 
+### Flujo de QA de seguridad y recuperación
+
+Con `OPTICA_QA_USER_DATA_PATH` en un directorio temporal nuevo:
+
+1. Configurar una contraseña ficticia, cerrar, reabrir y comprobar el bloqueo.
+2. Crear cliente, receta, corrección, ficha y tratamiento ficticios.
+3. En Configuración, crear un `.ocbackup` con una contraseña de recuperación distinta.
+4. Verificarlo, exportarlo a otra carpeta temporal y confirmar que la UI no afirma una subida cloud.
+5. Probar una contraseña incorrecta y comprobar que la base activa no cambia.
+6. Restaurar en un segundo perfil aislado, comparar IDs e historiales y realizar una escritura nueva.
+7. Probar bloqueo manual, inactividad y operación offline.
+
+El hardening se verifica además en `tests/restore-hardening-phase8.test.ts`: usa archivos y bases
+SQLite reales para interrumpir cada fase, ejecutar la recuperación del siguiente arranque, comprobar
+el contenido anterior o restaurado según el marcador y confirmar la limpieza de rollback y staging.
+
+No registrar ni reutilizar las contraseñas ficticias. No apuntar estas variables al perfil habitual.
+La prueba automatizada equivalente vive en `tests/security-backup-phase8.test.ts`.
+
 ## Interfaz y navegación
 
 La aplicación usa `HashRouter`, de modo que las URLs permanecen dentro del archivo HTML local al
@@ -136,8 +155,12 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
 - No deben usarse datos reales en pruebas automatizadas.
 - Los módulos sin persistencia funcional deben usar estados vacíos explícitos, no datos simulados.
 - Los controles interactivos deben conservar foco visible y semántica de teclado.
-- Las copias futuras deben usar la API de backup de SQLite, no copiar en caliente solo el archivo
+- Las copias deben seguir usando la API de backup de SQLite; nunca copiar en caliente solo el archivo
   principal mientras WAL esté activo.
+- Todo cambio del formato `.ocbackup` debe versionarse y conservar autenticación de cabecera y carga.
+- Nunca agregar almacenamiento en texto plano de la contraseña de recuperación para automatizar.
+- No mover ni eliminar manualmente `.restore-state.json`, `.restore-rollback` o staging durante una
+  recuperación. Un estado inconsistente debe fallar cerrado y revisarse sobre una copia del perfil.
 
 ## Problemas conocidos
 
@@ -146,8 +169,11 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
   `asarUnpack`; todavía no se generó un instalador.
 - DIP y ALT se conservan por combinación distancia-ojo, pero su interpretación clínica exacta debe
   confirmarse con la dueña antes de imponer nuevas reglas.
-- No existen precios, ventas, stock, pagos ni estados logísticos; son dominios fuera de Fase 7.
+- No existen precios, ventas, stock, pagos ni estados logísticos; son dominios fuera de Fase 8.
 - El QA visual de Fase 4 requiere un entorno Windows cuya ventana de Electron pueda ser capturada por
   la herramienta de automatización.
 - El controlador gráfico disponible en las últimas validaciones devolvió un inventario nativo vacío;
-  el recorrido visual y funcional completo de Fase 7 debe repetirse manualmente con un perfil aislado.
+  el recorrido visual y funcional completo de Fase 8 debe repetirse manualmente con un perfil aislado.
+- La programación de backup es asistida: recuerda la copia, pero no guarda la clave ni ejecuta con
+  la aplicación cerrada.
+- El login local no cifra SQLite; el equipo operativo necesita cifrado de disco.

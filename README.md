@@ -74,6 +74,9 @@ completadas; QA visual manual pendiente.
 **Fase 7 — Consultas avanzadas, dashboard y optimización UX:** implementación y validación
 automatizada completadas; QA visual manual pendiente.
 
+**Fase 8 — Seguridad, backups y restauración:** protección local, backup cifrado verificable,
+exportación a carpeta sincronizada y disaster recovery implementados; QA visual manual pendiente.
+
 La aplicación permite gestionar clientes y registrar, buscar, consultar y corregir recetas ópticas
 con historial de revisiones. Los valores FAR/NEAR y OD/OI se guardan como enteros escalados en
 SQLite mediante canales IPC específicos y validados; no se usan datos simulados ni `localStorage`.
@@ -95,4 +98,7 @@ Encontrá más información en:
 - [Recetas ópticas](docs/prescriptions.md)
 - [Fichas de trabajo](docs/optical-jobs.md)
 - [Dashboard y búsqueda integrada](docs/search-and-dashboard.md)
+- [Seguridad](docs/security.md)
+- [Backup y restauración](docs/backup-restore.md)
+- [Exportación a carpeta sincronizada](docs/cloud-backup.md)
 - [Roadmap](docs/roadmap.md)

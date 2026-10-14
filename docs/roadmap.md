@@ -48,9 +48,10 @@ selector incremental de recetas.
 
 ## Fase 8 — Seguridad, backups y restauración
 
-**Estado:** pendiente.
+**Estado:** implementación y pruebas automatizadas completadas; QA visual manual pendiente.
 
-Copias verificables, restauración segura y protección de datos locales.
+Protección local con autorización en Main, backups SQLite cifrados y verificables, exportación a
+carpeta sincronizada, restauración segura y disaster recovery independiente.
 
 ## Fase 9 — QA e instalador Windows
 

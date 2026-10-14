@@ -19,3 +19,10 @@ Thumbs.db
 *.db-journal
 *.db-shm
 *.db-wal
+*.ocbackup
+*.ocbackup.partial
+*.restore-staging*
+*.restore-rollback
+*.restore-state.json*
+security.json
+backup-settings.json

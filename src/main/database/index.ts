@@ -66,6 +66,10 @@ export class ApplicationDatabase {
     return rows.map((row) => row.integrity_check).join(', ');
   }
 
+  public async backupTo(filePath: string): Promise<void> {
+    await this.database.backup(filePath);
+  }
+
   public close(): void {
     if (this.database.open) {
       this.database.close();

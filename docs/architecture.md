@@ -43,6 +43,10 @@ completos de Electron.
 `src/renderer` contiene HTML, React y estilos Tailwind. El renderer solo consume la API declarada en
 `vite-env.d.ts`; no importa paquetes de Node.js.
 
+Antes de montar las rutas, `SecurityGate` consulta a Main y presenta configuración inicial o login.
+La sesión se conserva solo en memoria y el renderer notifica actividad mediante un canal explícito;
+Main vuelve a comprobar la sesión en cada operación sensible.
+
 `HashRouter` resuelve la navegación dentro de un único documento local, por lo que las rutas
 funcionan tanto en el servidor de desarrollo como cuando Electron carga `index.html` mediante
 `file://`. `AppLayout` mantiene el sidebar y su estado activo mientras el contenido de cada módulo
@@ -92,6 +96,11 @@ clientes son `clients:list`, `clients:get`, `clients:create`, `clients:update`, 
 `prescriptions:get`, `prescriptions:create`, `prescriptions:correct` y `prescriptions:revisions`.
 No existe un método genérico `send`, `invoke` ni SQL accesible desde React.
 
+Seguridad agrega canales explícitos `security:*` para estado, alta, login, logout, actividad, cambio
+de contraseña e inactividad. Backup agrega `backup:*` para estado, configuración, selección mediante
+diálogo nativo, creación, verificación y restauración. Todos validan la cantidad de argumentos en
+Main. Los canales de datos y mantenimiento requieren la sesión local activa.
+
 Fichas usa `optical-jobs:list`, `optical-jobs:list-by-client`, `optical-jobs:get`,
 `optical-jobs:list-by-prescription`, `optical-jobs:create` y `optical-jobs:update`; el catálogo usa
 `treatments:list`. Dashboard y búsqueda usan `dashboard:get-summary` y `search:global`. Main valida de
@@ -140,5 +149,7 @@ reemplaza las asociaciones de tratamientos dentro de la misma transacción que l
 `QueryRepository` contiene exclusivamente lecturas: una consulta agregada para el dashboard y tres
 consultas limitadas para la búsqueda agrupada. No comparte una conexión ni SQL con React.
 
-La estructura relacional, migraciones, índices y estrategia de backup futura están documentados en
-[database.md](database.md).
+`src/main/backup` implementa backup SQLite consistente, cifrado autenticado, retención, exportación
+y recuperación de una restauración interrumpida. La estructura relacional e índices están en
+[database.md](database.md); los límites de seguridad y recuperación están en [security.md](security.md)
+y [backup-restore.md](backup-restore.md).

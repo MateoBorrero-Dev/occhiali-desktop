@@ -22,6 +22,10 @@ import type {
   DashboardSummary,
   GlobalSearchRequest,
   GlobalSearchResults,
+  SecurityStatus,
+  BackupStatus,
+  BackupMetadata,
+  BackupOperationResult,
 } from './database-models';
 
 export const IPC_CHANNELS = {
@@ -47,6 +51,21 @@ export const IPC_CHANNELS = {
   treatmentsList: 'treatments:list',
   dashboardSummary: 'dashboard:get-summary',
   globalSearch: 'search:global',
+  securityStatus: 'security:status',
+  securitySetup: 'security:setup',
+  securityLogin: 'security:login',
+  securityLogout: 'security:logout',
+  securityTouch: 'security:touch',
+  securityChangePassword: 'security:change-password',
+  securitySetInactivity: 'security:set-inactivity',
+  backupStatus: 'backup:status',
+  backupConfigure: 'backup:configure',
+  backupSelectExportDirectory: 'backup:select-export-directory',
+  backupCreate: 'backup:create',
+  backupOpenDirectory: 'backup:open-directory',
+  backupSelectRestoreFile: 'backup:select-restore-file',
+  backupVerify: 'backup:verify',
+  backupRestore: 'backup:restore',
 } as const;
 
 export interface AppInfo {
@@ -153,6 +172,38 @@ export interface DashboardApi {
 
 export interface SearchApi {
   global: (request: GlobalSearchRequest) => Promise<QueryIpcResult<GlobalSearchResults>>;
+}
+
+export type SecurityResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: { code: string; message: string; retryAfterSeconds?: number } };
+
+export interface SecurityApi {
+  status: () => Promise<SecurityResult<SecurityStatus>>;
+  setup: (password: string, inactivityMinutes: number) => Promise<SecurityResult<SecurityStatus>>;
+  login: (password: string) => Promise<SecurityResult<SecurityStatus>>;
+  logout: () => Promise<SecurityResult<SecurityStatus>>;
+  touch: () => Promise<SecurityResult<SecurityStatus>>;
+  changePassword: (currentPassword: string, nextPassword: string) => Promise<SecurityResult<true>>;
+  setInactivity: (minutes: number) => Promise<SecurityResult<SecurityStatus>>;
+}
+
+export interface BackupApi {
+  status: () => Promise<SecurityResult<BackupStatus>>;
+  configure: (input: {
+    automaticEnabled: boolean;
+    automaticHour: number;
+    retentionCount: number;
+  }) => Promise<SecurityResult<BackupStatus>>;
+  selectExportDirectory: () => Promise<SecurityResult<BackupStatus>>;
+  create: (recoveryPassword: string) => Promise<SecurityResult<BackupOperationResult>>;
+  openDirectory: () => Promise<SecurityResult<true>>;
+  selectRestoreFile: () => Promise<SecurityResult<{ fileName: string } | null>>;
+  verify: (recoveryPassword: string) => Promise<SecurityResult<BackupMetadata>>;
+  restore: (
+    recoveryPassword: string,
+    confirmed: boolean,
+  ) => Promise<SecurityResult<{ restartRequired: true }>>;
 }
 
 export function assertNoArguments(channel: string, args: readonly unknown[]): void {

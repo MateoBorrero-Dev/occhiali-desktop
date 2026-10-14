@@ -32,6 +32,21 @@ describe('contratos IPC', () => {
       treatmentsList: 'treatments:list',
       dashboardSummary: 'dashboard:get-summary',
       globalSearch: 'search:global',
+      securityStatus: 'security:status',
+      securitySetup: 'security:setup',
+      securityLogin: 'security:login',
+      securityLogout: 'security:logout',
+      securityTouch: 'security:touch',
+      securityChangePassword: 'security:change-password',
+      securitySetInactivity: 'security:set-inactivity',
+      backupStatus: 'backup:status',
+      backupConfigure: 'backup:configure',
+      backupSelectExportDirectory: 'backup:select-export-directory',
+      backupCreate: 'backup:create',
+      backupOpenDirectory: 'backup:open-directory',
+      backupSelectRestoreFile: 'backup:select-restore-file',
+      backupVerify: 'backup:verify',
+      backupRestore: 'backup:restore',
     });
   });
 

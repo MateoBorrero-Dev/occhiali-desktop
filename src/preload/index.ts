@@ -8,6 +8,8 @@ import type {
   TreatmentApi,
   DashboardApi,
   SearchApi,
+  SecurityApi,
+  BackupApi,
 } from '../shared/ipc-contracts';
 
 const clientMethods: ClientApi = {
@@ -57,6 +59,28 @@ const dashboard = Object.freeze<DashboardApi>({
 const search = Object.freeze<SearchApi>({
   global: (request) => ipcRenderer.invoke(IPC_CHANNELS.globalSearch, request),
 });
+const security = Object.freeze<SecurityApi>({
+  status: () => ipcRenderer.invoke(IPC_CHANNELS.securityStatus),
+  setup: (password, inactivityMinutes) =>
+    ipcRenderer.invoke(IPC_CHANNELS.securitySetup, password, inactivityMinutes),
+  login: (password) => ipcRenderer.invoke(IPC_CHANNELS.securityLogin, password),
+  logout: () => ipcRenderer.invoke(IPC_CHANNELS.securityLogout),
+  touch: () => ipcRenderer.invoke(IPC_CHANNELS.securityTouch),
+  changePassword: (currentPassword, nextPassword) =>
+    ipcRenderer.invoke(IPC_CHANNELS.securityChangePassword, currentPassword, nextPassword),
+  setInactivity: (minutes) => ipcRenderer.invoke(IPC_CHANNELS.securitySetInactivity, minutes),
+});
+const backup = Object.freeze<BackupApi>({
+  status: () => ipcRenderer.invoke(IPC_CHANNELS.backupStatus),
+  configure: (input) => ipcRenderer.invoke(IPC_CHANNELS.backupConfigure, input),
+  selectExportDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.backupSelectExportDirectory),
+  create: (recoveryPassword) => ipcRenderer.invoke(IPC_CHANNELS.backupCreate, recoveryPassword),
+  openDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.backupOpenDirectory),
+  selectRestoreFile: () => ipcRenderer.invoke(IPC_CHANNELS.backupSelectRestoreFile),
+  verify: (recoveryPassword) => ipcRenderer.invoke(IPC_CHANNELS.backupVerify, recoveryPassword),
+  restore: (recoveryPassword, confirmed) =>
+    ipcRenderer.invoke(IPC_CHANNELS.backupRestore, recoveryPassword, confirmed),
+});
 
 const opticaApi = Object.freeze({
   getAppInfo: (): Promise<AppInfo> => ipcRenderer.invoke(IPC_CHANNELS.appInfo),
@@ -66,6 +90,8 @@ const opticaApi = Object.freeze({
   treatments,
   dashboard,
   search,
+  security,
+  backup,
 });
 
 contextBridge.exposeInMainWorld('optica', opticaApi);

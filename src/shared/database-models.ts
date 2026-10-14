@@ -301,3 +301,39 @@ export interface GlobalSearchResults {
   opticalJobs: GlobalOpticalJobSearchResult[];
   limit: number;
 }
+
+export interface SecurityStatus {
+  configured: boolean;
+  authenticated: boolean;
+  inactivityMinutes: number;
+  retryAfterSeconds: number;
+}
+
+export interface BackupStatus {
+  localDirectory: string;
+  exportDirectory: string | null;
+  lastBackupAt: IsoTimestamp | null;
+  lastBackupFile: string | null;
+  lastErrorAt: IsoTimestamp | null;
+  automaticEnabled: boolean;
+  automaticHour: number;
+  retentionCount: number;
+  due: boolean;
+  busy: boolean;
+  remoteSyncVerified: false;
+}
+
+export interface BackupMetadata {
+  formatVersion: number;
+  createdAt: IsoTimestamp;
+  appVersion: string;
+  schemaMigrations: string[];
+}
+
+export interface BackupOperationResult {
+  fileName: string;
+  createdAt: IsoTimestamp;
+  exportedToSyncFolder: boolean;
+  exportError: boolean;
+  remoteSyncVerified: false;
+}

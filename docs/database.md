@@ -242,9 +242,13 @@ realizan escrituras. Mientras una conexión está activa, cambios recientes pued
 archivos `-wal` y `-shm`; copiar solamente `optica.sqlite3` en ese momento no constituye un backup
 seguro.
 
-La Fase 8 deberá usar una copia consistente y verificable, preferentemente la API de backup de
-SQLite, y comprobar su restauración. La persistencia en el disco local no protege frente a pérdida o
-falla física del equipo.
+Fase 8 usa la API de backup de `better-sqlite3`, no una copia simple. La base temporal se abre y
+verifica antes del cifrado y vuelve a abrirse después del descifrado. Los backups incluyen los IDs de
+migración; una versión futura se rechaza y una versión anterior compatible recibe migraciones
+incrementales en staging. El procedimiento completo está en [backup-restore.md](backup-restore.md).
+
+La base activa permanece sin cifrar por Occhiali. La persistencia local no protege frente a pérdida,
+falla física o acceso directo al disco; se recomienda BitLocker o Cifrado de dispositivo de Windows.
 
 ## Empaquetado futuro
 
