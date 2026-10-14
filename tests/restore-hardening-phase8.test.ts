@@ -117,6 +117,26 @@ describe('estado durable de restauración', () => {
     expect(firstName(value.activePath)).toBe('Anterior');
   });
 
+  it('no interpreta una base activa como recuperación confirmada si falta el rollback', () => {
+    const value = tracked();
+    value.coordinator.begin(value.stagingPath);
+    const state = JSON.parse(readFileSync(value.coordinator.statePath, 'utf8')) as {
+      phase: string;
+    };
+    writeFileSync(
+      value.coordinator.statePath,
+      JSON.stringify({ ...state, phase: 'recovery-required' }),
+    );
+
+    expect(() => recoverInterruptedRestore(value.activePath)).toThrow(
+      'la base activa no confirma una recuperación',
+    );
+    expect(firstName(value.activePath)).toBe('Anterior');
+    expect(existsSync(value.coordinator.rollbackPath)).toBe(false);
+    expect(existsSync(value.coordinator.statePath)).toBe(true);
+    expect(existsSync(value.stagingPath)).toBe(true);
+  });
+
   it('una restauración confirmada conserva la candidata y elimina rollback y estado', () => {
     const value = tracked();
     value.coordinator.begin(value.stagingPath);

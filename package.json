@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "test:electron": "npm run test:electron:sqlite",
     "test:electron:sqlite": "electron scripts/verify-electron-sqlite.cjs",
     "build": "npm run typecheck && electron-vite build"
   },

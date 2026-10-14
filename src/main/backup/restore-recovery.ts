@@ -15,7 +15,13 @@ const STATE_VERSION = 1;
 const STAGING_PATTERN = /^\.restore-staging-[a-f0-9]{16}\.sqlite3$/;
 
 export type RestorePhase =
-  'pending' | 'active-moved' | 'candidate-placed' | 'verified' | 'confirmed' | 'recovery-required';
+  | 'pending'
+  | 'active-moved'
+  | 'candidate-placed'
+  | 'verified'
+  | 'confirmed'
+  | 'rollback-restored'
+  | 'recovery-required';
 
 interface RestoreState {
   version: typeof STATE_VERSION;
@@ -61,6 +67,7 @@ function parseState(path: string): RestoreState | null {
       'candidate-placed',
       'verified',
       'confirmed',
+      'rollback-restored',
       'recovery-required',
     ];
     if (
@@ -176,25 +183,32 @@ export class RestoreCoordinator {
         removedRollback: false,
       };
     if (state.phase === 'confirmed') return finalizeConfirmed(this);
+    if (state.phase === 'rollback-restored') {
+      if (!existsSync(this.activeDatabasePath) || existsSync(this.rollbackPath))
+        throw new RestoreRecoveryError(
+          'La recuperación anterior no puede confirmarse de forma segura. Se conservaron los archivos para revisión técnica.',
+        );
+      const removedStagingFiles = removeStagingFiles(this.directory);
+      removeStateArtifacts(this.statePath);
+      return {
+        action: 'rolled-back',
+        recoveredPreviousDatabase: true,
+        removedStagingFiles,
+        removedRollback: true,
+      };
+    }
     const originalPhase = state.phase;
     if (state.phase !== 'recovery-required') this.setPhase('recovery-required');
     let recoveredPreviousDatabase = false;
     if (existsSync(this.rollbackPath)) {
       removeDatabaseArtifacts(this.activeDatabasePath);
       renameSync(this.rollbackPath, this.activeDatabasePath);
+      this.setPhase('rollback-restored');
       recoveredPreviousDatabase = true;
-    } else if (!existsSync(this.activeDatabasePath) || originalPhase !== 'pending') {
-      if (originalPhase !== 'recovery-required') {
-        throw new RestoreRecoveryError(
-          'No se pudo recuperar automáticamente la base anterior. Se preservó el estado para soporte.',
-        );
-      }
-      if (!existsSync(this.activeDatabasePath)) {
-        throw new RestoreRecoveryError(
-          'No se encontró una base recuperable. Se preservó el estado para soporte.',
-        );
-      }
-    }
+    } else if (originalPhase !== 'pending' || !existsSync(this.activeDatabasePath))
+      throw new RestoreRecoveryError(
+        'La restauración quedó en estado ambiguo: no existe un rollback recuperable y la base activa no confirma una recuperación. Se conservaron todos los archivos para revisión técnica.',
+      );
     const removedStagingFiles = removeStagingFiles(this.directory);
     removeStateArtifacts(this.statePath);
     return {
