@@ -12,6 +12,9 @@ La base de la aplicación se ubica en:
 join(app.getPath('userData'), 'optica.sqlite3')
 ```
 
+La aplicación fija esa ruta en `%APPDATA%\optica-desktop\optica.sqlite3` antes de iniciar. El nombre
+de carpeta preserva la identidad histórica aunque el producto empaquetado se muestre como Occhiali.
+
 No se guarda en el repositorio, `resources`, `app.asar` ni el directorio del instalador. Las pruebas
 usan rutas temporales independientes. `OPTICA_QA_USER_DATA_PATH` permite dirigir únicamente una
 ejecución de QA completo a un directorio absoluto aislado.
@@ -250,9 +253,13 @@ incrementales en staging. El procedimiento completo está en [backup-restore.md]
 La base activa permanece sin cifrar por Occhiali. La persistencia local no protege frente a pérdida,
 falla física o acceso directo al disco; se recomienda BitLocker o Cifrado de dispositivo de Windows.
 
-## Empaquetado futuro
+## Empaquetado Windows
 
-El build compilado externaliza `better-sqlite3` correctamente. Un futuro empaquetador debe incluir el
-prebuild de Windows correspondiente y configurar `asarUnpack` para los archivos `.node`, ya que una
-biblioteca nativa no puede cargarse directamente desde el archivo ASAR. El instalador y una prueba de
-instalación limpia corresponden a la Fase 9.
+El build externaliza `better-sqlite3 13.0.3`. El paquete incluye únicamente su prebuild Node-API
+`win32-x64.node` y lo ubica fuera de ASAR. No se recompila con node-gyp: la distribución upstream
+incluye el binario Windows y la prueba real lo carga con Electron 44.7.0, ABI/modules 149. El runtime
+empaquetado creó la base, aplicó las tres migraciones, escribió, cerró y reabrió con persistencia.
+
+El instalador no contiene una base inicial. NSIS tampoco borra `userData` al desinstalar. La
+instalación, reinstalación y comprobaciones se detallan en
+[windows-installer.md](windows-installer.md).

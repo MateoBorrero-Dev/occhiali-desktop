@@ -27,8 +27,10 @@ npm run typecheck
 npm run lint
 npm run format:check
 npm test
-npm run test:electron:sqlite
+npm run test:electron
 npm run build
+npm run package:win
+npm run verify:package
 npm audit
 git diff --check
 ```
@@ -37,8 +39,11 @@ git diff --check
 - `lint` usa la configuración plana de ESLint y reglas con información de tipos.
 - `format:check` comprueba el formato sin modificar archivos.
 - `test` ejecuta Vitest una sola vez.
-- `test:electron:sqlite` carga el binario nativo en Electron y usa una base temporal aislada.
+- `test:electron` carga el binario nativo en Electron y usa una base temporal aislada.
 - `build` repite el typecheck y genera `out/main`, `out/preload` y `out/renderer`.
+- `package:win` genera `release/win-unpacked` y el instalador NSIS x64.
+- `verify:package` inspecciona ASAR y ejecuta dos veces el runtime empaquetado sobre un perfil
+  temporal; prueba migraciones, persistencia, acceso local, backup y restauración.
 
 Las pruebas Vitest crean cada base debajo del directorio temporal del sistema. Nunca usan
 `app.getPath('userData')`. Para QA manual del arranque completo se puede establecer
@@ -143,8 +148,9 @@ Al crear una página nueva:
 
 ## Estructura de salida
 
-Los artefactos generados se guardan en `out/` y no se versionan. El punto de entrada de Electron es
-`out/main/index.js`, configurado mediante el campo `main` de `package.json`.
+El build intermedio se guarda en `out/` y la distribución en `release/`; ninguno se versiona. El
+punto de entrada de Electron es `out/main/index.js`, configurado mediante el campo `main` de
+`package.json`. El procedimiento detallado está en [windows-installer.md](windows-installer.md).
 
 ## Reglas para cambios futuros
 
@@ -164,16 +170,18 @@ Los artefactos generados se guardan en `out/` y no se versionan. El punto de ent
 
 ## Problemas conocidos
 
-- No hay instalador en esta fase; su configuración corresponde a la Fase 9.
-- El futuro empaquetado debe conservar el binario `.node` fuera de `app.asar` mediante
-  `asarUnpack`; todavía no se generó un instalador.
+- El instalador de prueba no está firmado y usa el icono predeterminado de Electron porque no se
+  proporcionó un icono oficial. Windows puede mostrar advertencias de SmartScreen.
+- La actualización manual entre dos versiones distintas todavía requiere QA real; la
+  desinstalación/reinstalación de 0.9.0 sí fue validada conservando el perfil temporal.
 - DIP y ALT se conservan por combinación distancia-ojo, pero su interpretación clínica exacta debe
   confirmarse con la dueña antes de imponer nuevas reglas.
 - No existen precios, ventas, stock, pagos ni estados logísticos; son dominios fuera de Fase 8.
 - El QA visual de Fase 4 requiere un entorno Windows cuya ventana de Electron pueda ser capturada por
   la herramienta de automatización.
-- El controlador gráfico disponible en las últimas validaciones devolvió un inventario nativo vacío;
-  el recorrido visual y funcional completo de Fase 8 debe repetirse manualmente con un perfil aislado.
+- El controlador gráfico detectó la ventana instalada, pero agotó el tiempo de aprobación al
+  capturarla; el recorrido visual y funcional completo debe repetirse manualmente con un perfil
+  aislado.
 - La programación de backup es asistida: recuerda la copia, pero no guarda la clave ni ejecuta con
   la aplicación cerrada.
 - El login local no cifra SQLite; el equipo operativo necesita cifrado de disco.

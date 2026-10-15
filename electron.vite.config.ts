@@ -9,7 +9,10 @@ export default defineConfig({
     build: {
       rollupOptions: {
         external: ['better-sqlite3', 'electron'],
-        input: resolve('src/main/index.ts'),
+        input: {
+          index: resolve('src/main/index.ts'),
+          'package-qa': resolve('src/main/package-qa.ts'),
+        },
       },
     },
   },

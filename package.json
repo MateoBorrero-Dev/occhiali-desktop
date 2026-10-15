@@ -1,8 +1,11 @@
 {
   "name": "optica-desktop",
-  "version": "0.1.0",
+  "version": "0.9.0",
+  "productName": "Occhiali",
   "private": true,
   "description": "Sistema de gestión de escritorio para una óptica pequeña.",
+  "author": "Occhiali",
+  "license": "UNLICENSED",
   "main": "./out/main/index.js",
   "type": "module",
   "scripts": {
@@ -14,7 +17,10 @@
     "test": "vitest run",
     "test:electron": "npm run test:electron:sqlite",
     "test:electron:sqlite": "electron scripts/verify-electron-sqlite.cjs",
-    "build": "npm run typecheck && electron-vite build"
+    "build": "npm run typecheck && electron-vite build",
+    "package:win": "npm run build && electron-builder --win nsis --x64",
+    "package:win:dir": "npm run build && electron-builder --win dir --x64",
+    "verify:package": "node scripts/verify-packaged-app.cjs"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -39,6 +45,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "electron": "44.7.0",
+    "electron-builder": "26.4.1",
     "electron-vite": "5.0.0",
     "eslint": "10.12.0",
     "eslint-plugin-react-hooks": "7.1.1",
@@ -51,5 +58,67 @@
     "typescript-eslint": "8.71.1",
     "vite": "8.3.4",
     "vitest": "5.0.3"
+  },
+  "build": {
+    "appId": "com.occhiali.desktop",
+    "productName": "Occhiali",
+    "asar": true,
+    "npmRebuild": false,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/prebuilds/win32-x64.node"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**/*",
+      "package.json",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/node-addon-api/**/*",
+      "!node_modules/better-sqlite3/prebuilds/darwin-*.node",
+      "!node_modules/better-sqlite3/prebuilds/linux-*.node",
+      "!node_modules/better-sqlite3/prebuilds/linuxmusl-*.node",
+      "!node_modules/better-sqlite3/prebuilds/win32-arm64.node",
+      "!**/*.sqlite",
+      "!**/*.sqlite3",
+      "!**/*.db",
+      "!**/*.db-journal",
+      "!**/*.db-shm",
+      "!**/*.db-wal",
+      "!**/*.ocbackup",
+      "!**/*.ocbackup.partial",
+      "!**/.restore-staging*",
+      "!**/*.restore-rollback",
+      "!**/*.restore-state.json*",
+      "!**/security.json",
+      "!**/backup-settings.json",
+      "!**/.env",
+      "!**/.env.*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "Occhiali",
+      "artifactName": "Occhiali-Setup-${version}-${arch}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Occhiali",
+      "uninstallDisplayName": "Occhiali",
+      "deleteAppDataOnUninstall": false
+    }
   }
 }

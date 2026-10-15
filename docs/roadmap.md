@@ -55,9 +55,11 @@ carpeta sincronizada, restauración segura y disaster recovery independiente.
 
 ## Fase 9 — QA e instalador Windows
 
-**Estado:** pendiente.
+**Estado:** implementación y distribución completadas; QA visual/manual completo pendiente.
 
-Pruebas integrales, empaquetado, instalador e instalación/actualización controlada.
+Instalador NSIS x64 0.9.0, identidad estable, `userData` preservado, SQLite nativo empaquetado,
+inspección de ASAR, instalación y reinstalación controlada. Una actualización real entre versiones
+distintas y el recorrido visual del instalador/aplicación quedan pendientes.
 
 ## Fase 10 — Preparación para ampliaciones
 

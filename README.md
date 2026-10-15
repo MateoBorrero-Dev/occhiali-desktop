@@ -14,10 +14,11 @@ navegación y módulos de clientes, recetas y fichas de trabajo conectados al al
 - Vitest para pruebas automatizadas.
 - ESLint y Prettier para calidad y formato.
 - SQLite mediante `better-sqlite3`, con almacenamiento bajo `app.getPath('userData')`.
+- electron-builder y NSIS para el instalador Windows x64.
 
 Las versiones exactas instaladas están fijadas en `package.json` y `package-lock.json`.
 
-## Requisitos
+## Requisitos de desarrollo
 
 - Node.js 22.12 o posterior. Se recomienda una versión LTS compatible.
 - npm 10 o posterior.
@@ -45,8 +46,10 @@ npm run typecheck
 npm run lint
 npm run format:check
 npm test
-npm run test:electron:sqlite
+npm run test:electron
 npm run build
+npm run package:win
+npm run verify:package
 ```
 
 Para aplicar el formato configurado:
@@ -77,6 +80,13 @@ automatizada completadas; QA visual manual pendiente.
 **Fase 8 — Seguridad, backups y restauración:** protección local, backup cifrado verificable,
 exportación a carpeta sincronizada y disaster recovery implementados; QA visual manual pendiente.
 
+**Fase 9 — Instalador Windows:** instalador NSIS x64 0.9.0, persistencia fuera de la instalación y
+validación real del runtime empaquetado implementados; QA visual/manual completo pendiente.
+
+La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
+npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
+[Instalador Windows](docs/windows-installer.md).
+
 La aplicación permite gestionar clientes y registrar, buscar, consultar y corregir recetas ópticas
 con historial de revisiones. Los valores FAR/NEAR y OD/OI se guardan como enteros escalados en
 SQLite mediante canales IPC específicos y validados; no se usan datos simulados ni `localStorage`.
@@ -101,4 +111,5 @@ Encontrá más información en:
 - [Seguridad](docs/security.md)
 - [Backup y restauración](docs/backup-restore.md)
 - [Exportación a carpeta sincronizada](docs/cloud-backup.md)
+- [Instalador Windows](docs/windows-installer.md)
 - [Roadmap](docs/roadmap.md)

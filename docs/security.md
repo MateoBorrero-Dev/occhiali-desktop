@@ -61,3 +61,15 @@ controlado; no se inventa una sesión ni se usa un valor por defecto.
 - Los backups protegen confidencialidad e integridad, no disponibilidad: deben existir copias en más
   de un dispositivo y comprobarse periódicamente.
 - No hay telemetría, servidor, autenticación remota ni recuperación por internet.
+
+## Distribución y confianza de Windows
+
+La versión 0.9.0 se genera sin certificado Authenticode. No contiene claves privadas ni intenta
+crear reputación SmartScreen; Windows puede advertir que el editor es desconocido. No debe
+recomendarse desactivar Defender o SmartScreen. Una distribución firmada requiere un certificado de
+firma de código a nombre del responsable, custodia privada de la clave y firma con sello de tiempo
+durante el build.
+
+El paquete excluye `.env`, bases SQLite, backups, `security.json`, configuración y temporales. La
+aplicación instalada conserva `contextIsolation`, sandbox, Node deshabilitado en React, CSP e IPC
+enumerado. Funciona offline y no incorpora telemetría, actualizador automático ni activación.

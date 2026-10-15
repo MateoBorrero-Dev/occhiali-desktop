@@ -74,10 +74,11 @@ estratos diarios/semanales/mensuales.
 9. Registra `verified` y luego `confirmed`. Solo `confirmed` hace autoritativa la restauración.
 10. Elimina el rollback descifrado, temporales y marcador; finalmente reinicia la aplicación.
 
-Los estados persistentes son `pending`, `active-moved`, `candidate-placed`, `verified`, `confirmed`
-y `recovery-required`. Si Occhiali reinicia antes de `confirmed`, conserva o repone la base anterior
-y elimina la candidata. Si reinicia después del marcador `confirmed`, conserva la restaurada y
-completa la limpieza pendiente. La mera existencia de `optica.sqlite3` nunca confirma el proceso.
+Los estados persistentes son `pending`, `active-moved`, `candidate-placed`, `verified`, `confirmed`,
+`rollback-restored` y `recovery-required`. `rollback-restored` es la evidencia durable de que el
+rollback ya volvió a ser la base activa; la mera existencia de `optica.sqlite3` nunca confirma el
+proceso. Si Occhiali reinicia antes de `confirmed`, conserva o repone la base anterior. Si reinicia
+después de `confirmed`, conserva la restaurada y completa la limpieza pendiente.
 
 Un estado ilegible, un rollback sin marcador o la ausencia de todos los archivos recuperables hacen
 fallar el inicio sin sobrescribir nada, para permitir revisión técnica. Una segunda restauración no
@@ -113,3 +114,8 @@ recuperación y la ausencia de staging tras una validación fallida.
 Para soporte, usar siempre un perfil temporal o una copia del `userData`, verificar el backup antes
 de confirmar, conservar la contraseña fuera de los archivos y no trabajar directamente sobre la
 única base disponible.
+
+La prueba del runtime empaquetado crea y verifica un `.ocbackup`, prepara la restauración, recorre la
+máquina de estados hasta `confirmed`, reabre SQLite y conserva el backup cifrado tras
+desinstalación/reinstalación. El reinicio accionado desde la UI instalada permanece dentro del QA
+manual pendiente porque el controlador gráfico no pudo completar el recorrido.

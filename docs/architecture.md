@@ -130,6 +130,11 @@ genérico, sin borrar ni reemplazar el archivo existente.
 join(app.getPath('userData'), 'optica.sqlite3')
 ```
 
+Antes de que Electron quede listo, Main fija `userData` en la carpeta histórica
+`app.getPath('appData')/optica-desktop`. Así el nombre visible `Occhiali` no cambia la identidad de
+almacenamiento utilizada en fases anteriores. `OPTICA_QA_USER_DATA_PATH` solo permite sustituirla
+por una ruta absoluta durante QA aislado.
+
 De este modo, los datos vivirán fuera de `src`, `resources`, `app.asar` y del directorio del
 instalador, y podrán persistir entre actualizaciones.
 
@@ -153,3 +158,18 @@ consultas limitadas para la búsqueda agrupada. No comparte una conexión ni SQL
 y recuperación de una restauración interrumpida. La estructura relacional e índices están en
 [database.md](database.md); los límites de seguridad y recuperación están en [security.md](security.md)
 y [backup-restore.md](backup-restore.md).
+
+## Distribución Windows
+
+electron-builder empaqueta `out/main`, `out/preload` y `out/renderer` en `app.asar`. Main mantiene
+`better-sqlite3` como dependencia externa y su binario Node-API `win32-x64.node` queda en
+`app.asar.unpacked`; el resto de los prebuilds se excluye. NSIS genera un instalador asistido x64 por
+usuario con accesos directos y desinstalador. Ningún archivo de negocio se incorpora al paquete.
+
+`src/main/package-qa.ts` es un punto de entrada inerte salvo que se ejecute explícitamente con el
+runtime empaquetado, una variable de QA y una ruta bajo el directorio temporal. Valida sin mocks
+migraciones, escritura, reapertura, seguridad, backup cifrado y restauración usando los mismos
+módulos compilados. El proceso normal nunca lo invoca.
+
+La configuración completa y el procedimiento de entrega están en
+[windows-installer.md](windows-installer.md).

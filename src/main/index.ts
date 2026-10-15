@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, session } from 'electron';
 import { join } from 'node:path';
 import { ApplicationDatabase } from './database';
-import { applyQaUserDataPathOverride, getDatabaseFilePath } from './database/paths';
+import { configureUserDataPath, getDatabaseFilePath } from './database/paths';
 import { registerIpcHandlers } from './ipc/register-handlers';
 import { SecurityManager } from './security/security-manager';
 import { BackupService } from './backup/backup-service';
@@ -13,7 +13,7 @@ let applicationDatabase: ApplicationDatabase | null = null;
 let qaConfigurationError: unknown = null;
 
 try {
-  applyQaUserDataPathOverride();
+  configureUserDataPath();
 } catch (error: unknown) {
   qaConfigurationError = error;
 }

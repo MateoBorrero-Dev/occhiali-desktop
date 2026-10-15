@@ -87,6 +87,25 @@ function parseState(path: string): RestoreState | null {
   }
 }
 
+function isTransientRenameError(error: unknown): boolean {
+  return (
+    error instanceof Error && 'code' in error && (error.code === 'EPERM' || error.code === 'EACCES')
+  );
+}
+
+function replaceStateFile(nextPath: string, path: string): void {
+  const signal = new Int32Array(new SharedArrayBuffer(4));
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      renameSync(nextPath, path);
+      return;
+    } catch (error: unknown) {
+      if (!isTransientRenameError(error) || attempt >= 7) throw error;
+      Atomics.wait(signal, 0, 0, (attempt + 1) * 10);
+    }
+  }
+}
+
 function persistState(path: string, state: RestoreState): void {
   const nextPath = `${path}.next`;
   rmSync(nextPath, { force: true });
@@ -98,7 +117,7 @@ function persistState(path: string, state: RestoreState): void {
     closeSync(descriptor);
   }
   try {
-    renameSync(nextPath, path);
+    replaceStateFile(nextPath, path);
   } catch (error: unknown) {
     rmSync(nextPath, { force: true });
     throw error;

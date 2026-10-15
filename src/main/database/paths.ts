@@ -1,20 +1,19 @@
 import { app } from 'electron';
 import { mkdirSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
+import { resolveStableUserDataPath } from './data-location';
 
 export const DATABASE_FILE_NAME = 'optica.sqlite3';
 
-export function applyQaUserDataPathOverride(): void {
+export function configureUserDataPath(): void {
   const qaUserDataPath = process.env.OPTICA_QA_USER_DATA_PATH;
-  if (!qaUserDataPath) {
-    return;
-  }
-  if (!isAbsolute(qaUserDataPath)) {
+  if (qaUserDataPath && !isAbsolute(qaUserDataPath)) {
     throw new Error('OPTICA_QA_USER_DATA_PATH debe ser una ruta absoluta.');
   }
 
-  mkdirSync(qaUserDataPath, { recursive: true });
-  app.setPath('userData', qaUserDataPath);
+  const userDataPath = qaUserDataPath ?? resolveStableUserDataPath(app.getPath('appData'));
+  mkdirSync(userDataPath, { recursive: true });
+  app.setPath('userData', userDataPath);
 }
 
 export function getDatabaseFilePath(): string {
