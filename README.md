@@ -27,8 +27,12 @@ Las versiones exactas instaladas están fijadas en `package.json` y `package-loc
 ## Instalación
 
 ```bash
-npm install
+npm ci --ignore-scripts
 ```
+
+La instalación reproducible usa el lockfile y no ejecuta hooks de dependencias. `better-sqlite3`
+incluye el prebuild Windows x64 que luego se valida tanto bajo Electron como dentro del paquete;
+no se requiere compilarlo con `node-gyp`.
 
 ## Desarrollo
 
@@ -83,6 +87,10 @@ exportación a carpeta sincronizada y disaster recovery implementados; QA visual
 **Fase 9 — Instalador Windows:** instalador NSIS x64 0.9.0, persistencia fuera de la instalación y
 validación real del runtime empaquetado implementados; QA visual/manual completo pendiente.
 
+**Fase 10 — Auditoría integral y estabilización:** defectos comprobables corregidos, prueba integral
+con 1.000 clientes, backup/restauración y documentación operativa incorporados; QA visual manual
+pendiente. La aplicación continúa como versión preliminar y no está entregada como 1.0.0.
+
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
 [Instalador Windows](docs/windows-installer.md).
@@ -112,4 +120,6 @@ Encontrá más información en:
 - [Backup y restauración](docs/backup-restore.md)
 - [Exportación a carpeta sincronizada](docs/cloud-backup.md)
 - [Instalador Windows](docs/windows-installer.md)
+- [Manual de usuario](docs/manual-usuario.md)
+- [Entrega y soporte](docs/entrega-y-soporte.md)
 - [Roadmap](docs/roadmap.md)

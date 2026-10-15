@@ -154,6 +154,12 @@ punto de entrada de Electron es `out/main/index.js`, configurado mediante el cam
 
 ## Reglas para cambios futuros
 
+`tests/phase10-stability.test.ts` es una integración con archivos y SQLite reales en un directorio
+temporal. Genera 1.000 clientes ficticios y recorre recetas, revisiones, fichas, tratamientos,
+dashboard, búsqueda, archivo/reactivación, backup AES-256-GCM, restauración y persistencia. Sus
+límites temporales son deliberadamente amplios para detectar bloqueos graves sin convertir una
+medición de un equipo particular en una exigencia de producción.
+
 - La interfaz no debe importar Node.js ni Electron.
 - Todo IPC debe usar un canal enumerado y validación de argumentos.
 - La base de datos solo se abrirá desde el proceso principal.
@@ -170,6 +176,9 @@ punto de entrada de Electron es `out/main/index.js`, configurado mediante el cam
 
 ## Problemas conocidos
 
+- La auditoría de dependencias de desarrollo conserva un aviso moderado transitivo en `sprintf-js`
+  a través de electron-builder. El advisory no publica una versión corregida. No alcanza al runtime
+  instalado y debe revisarse cuando exista una actualización compatible del proveedor.
 - El instalador de prueba no está firmado y usa el icono predeterminado de Electron porque no se
   proporcionó un icono oficial. Windows puede mostrar advertencias de SmartScreen.
 - La actualización manual entre dos versiones distintas todavía requiere QA real; la

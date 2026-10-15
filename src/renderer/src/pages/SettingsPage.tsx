@@ -127,7 +127,16 @@ export function SettingsPage(): React.JSX.Element {
           <p className="mt-3 text-sm text-slate-600">
             El cambio de contraseña de acceso no cambia la clave de recuperación de respaldos.
           </p>
-          <ChangePassword onDone={(text) => setMessage(text)} />
+          <ChangePassword
+            onDone={(text) => {
+              setError(null);
+              setMessage(text);
+            }}
+            onError={(text) => {
+              setMessage(null);
+              setError(text);
+            }}
+          />
         </Card>
         <Card className="p-6 xl:col-span-2">
           <div className="flex items-center gap-3">
@@ -208,7 +217,15 @@ export function SettingsPage(): React.JSX.Element {
             >
               <Cloud size={16} /> Seleccionar carpeta sincronizada
             </Button>
-            <Button variant="secondary" onClick={() => void api.openDirectory()}>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                void run(async () => {
+                  unwrap(await api.openDirectory());
+                  return 'Carpeta de respaldos abierta.';
+                })
+              }
+            >
               <FolderOpen size={16} /> Ver carpeta
             </Button>
           </div>
@@ -344,7 +361,13 @@ export function SettingsPage(): React.JSX.Element {
   );
 }
 
-function ChangePassword({ onDone }: { onDone: (message: string) => void }): React.JSX.Element {
+function ChangePassword({
+  onDone,
+  onError,
+}: {
+  onDone: (message: string) => void;
+  onError: (message: string) => void;
+}): React.JSX.Element {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [busy, setBusy] = useState(false);
@@ -363,7 +386,7 @@ function ChangePassword({ onDone }: { onDone: (message: string) => void }): Reac
             onDone('Contraseña actualizada.');
           })
           .catch((error: unknown) =>
-            onDone(error instanceof Error ? error.message : 'No se pudo cambiar la contraseña.'),
+            onError(error instanceof Error ? error.message : 'No se pudo cambiar la contraseña.'),
           )
           .finally(() => setBusy(false));
       }}

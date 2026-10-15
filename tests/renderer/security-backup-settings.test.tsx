@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SecurityGate } from '../../src/renderer/src/components/security/SecurityGate';
 import { SettingsPage } from '../../src/renderer/src/pages/SettingsPage';
 import type { BackupStatus, SecurityStatus } from '../../src/shared/database-models';
+import type { SecurityResult } from '../../src/shared/ipc-contracts';
 
 const unlocked: SecurityStatus = {
   configured: true,
@@ -46,7 +47,9 @@ function installApis(configured: boolean) {
     ),
     logout: vi.fn(() => Promise.resolve({ ok: true as const, data: unlocked })),
     touch: vi.fn(() => Promise.resolve({ ok: true as const, data: unlocked })),
-    changePassword: vi.fn(() => Promise.resolve({ ok: true as const, data: true as const })),
+    changePassword: vi.fn((): Promise<SecurityResult<true>> =>
+      Promise.resolve({ ok: true as const, data: true as const }),
+    ),
     setInactivity: vi.fn(() => Promise.resolve({ ok: true as const, data: unlocked })),
   };
   const backup = {
@@ -59,7 +62,9 @@ function installApis(configured: boolean) {
           // The pending operation lets the test verify double-submit prevention.
         }),
     ),
-    openDirectory: vi.fn(() => Promise.resolve({ ok: true as const, data: true as const })),
+    openDirectory: vi.fn((): Promise<SecurityResult<true>> =>
+      Promise.resolve({ ok: true as const, data: true as const }),
+    ),
     selectRestoreFile: vi.fn(() => Promise.resolve({ ok: true as const, data: null })),
     verify: vi.fn(),
     restore: vi.fn(),
@@ -138,5 +143,39 @@ describe('configuración de respaldos en React', () => {
     await user.click(create);
     expect(backup.create).toHaveBeenCalledTimes(1);
     expect(create).toBeDisabled();
+  });
+
+  it('muestra como error un cambio de contraseña rechazado', async () => {
+    const { security } = installApis(true);
+    security.changePassword.mockResolvedValue({
+      ok: false as const,
+      error: { code: 'SECURITY', message: 'La contraseña actual no es correcta.' },
+    });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.type(screen.getByLabelText('Contraseña actual'), 'Acceso-Incorrecto-2026');
+    await user.type(screen.getByLabelText('Nueva contraseña'), 'Acceso-Nuevo-Ficticio-2026');
+    await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'La contraseña actual no es correcta.',
+    );
+  });
+
+  it('informa cuando no puede abrir la carpeta de respaldos', async () => {
+    const { backup } = installApis(true);
+    backup.openDirectory.mockResolvedValue({
+      ok: false as const,
+      error: { code: 'BACKUP', message: 'No se pudo abrir la carpeta de respaldos.' },
+    });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.click(await screen.findByRole('button', { name: 'Ver carpeta' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo abrir la carpeta de respaldos.',
+    );
   });
 });

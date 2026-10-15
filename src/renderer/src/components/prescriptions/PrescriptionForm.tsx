@@ -1,4 +1,4 @@
-import { Save, X } from 'lucide-react';
+import { Save, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
   Client,
@@ -123,28 +123,37 @@ export function PrescriptionForm({
   const [values, setValues] = useState<FormValues>(() =>
     initialValues(fixedClient, initialPrescription),
   );
+  const [selectedClient, setSelectedClient] = useState<Client | undefined>(fixedClient);
+  const [clientQuery, setClientQuery] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [clientLoadError, setClientLoadError] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const clientSearchSequence = useRef(0);
 
   useEffect(() => {
     if (fixedClient || correction) return;
-    let active = true;
-    void window.optica.clients
-      .list({ status: 'active', limit: 100, offset: 0 })
-      .then(unwrapClientResult)
-      .then((page) => {
-        if (active) setClients(page.items);
-      })
-      .catch(() => {
-        if (active) setClientLoadError(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [correction, fixedClient]);
+    const query = clientQuery.trim();
+    if (query.length < 2) {
+      clientSearchSequence.current += 1;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const request = ++clientSearchSequence.current;
+      setClientLoadError(false);
+      void window.optica.clients
+        .list({ query, status: 'active', limit: 10, offset: 0 })
+        .then(unwrapClientResult)
+        .then((page) => {
+          if (clientSearchSequence.current === request) setClients(page.items);
+        })
+        .catch(() => {
+          if (clientSearchSequence.current === request) setClientLoadError(true);
+        });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [clientQuery, correction, fixedClient]);
 
   const update = (field: keyof Omit<FormValues, 'rows'>, value: string): void => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -214,7 +223,7 @@ export function PrescriptionForm({
             className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
             role="alert"
           >
-            No se pudo cargar la lista de clientes.
+            No se pudo buscar clientes.
           </div>
         )}
 
@@ -234,22 +243,73 @@ export function PrescriptionForm({
                 }
                 disabled
               />
+            ) : selectedClient ? (
+              <div className="mt-1.5 flex min-h-10 items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 px-3">
+                <span className="text-sm font-semibold text-teal-950">
+                  {selectedClient.lastName}, {selectedClient.firstName}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedClient(undefined);
+                    setClientQuery('');
+                    setClients([]);
+                    update('clientId', '');
+                  }}
+                >
+                  Cambiar
+                </Button>
+              </div>
             ) : (
-              <select
-                autoFocus
-                required
-                className={`${inputClassName} mt-1.5`}
-                value={values.clientId}
-                onChange={(event) => update('clientId', event.target.value)}
-                aria-invalid={Boolean(errors.clientId)}
-              >
-                <option value="">Seleccioná un cliente</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.lastName}, {client.firstName}
-                  </option>
-                ))}
-              </select>
+              <div className="relative mt-1.5">
+                <Search
+                  size={17}
+                  className="pointer-events-none absolute top-5 left-3 -translate-y-1/2 text-slate-400"
+                  aria-hidden="true"
+                />
+                <input
+                  autoFocus
+                  type="search"
+                  className={`${inputClassName} pl-10`}
+                  value={clientQuery}
+                  onChange={(event) => {
+                    clientSearchSequence.current += 1;
+                    setClientQuery(event.target.value);
+                    setClients([]);
+                    setClientLoadError(false);
+                  }}
+                  placeholder="Nombre, apellido, DNI o teléfono"
+                  aria-label="Buscar cliente para la receta"
+                  aria-invalid={Boolean(errors.clientId)}
+                />
+                {clientQuery.trim().length >= 2 && clients.length > 0 && (
+                  <ul className="absolute z-20 mt-2 max-h-64 w-full divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                    {clients.map((client) => (
+                      <li key={client.id}>
+                        <button
+                          type="button"
+                          className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-teal-700"
+                          onClick={() => {
+                            setSelectedClient(client);
+                            setClientQuery('');
+                            setClients([]);
+                            update('clientId', String(client.id));
+                          }}
+                        >
+                          <span className="font-semibold">
+                            {client.lastName}, {client.firstName}
+                          </span>
+                          <span className="ml-2 text-slate-500">
+                            {client.documentNumber ? `DNI ${client.documentNumber}` : 'Sin DNI'}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
             <FieldError id="clientId-error" message={errors.clientId} />
           </label>

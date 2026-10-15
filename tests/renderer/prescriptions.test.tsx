@@ -208,7 +208,8 @@ describe('módulo de recetas', () => {
     const api = installApi();
     const user = userEvent.setup();
     render(<App />);
-    await user.selectOptions(await screen.findByLabelText(/Cliente/), '7');
+    await user.type(screen.getByLabelText('Buscar cliente para la receta'), 'Laura');
+    await user.click(await screen.findByRole('button', { name: /Ficticia, Laura/ }));
     await user.type(screen.getByLabelText('CIL cerca OI'), '0,00');
     await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
     expect(api.prescriptions.create).toHaveBeenCalledWith(
@@ -218,6 +219,34 @@ describe('módulo de recetas', () => {
         notes: null,
         values: [expect.objectContaining({ distance: 'NEAR', eye: 'OI', cylinder: '0.00' })],
       }),
+    );
+  });
+
+  it('encuentra clientes fuera de los primeros 100 mediante búsqueda acotada', async () => {
+    window.location.hash = '#/recetas/nueva';
+    const api = installApi();
+    const distantClient = { ...CLIENT, id: 1000, firstName: 'Zoila', lastName: 'Zeta' };
+    api.clients.list.mockResolvedValue(
+      clientSuccess({ items: [distantClient], total: 1, limit: 10, offset: 0 }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(screen.getByLabelText('Buscar cliente para la receta'), 'Zeta');
+    await waitFor(() =>
+      expect(api.clients.list).toHaveBeenLastCalledWith({
+        query: 'Zeta',
+        status: 'active',
+        limit: 10,
+        offset: 0,
+      }),
+    );
+    await user.click(await screen.findByRole('button', { name: /Zeta, Zoila/ }));
+    await user.type(screen.getByLabelText('ESF lejos OD'), '1,00');
+    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
+
+    expect(api.prescriptions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: 1000 }),
     );
   });
 

@@ -12,12 +12,16 @@ automáticas.
 Desde un checkout confiable con las dependencias fijadas:
 
 ```bash
-npm ci
+npm ci --ignore-scripts
 npm run package:win
 npm run verify:package
 ```
 
-electron-builder 26.4.1 genera:
+`--ignore-scripts` evita que npm intente una compilación local innecesaria de `better-sqlite3` y
+reduce la ejecución de código durante la instalación. La distribución fijada ya contiene el
+prebuild Windows x64; las verificaciones posteriores prueban que Electron puede cargarlo realmente.
+
+electron-builder 26.16.1 genera:
 
 - `release/Occhiali-Setup-0.9.0-x64.exe`: instalador NSIS asistido.
 - `release/win-unpacked/Occhiali.exe`: aplicación desempaquetada para inspección.
@@ -66,8 +70,14 @@ decisión explícita de la dueña. Nunca automatizar ese borrado desde una actua
 
 Main externaliza `better-sqlite3 13.0.3`. Se incluye únicamente
 `prebuilds/win32-x64.node` en `app.asar.unpacked`; las otras arquitecturas y plataformas se excluyen.
-No se usa node-gyp durante el empaquetado porque este módulo distribuye un prebuild Node-API. La
-verificación ejecuta el binario desde Occhiali empaquetado con Electron 44.7.0, aplica migraciones,
+No se usa node-gyp durante el empaquetado porque este módulo distribuye un prebuild Node-API.
+electron-builder 26.16.1 presenta en este entorno Windows un fallo de su recolector npm; antes de
+empaquetar, un parche local idempotente y de coincidencia exacta prioriza el recolector por traversía
+que mantiene el propio proveedor. El script comprueba explícitamente `app-builder-lib 26.16.1`; si
+cambia esa versión o el archivo upstream, falla cerrado y exige revisión. Se aplica automáticamente
+desde los scripts de empaquetado después de una instalación limpia, sin cambios manuales en
+`node_modules`. El verificador exige que `better-sqlite3`, `node-addon-api` y el binario x64 estén realmente
+incluidos y ejecuta el binario desde Occhiali empaquetado con Electron 44.7.0: aplica migraciones,
 inserta, cierra, reabre y consulta.
 
 El mismo escenario configura autenticación, crea y verifica un backup AES-256-GCM, ejecuta la
@@ -86,6 +96,11 @@ código confiable. La clave privada debe permanecer fuera de Git y del instalado
 usar sello de tiempo. Conservar el mismo `appId` y ruta de datos al incorporar esos recursos.
 
 ## QA realizado y pendiente
+
+Fase 10 actualizó electron-builder de 26.4.1 a 26.16.1 para retirar vulnerabilidades altas y
+críticas de la cadena de empaquetado. La auditoría completa conserva un aviso moderado transitivo en
+`sprintf-js`, sin versión corregida publicada; pertenece a herramientas de build y no se incluye en
+el runtime de Occhiali. Debe reevaluarse cuando el proveedor publique una corrección compatible.
 
 Se generó e inspeccionó el instalador real. Se instaló silenciosamente en una carpeta temporal, se
 comprobaron ejecutable, desinstalador y accesos directos, y la aplicación instalada abrió una ventana

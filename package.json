@@ -18,8 +18,8 @@
     "test:electron": "npm run test:electron:sqlite",
     "test:electron:sqlite": "electron scripts/verify-electron-sqlite.cjs",
     "build": "npm run typecheck && electron-vite build",
-    "package:win": "npm run build && electron-builder --win nsis --x64",
-    "package:win:dir": "npm run build && electron-builder --win dir --x64",
+    "package:win": "node scripts/patch-electron-builder-collector.cjs && npm run build && electron-builder --win nsis --x64",
+    "package:win:dir": "node scripts/patch-electron-builder-collector.cjs && npm run build && electron-builder --win dir --x64",
     "verify:package": "node scripts/verify-packaged-app.cjs"
   },
   "engines": {
@@ -45,7 +45,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "electron": "44.7.0",
-    "electron-builder": "26.4.1",
+    "electron-builder": "26.16.1",
     "electron-vite": "5.0.0",
     "eslint": "10.12.0",
     "eslint-plugin-react-hooks": "7.1.1",

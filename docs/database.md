@@ -253,6 +253,14 @@ incrementales en staging. El procedimiento completo está en [backup-restore.md]
 La base activa permanece sin cifrar por Occhiali. La persistencia local no protege frente a pérdida,
 falla física o acceso directo al disco; se recomienda BitLocker o Cifrado de dispositivo de Windows.
 
+## Auditoría de escala
+
+Fase 10 incorpora un escenario integral sobre una base temporal con 1.000 clientes, 10 recetas, 10
+fichas y una corrección histórica. Comprueba búsqueda acotada, dashboard, historial,
+archivo/reactivación, integridad, claves foráneas, backup cifrado, restauración y reapertura. En el
+equipo de QA las consultas combinadas sobre 1.000 clientes demoraron aproximadamente 5,2 ms; es una
+medición orientativa del entorno, no un SLA.
+
 ## Empaquetado Windows
 
 El build externaliza `better-sqlite3 13.0.3`. El paquete incluye únicamente su prebuild Node-API

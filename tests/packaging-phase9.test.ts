@@ -13,6 +13,7 @@ interface PackageConfiguration {
   main: string;
   scripts: Record<string, string>;
   dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
   build: {
     appId: string;
     productName: string;
@@ -28,6 +29,10 @@ interface PackageConfiguration {
 const packageConfiguration = JSON.parse(
   readFileSync(join(process.cwd(), 'package.json'), 'utf8'),
 ) as PackageConfiguration;
+const collectorPatchSource = readFileSync(
+  join(process.cwd(), 'scripts', 'patch-electron-builder-collector.cjs'),
+  'utf8',
+);
 
 describe('configuración de distribución de Windows', () => {
   it('mantiene identidad, versión preliminar e instalador NSIS x64 estables', () => {
@@ -37,6 +42,7 @@ describe('configuración de distribución de Windows', () => {
       productName: 'Occhiali',
       main: './out/main/index.js',
       dependencies: { 'better-sqlite3': '13.0.3' },
+      devDependencies: { 'electron-builder': '26.16.1' },
       build: {
         appId: 'com.occhiali.desktop',
         productName: 'Occhiali',
@@ -58,6 +64,17 @@ describe('configuración de distribución de Windows', () => {
       },
     });
     expect(packageConfiguration.scripts['package:win']).toContain('electron-builder');
+    expect(packageConfiguration.scripts['package:win']).toContain(
+      'patch-electron-builder-collector.cjs',
+    );
+    expect(collectorPatchSource).toContain("const EXPECTED_APP_BUILDER_LIB_VERSION = '26.16.1';");
+    expect(collectorPatchSource).toContain('packageMetadata.version !==');
+    expect(packageConfiguration.build.files).toEqual(
+      expect.arrayContaining([
+        'node_modules/better-sqlite3/**/*',
+        'node_modules/node-addon-api/**/*',
+      ]),
+    );
   });
 
   it('desempaqueta solamente el binario nativo Windows x64 y excluye datos sensibles', () => {

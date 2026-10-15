@@ -63,6 +63,9 @@ distintas y el recorrido visual del instalador/aplicación quedan pendientes.
 
 ## Fase 10 — Preparación para ampliaciones
 
-**Estado:** pendiente.
+**Estado:** auditoría, estabilización y pruebas automatizadas completadas; QA visual manual pendiente.
 
-Revisión de extensibilidad y documentación para funcionalidades posteriores.
+Auditoría integral sin cambios comerciales, selección escalable de clientes en recetas, regresiones
+de UX, ensayo temporal con 1.000 clientes, backup/restauración y documentación para usuaria, entrega
+y soporte. Los cambios solicitados por la dueña se incorporarán después y todavía no se consideran
+implementados. La versión permanece en 0.9.0 y no constituye una entrega definitiva.
