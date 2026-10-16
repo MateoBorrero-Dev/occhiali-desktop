@@ -61,9 +61,13 @@ como un nuevo registro.
 1. Entrá en **Trabajos > Nueva ficha** o iniciá desde un cliente.
 2. Seleccioná el cliente.
 3. Asociá, si corresponde, una receta del mismo cliente.
-4. Completá número de ficha, producto, armazón, modelo, coloración y observaciones.
-5. Seleccioná los tratamientos o acabados de lentes realmente solicitados.
-6. Guardá la ficha.
+4. Completá número de ficha y producto. Podés elegir la sugerencia **Lentes de contacto** o escribir
+   cualquier otro producto.
+5. Si corresponde, cargá el color del producto, proveedor, armazón y modelo. El color del producto
+   es distinto de la coloración de los lentes.
+6. Escribí uno o varios tratamientos o acabados, uno por línea o separados por comas.
+7. Completá la coloración de los lentes y las observaciones necesarias.
+8. Guardá la ficha.
 
 Los tratamientos son características comerciales de lentes, no procedimientos médicos. Desde el
 detalle puede editarse la ficha y consultarse su relación con cliente y receta.

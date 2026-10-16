@@ -45,6 +45,8 @@ const JOB: OpticalJob = {
   frameCondition: 'NEW',
   frameMaterial: 'METAL',
   frameModel: 'Modelo ficticio',
+  productColor: 'Carey',
+  supplier: 'Proveedor ficticio',
   colorType: 'GRADIENT',
   observations: 'Observación ficticia.',
   createdAt: '2026-04-02T12:00:00.000Z',
@@ -222,7 +224,7 @@ describe('módulo de fichas de trabajo', () => {
     });
   });
 
-  it('guarda producto libre, número, receta, armazón, tratamientos y coloración', async () => {
+  it('guarda producto libre, color, proveedor, tratamientos libres y coloración', async () => {
     window.location.hash = '#/clientes/5/trabajos/nuevo';
     const api = installApi();
     const user = userEvent.setup();
@@ -236,9 +238,13 @@ describe('módulo de fichas de trabajo', () => {
     await user.selectOptions(screen.getByLabelText('Condición'), 'NEW');
     await user.selectOptions(screen.getByLabelText('Material'), 'METAL');
     await user.type(screen.getByLabelText(/Modelo/), 'Modelo ficticio');
-    await user.click(screen.getByRole('checkbox', { name: 'Antirrayas Stark' }));
-    await user.click(screen.getByRole('checkbox', { name: 'AR ASA Pro' }));
-    await user.selectOptions(screen.getByLabelText('Coloración'), 'GRADIENT');
+    await user.type(screen.getByLabelText(/Color del producto/), 'Carey');
+    await user.type(screen.getByLabelText(/Proveedor/), 'Proveedor ficticio');
+    await user.type(
+      screen.getByLabelText(/Tratamientos y acabados \(opcional\)/),
+      'Antirrayas Stark{enter}AR ASA Pro{enter}Filtro azul personalizado',
+    );
+    await user.selectOptions(screen.getByLabelText(/Coloración de los lentes/), 'GRADIENT');
     await user.click(screen.getByRole('button', { name: 'Guardar ficha' }));
     expect(api.opticalJobs.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -247,21 +253,30 @@ describe('módulo de fichas de trabajo', () => {
         jobNumber: '000152',
         frameCondition: 'NEW',
         frameMaterial: 'METAL',
+        productColor: 'Carey',
+        supplier: 'Proveedor ficticio',
         colorType: 'GRADIENT',
-        treatmentIds: ['anti-scratch-stark', 'ar-asa-pro'],
+        treatmentNames: ['Antirrayas Stark', 'AR ASA Pro', 'Filtro azul personalizado'],
       }),
     );
   });
 
-  it('permite lentes de sol sin receta ni tratamientos', async () => {
+  it('permite lentes de contacto sin cerrar los productos a una lista', async () => {
     window.location.hash = '#/clientes/5/trabajos/nuevo';
     const api = installApi();
     const user = userEvent.setup();
     render(<App />);
-    await user.type(await screen.findByPlaceholderText('Ej. Anteojos recetados'), 'Lentes de sol');
+    await user.type(
+      await screen.findByPlaceholderText('Ej. Anteojos recetados'),
+      'Lentes de contacto',
+    );
     await user.click(screen.getByRole('button', { name: 'Guardar ficha' }));
     expect(api.opticalJobs.create).toHaveBeenCalledWith(
-      expect.objectContaining({ product: 'Lentes de sol', prescriptionId: null, treatmentIds: [] }),
+      expect.objectContaining({
+        product: 'Lentes de contacto',
+        prescriptionId: null,
+        treatmentNames: [],
+      }),
     );
   });
 
@@ -290,6 +305,8 @@ describe('módulo de fichas de trabajo', () => {
     installApi();
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Ficha 000152' })).toBeInTheDocument();
+    expect(screen.getByText('Carey')).toBeInTheDocument();
+    expect(screen.getByText('Proveedor ficticio')).toBeInTheDocument();
     expect(screen.getByText('Color degradé')).toBeInTheDocument();
     expect(screen.getByText('Antirrayas Stark')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver receta asociada' })).toHaveAttribute(

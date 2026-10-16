@@ -142,10 +142,12 @@ export function OpticalJobDetailPage(): React.JSX.Element {
           <dl className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
             <Detail label="Producto" value={job.product ?? 'Sin especificar'} />
             <Detail label="Número de ficha" value={job.jobNumber ?? 'Sin especificar'} />
+            <Detail label="Color del producto" value={job.productColor ?? 'Sin especificar'} />
+            <Detail label="Proveedor" value={job.supplier ?? 'Sin especificar'} />
             <Detail label="Condición del armazón" value={frameConditionLabel(job.frameCondition)} />
             <Detail label="Material del armazón" value={frameMaterialLabel(job.frameMaterial)} />
             <Detail label="Modelo" value={job.frameModel ?? 'Sin especificar'} />
-            <Detail label="Coloración" value={colorTypeLabel(job.colorType)} />
+            <Detail label="Coloración de los lentes" value={colorTypeLabel(job.colorType)} />
             <Detail label="Fecha de creación" value={formatJobTimestamp(job.createdAt)} />
             <Detail label="Última modificación" value={formatJobTimestamp(job.updatedAt)} />
             <div className="md:col-span-2">

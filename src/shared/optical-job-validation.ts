@@ -17,9 +17,12 @@ export const OPTICAL_JOB_FIELD_LIMITS = Object.freeze({
   jobNumber: 50,
   product: 200,
   frameModel: 200,
+  productColor: 100,
+  supplier: 200,
   observations: 2_000,
   query: 100,
   treatmentId: 100,
+  treatmentName: 200,
 });
 
 const CREATE_KEYS = [
@@ -30,9 +33,12 @@ const CREATE_KEYS = [
   'frameCondition',
   'frameMaterial',
   'frameModel',
+  'productColor',
+  'supplier',
   'colorType',
   'observations',
   'treatmentIds',
+  'treatmentNames',
 ] as const;
 const UPDATE_KEYS = CREATE_KEYS.filter((key) => key !== 'clientId');
 const LIST_KEYS = ['query', 'limit', 'offset'] as const;
@@ -84,7 +90,7 @@ function optionalId(value: unknown, field: string): number | null {
 
 function optionalText(
   value: unknown,
-  field: 'jobNumber' | 'product' | 'frameModel' | 'observations',
+  field: 'jobNumber' | 'product' | 'frameModel' | 'productColor' | 'supplier' | 'observations',
   label: string,
 ): string | null {
   if (value === null || value === undefined) return null;
@@ -144,6 +150,34 @@ function treatmentIds(value: unknown): string[] {
   return parsed;
 }
 
+function treatmentNames(value: unknown): string[] {
+  if (value === null || value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 100) {
+    throw new OpticalJobValidationError([
+      { field: 'treatmentNames', message: 'Los tratamientos ingresados no son válidos.' },
+    ]);
+  }
+  const parsed = value.map((item) => {
+    if (
+      typeof item !== 'string' ||
+      !item.trim() ||
+      item.trim().length > OPTICAL_JOB_FIELD_LIMITS.treatmentName
+    ) {
+      throw new OpticalJobValidationError([
+        { field: 'treatmentNames', message: 'Los tratamientos ingresados no son válidos.' },
+      ]);
+    }
+    return item.trim();
+  });
+  const normalizedNames = parsed.map((item) => item.toLocaleLowerCase('es'));
+  if (new Set(normalizedNames).size !== normalizedNames.length) {
+    throw new OpticalJobValidationError([
+      { field: 'treatmentNames', message: 'No se puede repetir un tratamiento o acabado.' },
+    ]);
+  }
+  return parsed;
+}
+
 function parseCore(record: Record<string, unknown>): UpdateOpticalJobInput {
   return {
     prescriptionId: optionalId(record.prescriptionId, 'prescriptionId'),
@@ -162,6 +196,8 @@ function parseCore(record: Record<string, unknown>): UpdateOpticalJobInput {
       'El material del armazón no es válido.',
     ),
     frameModel: optionalText(record.frameModel, 'frameModel', 'El modelo del armazón'),
+    productColor: optionalText(record.productColor, 'productColor', 'El color del producto'),
+    supplier: optionalText(record.supplier, 'supplier', 'El proveedor'),
     colorType: enumeration<'FULL' | 'GRADIENT'>(
       record.colorType,
       'colorType',
@@ -170,6 +206,7 @@ function parseCore(record: Record<string, unknown>): UpdateOpticalJobInput {
     ),
     observations: optionalText(record.observations, 'observations', 'Las observaciones'),
     treatmentIds: treatmentIds(record.treatmentIds),
+    treatmentNames: treatmentNames(record.treatmentNames),
   };
 }
 

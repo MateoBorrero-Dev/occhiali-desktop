@@ -6,7 +6,6 @@ import type {
   CreateOpticalJobInput,
   OpticalJob,
   PrescriptionSummary,
-  Treatment,
   UpdateOpticalJobInput,
 } from '../../../../shared/database-models';
 import {
@@ -16,7 +15,7 @@ import {
   parseUpdateOpticalJobInput,
 } from '../../../../shared/optical-job-validation';
 import { unwrapClientResult } from '../../lib/client-api';
-import { OpticalJobRequestError, unwrapOpticalJobResult } from '../../lib/optical-job-api';
+import { OpticalJobRequestError } from '../../lib/optical-job-api';
 import { formatPrescriptionDate, unwrapPrescriptionResult } from '../../lib/prescription-api';
 import { Button } from '../ui/Button';
 import { buttonStyles } from '../ui/buttonStyles';
@@ -38,9 +37,11 @@ interface FormValues {
   frameCondition: string;
   frameMaterial: string;
   frameModel: string;
+  productColor: string;
+  supplier: string;
   colorType: string;
   observations: string;
-  treatmentIds: string[];
+  treatmentNames: string;
 }
 
 type FormErrors = Record<string, string | undefined>;
@@ -57,9 +58,11 @@ function initialValues(client?: Client, job?: OpticalJob): FormValues {
     frameCondition: job?.frameCondition ?? '',
     frameMaterial: job?.frameMaterial ?? '',
     frameModel: job?.frameModel ?? '',
+    productColor: job?.productColor ?? '',
+    supplier: job?.supplier ?? '',
     colorType: job?.colorType ?? '',
     observations: job?.observations ?? '',
-    treatmentIds: job?.treatments.map((item) => item.id) ?? [],
+    treatmentNames: job?.treatments.map((item) => item.name).join('\n') ?? '',
   };
 }
 
@@ -91,36 +94,12 @@ export function OpticalJobForm({
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(
     Boolean(fixedClient || initialJob),
   );
-  const [treatments, setTreatments] = useState<Treatment[]>([]);
-  const [loadingOptions, setLoadingOptions] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const clientSearchSequence = useRef(0);
   const prescriptionSequence = useRef(0);
   const editing = Boolean(initialJob);
-
-  useEffect(() => {
-    let active = true;
-    void window.optica.treatments
-      .list()
-      .then(unwrapOpticalJobResult)
-      .then((items) => {
-        if (active) {
-          setTreatments(items);
-          setLoadingOptions(false);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setErrors({ form: 'No se pudo cargar el catálogo de tratamientos y acabados.' });
-          setLoadingOptions(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (fixedClient || editing || clientQuery.trim().length < 2) {
@@ -200,7 +179,7 @@ export function OpticalJobForm({
       });
   };
 
-  const update = (field: keyof FormValues, value: string | string[]): void => {
+  const update = (field: keyof FormValues, value: string): void => {
     setValues((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined, form: undefined }));
   };
@@ -216,15 +195,6 @@ export function OpticalJobForm({
     setErrors((current) => ({ ...current, clientId: undefined, prescriptionId: undefined }));
   };
 
-  const toggleTreatment = (id: string): void => {
-    update(
-      'treatmentIds',
-      values.treatmentIds.includes(id)
-        ? values.treatmentIds.filter((item) => item !== id)
-        : [...values.treatmentIds, id],
-    );
-  };
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (submittingRef.current) return;
@@ -236,9 +206,14 @@ export function OpticalJobForm({
         frameCondition: values.frameCondition || null,
         frameMaterial: values.frameMaterial || null,
         frameModel: values.frameModel,
+        productColor: values.productColor,
+        supplier: values.supplier,
         colorType: values.colorType || null,
         observations: values.observations,
-        treatmentIds: values.treatmentIds,
+        treatmentNames: values.treatmentNames
+          .split(/[\n,;]+/)
+          .map((item) => item.trim())
+          .filter(Boolean),
       };
       const input = editing
         ? parseUpdateOpticalJobInput(core)
@@ -369,6 +344,7 @@ export function OpticalJobForm({
               <datalist id="common-products">
                 <option value="Anteojos recetados" />
                 <option value="Lentes de sol" />
+                <option value="Lentes de contacto" />
               </datalist>
               <FieldError message={errors.product} />
             </label>
@@ -383,6 +359,30 @@ export function OpticalJobForm({
                 aria-invalid={Boolean(errors.jobNumber)}
               />
               <FieldError message={errors.jobNumber} />
+            </label>
+            <label className="text-sm font-semibold text-slate-800">
+              Color del producto <span className="font-normal text-slate-500">(opcional)</span>
+              <input
+                className={inputClassName}
+                value={values.productColor}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.productColor}
+                onChange={(event) => update('productColor', event.target.value)}
+                placeholder="Ej. Negro, carey o transparente"
+                aria-invalid={Boolean(errors.productColor)}
+              />
+              <FieldError message={errors.productColor} />
+            </label>
+            <label className="text-sm font-semibold text-slate-800">
+              Proveedor <span className="font-normal text-slate-500">(opcional)</span>
+              <input
+                className={inputClassName}
+                value={values.supplier}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.supplier}
+                onChange={(event) => update('supplier', event.target.value)}
+                placeholder="Ej. Proveedor local"
+                aria-invalid={Boolean(errors.supplier)}
+              />
+              <FieldError message={errors.supplier} />
             </label>
           </div>
         </section>
@@ -474,31 +474,23 @@ export function OpticalJobForm({
           <p className="mt-1 text-sm text-slate-600">
             Características comerciales del producto óptico; no son procedimientos médicos.
           </p>
-          {loadingOptions ? (
-            <p className="mt-4 text-sm font-semibold text-slate-600" role="status">
-              Cargando catálogo…
-            </p>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {treatments.map((treatment) => (
-                <label
-                  key={treatment.id}
-                  className="flex min-h-11 items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold hover:bg-slate-50"
-                >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-teal-700"
-                    checked={values.treatmentIds.includes(treatment.id)}
-                    onChange={() => toggleTreatment(treatment.id)}
-                  />
-                  {treatment.name}
-                </label>
-              ))}
-            </div>
-          )}
-          <FieldError message={errors.treatmentIds} />
+          <label className="mt-4 block text-sm font-semibold text-slate-800">
+            Tratamientos y acabados <span className="font-normal text-slate-500">(opcional)</span>
+            <textarea
+              rows={4}
+              className={`${inputClassName} resize-y py-2.5`}
+              value={values.treatmentNames}
+              onChange={(event) => update('treatmentNames', event.target.value)}
+              placeholder={'Ej. Antirreflejo premium\nEndurecido\nFiltro azul'}
+              aria-invalid={Boolean(errors.treatmentNames)}
+            />
+            <span className="mt-1.5 block text-xs font-normal text-slate-500">
+              Escribí uno por línea o separalos con comas. Podés usar los nombres que necesites.
+            </span>
+            <FieldError message={errors.treatmentNames} />
+          </label>
           <label className="mt-5 block max-w-sm text-sm font-semibold text-slate-800">
-            Coloración
+            Coloración de los lentes
             <select
               className={inputClassName}
               value={values.colorType}
@@ -508,6 +500,9 @@ export function OpticalJobForm({
               <option value="FULL">Color pleno</option>
               <option value="GRADIENT">Color degradé</option>
             </select>
+            <span className="mt-1.5 block text-xs font-normal text-slate-500">
+              Es distinta del color del producto o armazón.
+            </span>
           </label>
         </section>
         <div className="my-6 border-t border-slate-200" />
@@ -526,7 +521,7 @@ export function OpticalJobForm({
             <X size={17} aria-hidden="true" />
             Cancelar
           </Button>
-          <Button type="submit" disabled={submitting || loadingOptions}>
+          <Button type="submit" disabled={submitting}>
             <Save size={17} aria-hidden="true" />
             {submitting ? 'Guardando…' : submitLabel}
           </Button>

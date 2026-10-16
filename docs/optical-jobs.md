@@ -6,9 +6,10 @@ Occhiali es una óptica comercial, no un consultorio oftalmológico. Una ficha r
 características del producto o pedido que antes se anotaban en papel. No diagnostica, prescribe,
 calcula graduaciones ni incorpora precios, ventas, stock, caja, facturación o logística.
 
-Los elementos del catálogo se muestran como **Tratamientos y acabados de lentes**. Son recubrimientos,
-acabados o modificaciones comerciales de los lentes —por ejemplo antirrayas, antirreflejo o pulido—,
-no tratamientos médicos ni procedimientos clínicos. Pueden ser realizados por terceros.
+Los elementos se muestran como **Tratamientos y acabados de lentes**. Son recubrimientos, acabados o
+modificaciones comerciales de los lentes —por ejemplo antirrayas, antirreflejo o pulido—, no
+tratamientos médicos ni procedimientos clínicos. Pueden escribirse libremente y ser realizados por
+terceros.
 
 ## Cliente, receta y ficha
 
@@ -24,13 +25,15 @@ relación apunta al estado actual de la receta y no congela sus graduaciones.
 
 - Número de ficha opcional y textual; conserva ceros iniciales, admite letras y es único cuando se
   informa.
-- Producto libre con sugerencias para “Anteojos recetados” y “Lentes de sol”.
+- Producto libre con sugerencias para “Anteojos recetados”, “Lentes de sol” y “Lentes de contacto”.
+- Color del producto libre y opcional, separado de la coloración de los lentes.
+- Proveedor libre y opcional, sin catálogo ni módulo de compras.
 - Receta opcional.
 - Condición del armazón: nuevo, usado o sin especificar.
 - Material: zilo, metal o sin especificar.
 - Modelo libre opcional.
-- Coloración: color pleno, degradé o sin especificar.
-- Uno, varios o ningún tratamiento/acabado del catálogo SQLite.
+- Coloración de los lentes: color pleno, degradé o sin especificar.
+- Uno, varios o ningún tratamiento/acabado escrito libremente.
 - Observaciones opcionales.
 
 No se exige armazón ni receta para todos los productos y no se inventan marcas, tonos o
@@ -50,9 +53,11 @@ historial y permite consultar registros aun cuando está archivado; solo se bloq
 
 ## Persistencia y validaciones
 
-Fase 6 reutiliza `optical_jobs`, `treatments` y `optical_job_treatments`; no agrega migraciones. Main
+El esquema conserva `optical_jobs`, `treatments` y `optical_job_treatments`. La migración
+`004_optical_job_product_details` agrega únicamente color y proveedor como textos nullable. Main
 valida runtime, longitudes, enumeraciones, IDs, unicidad, estado del cliente, pertenencia de receta y
-existencia/no duplicación de tratamientos. Las consultas son parametrizadas.
+no duplicación de tratamientos. Los nombres libres se resuelven o crean dentro de la misma
+transacción y las consultas son parametrizadas.
 
 Crear o editar una ficha y sus asociaciones es una única transacción. La edición sin cambios no
 escribe ni cambia `updated_at`. No existe borrado permanente.
@@ -66,13 +71,14 @@ detalles internos. La aplicación funciona offline, sin telemetría ni datos en 
 
 ## Pruebas
 
-SQLite real cubre altas con/sin receta, productos, ceros iniciales, armazones, coloración,
-tratamientos, búsquedas, paginación, edición, no-op, rollback, archivado, reapertura e integridad.
-Las pruebas IPC verifican contratos y errores seguros; Testing Library cubre búsquedas, formularios,
-recetas compatibles, selección múltiple, detalle, edición, doble envío y clientes archivados.
+SQLite real cubre migración desde el esquema anterior, altas con/sin receta, productos, ceros
+iniciales, armazones, color, proveedor, coloración, tratamientos históricos y libres, búsquedas,
+paginación, edición, rollback, archivado, reapertura e integridad. Las pruebas IPC verifican
+contratos y errores seguros; Testing Library cubre formularios, detalle, edición, doble envío y
+clientes archivados.
 
 ## Limitaciones y ampliaciones futuras
 
-No se generan números consecutivos ni se gestionan marcas, inventario, precios, ventas, proveedores
-o estados logísticos. Esas ampliaciones deben conservar la separación entre producto comercial,
-persona y receta óptica.
+No se generan números consecutivos ni se gestionan marcas, inventario, precios, ventas, un catálogo
+de proveedores o estados logísticos. El campo proveedor es solamente texto asociado a la ficha.
+Esas ampliaciones deben conservar la separación entre producto comercial, persona y receta óptica.

@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { createHash } from 'node:crypto';
 import type { OpticalJobTreatment, Treatment } from '../../../shared/database-models';
 
 interface TreatmentRow {
@@ -56,6 +57,30 @@ export class TreatmentRepository {
         throw new TreatmentNotFoundError();
       }
     }
+  }
+
+  public resolveSelection(
+    treatmentIds: readonly string[],
+    treatmentNames: readonly string[],
+  ): string[] {
+    this.assertIdsExist(treatmentIds);
+    const resolvedIds = [...treatmentIds];
+    const findByName = this.database.prepare(
+      'SELECT * FROM treatments WHERE name = ? COLLATE NOCASE LIMIT 1',
+    );
+    const insert = this.database.prepare('INSERT INTO treatments (id, name) VALUES (?, ?)');
+
+    for (const name of treatmentNames) {
+      let treatment = findByName.get(name) as TreatmentRow | undefined;
+      if (!treatment) {
+        const id = `custom-${createHash('sha256').update(name.toLocaleLowerCase('es')).digest('hex')}`;
+        insert.run(id, name);
+        treatment = findByName.get(name) as TreatmentRow;
+      }
+      resolvedIds.push(treatment.id);
+    }
+
+    return [...new Set(resolvedIds)];
   }
 
   public replaceForJob(opticalJobId: number, treatmentIds: readonly string[]): void {

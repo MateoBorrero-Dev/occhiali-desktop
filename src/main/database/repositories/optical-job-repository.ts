@@ -31,6 +31,8 @@ interface OpticalJobRow {
   frame_condition: FrameCondition | null;
   frame_material: FrameMaterial | null;
   frame_model: string | null;
+  product_color: string | null;
+  supplier: string | null;
   color_type: ColorType | null;
   observations: string | null;
   created_at: string;
@@ -121,13 +123,15 @@ function comparable(job: OpticalJob): string {
     frameCondition: job.frameCondition,
     frameMaterial: job.frameMaterial,
     frameModel: job.frameModel,
+    productColor: job.productColor,
+    supplier: job.supplier,
     colorType: job.colorType,
     observations: job.observations,
     treatmentIds: job.treatments.map((item) => item.id).sort(),
   });
 }
 
-function comparableInput(input: UpdateOpticalJobInput): string {
+function comparableInput(input: UpdateOpticalJobInput, treatmentIds: readonly string[]): string {
   return JSON.stringify({
     prescriptionId: input.prescriptionId ?? null,
     jobNumber: input.jobNumber ?? null,
@@ -135,9 +139,11 @@ function comparableInput(input: UpdateOpticalJobInput): string {
     frameCondition: input.frameCondition ?? null,
     frameMaterial: input.frameMaterial ?? null,
     frameModel: input.frameModel ?? null,
+    productColor: input.productColor ?? null,
+    supplier: input.supplier ?? null,
     colorType: input.colorType ?? null,
     observations: input.observations ?? null,
-    treatmentIds: [...(input.treatmentIds ?? [])].sort(),
+    treatmentIds: [...treatmentIds].sort(),
   });
 }
 
@@ -156,22 +162,25 @@ export class OpticalJobRepository {
         normalized.clientId,
       );
       this.assertJobNumberAvailable(normalized.jobNumber ?? null);
-      this.treatments.assertIdsExist(normalized.treatmentIds ?? []);
+      const treatmentIds = this.treatments.resolveSelection(
+        normalized.treatmentIds ?? [],
+        normalized.treatmentNames ?? [],
+      );
 
       const result = this.database
         .prepare(
           `INSERT INTO optical_jobs (
             client_id, prescription_id, job_number, product, frame_condition,
-            frame_material, frame_model, color_type, observations
+            frame_material, frame_model, product_color, supplier, color_type, observations
           ) VALUES (
             @clientId, @prescriptionId, @jobNumber, @product, @frameCondition,
-            @frameMaterial, @frameModel, @colorType, @observations
+            @frameMaterial, @frameModel, @productColor, @supplier, @colorType, @observations
           )`,
         )
         .run(normalized);
 
       const opticalJobId = insertedId(result);
-      this.treatments.replaceForJob(opticalJobId, normalized.treatmentIds ?? []);
+      this.treatments.replaceForJob(opticalJobId, treatmentIds);
       return this.requireById(opticalJobId);
     })();
   }
@@ -231,8 +240,11 @@ export class OpticalJobRepository {
       const current = this.requireById(id);
       this.assertPrescriptionBelongsToClient(normalized.prescriptionId ?? null, current.clientId);
       this.assertJobNumberAvailable(normalized.jobNumber ?? null, id);
-      this.treatments.assertIdsExist(normalized.treatmentIds ?? []);
-      if (comparable(current) === comparableInput(normalized)) return current;
+      const treatmentIds = this.treatments.resolveSelection(
+        normalized.treatmentIds ?? [],
+        normalized.treatmentNames ?? [],
+      );
+      if (comparable(current) === comparableInput(normalized, treatmentIds)) return current;
 
       this.database
         .prepare(
@@ -243,13 +255,15 @@ export class OpticalJobRepository {
             frame_condition = @frameCondition,
             frame_material = @frameMaterial,
             frame_model = @frameModel,
+            product_color = @productColor,
+            supplier = @supplier,
             color_type = @colorType,
             observations = @observations,
             updated_at = @updatedAt
            WHERE id = @id`,
         )
         .run({ id, ...normalized, updatedAt: new Date().toISOString() });
-      this.treatments.replaceForJob(id, normalized.treatmentIds ?? []);
+      this.treatments.replaceForJob(id, treatmentIds);
       return this.requireById(id);
     })();
   }
@@ -320,6 +334,8 @@ export class OpticalJobRepository {
       frameCondition: row.frame_condition,
       frameMaterial: row.frame_material,
       frameModel: row.frame_model,
+      productColor: row.product_color,
+      supplier: row.supplier,
       colorType: row.color_type,
       observations: row.observations,
       createdAt: row.created_at,

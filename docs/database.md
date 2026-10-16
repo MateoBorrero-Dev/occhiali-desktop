@@ -151,10 +151,12 @@ Valores enumerados opcionales:
 - `frame_material`: `ZILO` o `METAL`.
 - `color_type`: `FULL` o `GRADIENT`.
 
-Fase 6 utiliza esta estructura existente sin migraciones nuevas. `product` sigue siendo texto libre
-para admitir anteojos recetados, lentes de sol y otros productos sin crear inventario. `job_number`
-es textual, conserva ceros iniciales y su índice único parcial evita duplicados solo cuando se
-informa. Las altas se bloquean para clientes archivados y las ediciones conservan el cliente.
+`product` sigue siendo texto libre para admitir anteojos recetados, lentes de sol, lentes de
+contacto y otros productos sin crear inventario. `product_color` guarda el color comercial del
+producto o armazón y no se confunde con `color_type`, que describe la coloración de los lentes.
+`supplier` es texto libre opcional y no crea un catálogo, compras ni stock. `job_number` es textual,
+conserva ceros iniciales y su índice único parcial evita duplicados solo cuando se informa. Las altas
+se bloquean para clientes archivados y las ediciones conservan el cliente.
 
 ### `treatments`
 
@@ -167,7 +169,10 @@ migración inicial incorpora de manera idempotente:
 - `edge-polish`: Pulido de bordes.
 - `shape-change`: Cambio de forma.
 
-Los tratamientos usados no se eliminan; podrán desactivarse en una fase futura.
+Los tratamientos usados no se eliminan; podrán desactivarse en una fase futura. El formulario
+acepta uno o varios nombres libres. Main reutiliza por nombre una entrada existente o crea un
+identificador estable para el texto nuevo y conserva la misma relación muchos a muchos. Las fichas
+anteriores y los IDs del catálogo inicial permanecen compatibles.
 
 En la interfaz se presentan como **Tratamientos y acabados de lentes**. Son características
 comerciales del producto óptico, no tratamientos médicos ni procedimientos clínicos.
@@ -213,9 +218,12 @@ Migraciones actuales:
 2. `002_seed_treatments`: catálogo inicial idempotente.
 3. `003_prescription_revisions`: tablas e índices de revisiones históricas, sin alterar las
    migraciones anteriores.
+4. `004_optical_job_product_details`: agrega `product_color` y `supplier` como columnas nullable;
+   las fichas anteriores quedan intactas con ambos valores en `NULL`.
 
-Fase 6 no agrega migraciones: las tres tablas de fichas y tratamientos ya representaban el dominio
-necesario.
+Fase 6 no agregó migraciones: las tres tablas de fichas y tratamientos ya representaban el dominio
+necesario. El Bloque 1 de ajustes de la clienta reutiliza esas relaciones para tratamientos libres y
+agrega únicamente la migración incremental de color y proveedor.
 
 Fase 7 tampoco agrega migraciones. Los conteos usan subconsultas `count(*)`; clientes activos
 aprovecha el índice de archivado. La búsqueda global usa parámetros, límite por grupo y la función

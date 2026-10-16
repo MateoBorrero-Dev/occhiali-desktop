@@ -5,6 +5,7 @@ import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { BackupService } from './backup/backup-service';
 import { RestoreCoordinator } from './backup/restore-recovery';
 import { ApplicationDatabase } from './database';
+import { getMigrationIds } from './database/migrations';
 import { SecurityManager } from './security/security-manager';
 
 const QA_PREFIX = 'occhiali-packaged-qa-';
@@ -27,7 +28,7 @@ function requireTemporaryQaDirectory(value: string | undefined): string {
 function assertHealthy(database: ApplicationDatabase): void {
   if (database.integrityCheck() !== 'ok' || database.foreignKeyViolations().length > 0)
     throw new Error('La base empaquetada no superó la verificación de integridad.');
-  if (database.getAppliedMigrationIds().length !== 3)
+  if (JSON.stringify(database.getAppliedMigrationIds()) !== JSON.stringify(getMigrationIds()))
     throw new Error('La aplicación empaquetada no aplicó todas las migraciones.');
 }
 
@@ -49,6 +50,13 @@ async function writeScenario(directory: string): Promise<void> {
       lastName: 'Ficticia',
       phone: '0000000000',
     });
+    const job = database.opticalJobs.createWithTreatments({
+      clientId: client.id,
+      product: 'Lentes de contacto',
+      productColor: 'Transparente',
+      supplier: 'Proveedor QA empaquetado',
+      treatmentNames: ['Tratamiento libre empaquetado'],
+    });
     const created = await backups.create(database, recoveryPassword);
     const backupPath = join(directory, 'backups', created.fileName);
     if (!existsSync(backupPath)) throw new Error('No se generó el backup empaquetado.');
@@ -68,6 +76,12 @@ async function writeScenario(directory: string): Promise<void> {
       assertHealthy(candidate);
       if (candidate.clients.getById(client.id)?.firstName !== 'Empaquetada')
         throw new Error('La restauración empaquetada no conservó el registro ficticio.');
+      if (
+        candidate.opticalJobs.getById(job.id)?.supplier !== 'Proveedor QA empaquetado' ||
+        candidate.opticalJobs.getById(job.id)?.treatments[0]?.name !==
+          'Tratamiento libre empaquetado'
+      )
+        throw new Error('La restauración empaquetada no conservó la ficha del Bloque 1.');
     } finally {
       candidate.close();
     }
@@ -91,6 +105,14 @@ function readScenario(directory: string): void {
     const stored = database.clients.list({ includeArchived: true });
     if (stored.length !== 1 || stored[0]?.firstName !== 'Empaquetada')
       throw new Error('La reapertura empaquetada no conservó la información.');
+    const job = database.opticalJobs.listByClient(stored[0].id)[0];
+    if (
+      job?.product !== 'Lentes de contacto' ||
+      job.productColor !== 'Transparente' ||
+      job.supplier !== 'Proveedor QA empaquetado' ||
+      job.treatments[0]?.name !== 'Tratamiento libre empaquetado'
+    )
+      throw new Error('La reapertura empaquetada no conservó la ficha del Bloque 1.');
   } finally {
     database.close();
   }

@@ -91,6 +91,9 @@ validación real del runtime empaquetado implementados; QA visual/manual complet
 con 1.000 clientes, backup/restauración y documentación operativa incorporados; QA visual manual
 pendiente. La aplicación continúa como versión preliminar y no está entregada como 1.0.0.
 
+**Ajustes de la clienta — Bloque 1:** fichas con tratamientos libres, color del producto, proveedor
+opcional y “Lentes de contacto” como sugerencia de producto; QA visual manual pendiente.
+
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
 [Instalador Windows](docs/windows-installer.md).

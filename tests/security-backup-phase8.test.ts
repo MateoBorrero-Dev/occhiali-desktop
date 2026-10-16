@@ -127,6 +127,7 @@ describe('backup cifrado y disaster recovery', () => {
       '001_initial_schema',
       '002_seed_treatments',
       '003_prescription_revisions',
+      '004_optical_job_product_details',
     ]);
   });
   it('respalda y restaura una base vacía real', async () => {

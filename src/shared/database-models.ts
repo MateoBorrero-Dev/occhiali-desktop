@@ -175,6 +175,8 @@ export interface OpticalJob {
   frameCondition: FrameCondition | null;
   frameMaterial: FrameMaterial | null;
   frameModel: string | null;
+  productColor: string | null;
+  supplier: string | null;
   colorType: ColorType | null;
   observations: string | null;
   createdAt: IsoTimestamp;
@@ -190,9 +192,12 @@ export interface CreateOpticalJobInput {
   frameCondition?: FrameCondition | null;
   frameMaterial?: FrameMaterial | null;
   frameModel?: string | null;
+  productColor?: string | null;
+  supplier?: string | null;
   colorType?: ColorType | null;
   observations?: string | null;
   treatmentIds?: string[];
+  treatmentNames?: string[];
 }
 
 export interface UpdateOpticalJobInput {
@@ -202,9 +207,12 @@ export interface UpdateOpticalJobInput {
   frameCondition?: FrameCondition | null;
   frameMaterial?: FrameMaterial | null;
   frameModel?: string | null;
+  productColor?: string | null;
+  supplier?: string | null;
   colorType?: ColorType | null;
   observations?: string | null;
   treatmentIds?: string[];
+  treatmentNames?: string[];
 }
 
 export interface OpticalJobSummary {

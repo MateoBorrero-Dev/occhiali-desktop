@@ -76,10 +76,21 @@ describe('handlers IPC de fichas de trabajo', () => {
     const created = handlers.create({
       clientId: owner.id,
       jobNumber: 'IPC-01',
-      product: 'Lentes de sol',
-      treatmentIds: ['edge-polish'],
+      product: 'Lentes de contacto',
+      productColor: 'Transparente',
+      supplier: 'Proveedor IPC',
+      treatmentNames: ['Acabado libre IPC'],
     });
-    expect(created).toMatchObject({ ok: true, data: { jobNumber: 'IPC-01' } });
+    expect(created).toMatchObject({
+      ok: true,
+      data: {
+        jobNumber: 'IPC-01',
+        product: 'Lentes de contacto',
+        productColor: 'Transparente',
+        supplier: 'Proveedor IPC',
+        treatments: [{ name: 'Acabado libre IPC' }],
+      },
+    });
     if (!created.ok) throw new Error('No se pudo preparar la ficha.');
     expect(handlers.get(created.data.id)).toEqual(created);
     expect(handlers.list({ query: 'IPC-01' })).toMatchObject({ ok: true, data: { total: 1 } });
