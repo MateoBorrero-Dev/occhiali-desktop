@@ -28,6 +28,8 @@ interface PrescriptionRow {
   client_id: number;
   prescription_date: string;
   prescriber_name: string | null;
+  addition_od: number | null;
+  addition_oi: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -46,6 +48,8 @@ interface PrescriptionRevisionRow {
   reason: string;
   prescription_date: string;
   prescriber_name: string | null;
+  addition_od: number | null;
+  addition_oi: number | null;
   notes: string | null;
   corrected_at: string;
 }
@@ -160,12 +164,16 @@ export class PrescriptionRepository {
       const result = this.database
         .prepare(
           `INSERT INTO prescriptions (
-            client_id, prescription_date, prescriber_name, notes
+            client_id, prescription_date, prescriber_name, addition_od, addition_oi, notes
           ) VALUES (
-            @clientId, @prescriptionDate, @prescriberName, @notes
+            @clientId, @prescriptionDate, @prescriberName, @additionOd, @additionOi, @notes
           )`,
         )
-        .run(normalized);
+        .run({
+          ...normalized,
+          additionOd: toScaledHundredths(normalized.additionOd),
+          additionOi: toScaledHundredths(normalized.additionOi),
+        });
 
       const prescriptionId = insertedId(result);
       for (const value of normalized.values ?? []) this.values.create(prescriptionId, value);
@@ -235,6 +243,8 @@ export class PrescriptionRepository {
       const hasChanges =
         current.prescriptionDate !== normalized.prescriptionDate ||
         current.prescriberName !== (normalized.prescriberName ?? null) ||
+        current.additionOd !== (normalized.additionOd ?? null) ||
+        current.additionOi !== (normalized.additionOi ?? null) ||
         current.notes !== (normalized.notes ?? null) ||
         comparableValues(currentValues) !== comparableValues(normalized.values);
       if (!hasChanges) return current;
@@ -248,9 +258,11 @@ export class PrescriptionRepository {
       const revisionResult = this.database
         .prepare(
           `INSERT INTO prescription_revisions (
-            prescription_id, revision_number, reason, prescription_date, prescriber_name, notes
+            prescription_id, revision_number, reason, prescription_date, prescriber_name,
+            addition_od, addition_oi, notes
           ) VALUES (
-            @prescriptionId, @revisionNumber, @reason, @prescriptionDate, @prescriberName, @notes
+            @prescriptionId, @revisionNumber, @reason, @prescriptionDate, @prescriberName,
+            @additionOd, @additionOi, @notes
           )`,
         )
         .run({
@@ -259,6 +271,8 @@ export class PrescriptionRepository {
           reason: normalized.reason,
           prescriptionDate: current.prescriptionDate,
           prescriberName: current.prescriberName,
+          additionOd: toScaledHundredths(current.additionOd),
+          additionOi: toScaledHundredths(current.additionOi),
           notes: current.notes,
         });
       const revisionId = insertedId(revisionResult);
@@ -287,6 +301,8 @@ export class PrescriptionRepository {
           `UPDATE prescriptions SET
             prescription_date = @prescriptionDate,
             prescriber_name = @prescriberName,
+            addition_od = @additionOd,
+            addition_oi = @additionOi,
             notes = @notes,
             updated_at = @updatedAt
            WHERE id = @id`,
@@ -295,6 +311,8 @@ export class PrescriptionRepository {
           id,
           prescriptionDate: normalized.prescriptionDate,
           prescriberName: normalized.prescriberName,
+          additionOd: toScaledHundredths(normalized.additionOd),
+          additionOi: toScaledHundredths(normalized.additionOi),
           notes: normalized.notes,
           updatedAt: new Date().toISOString(),
         });
@@ -324,6 +342,8 @@ export class PrescriptionRepository {
       reason: row.reason,
       prescriptionDate: row.prescription_date,
       prescriberName: row.prescriber_name,
+      additionOd: fromScaledHundredths(row.addition_od),
+      additionOi: fromScaledHundredths(row.addition_oi),
       notes: row.notes,
       correctedAt: row.corrected_at,
       values: (valuesStatement.all(row.id) as PrescriptionRevisionValueRow[]).map(mapRevisionValue),
@@ -362,6 +382,8 @@ export class PrescriptionRepository {
       clientId: row.client_id,
       prescriptionDate: row.prescription_date,
       prescriberName: row.prescriber_name,
+      additionOd: fromScaledHundredths(row.addition_od),
+      additionOi: fromScaledHundredths(row.addition_oi),
       notes: row.notes,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

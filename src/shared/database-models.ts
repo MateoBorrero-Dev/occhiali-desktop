@@ -83,6 +83,8 @@ export interface Prescription {
   clientId: number;
   prescriptionDate: CalendarDate;
   prescriberName: string | null;
+  additionOd: DecimalValue | null;
+  additionOi: DecimalValue | null;
   notes: string | null;
   createdAt: IsoTimestamp;
   updatedAt: IsoTimestamp;
@@ -93,6 +95,8 @@ export interface CreatePrescriptionInput {
   clientId: number;
   prescriptionDate: CalendarDate;
   prescriberName?: string | null;
+  additionOd?: DecimalValue | null;
+  additionOi?: DecimalValue | null;
   notes?: string | null;
   values?: CreatePrescriptionValueInput[];
 }
@@ -100,6 +104,8 @@ export interface CreatePrescriptionInput {
 export interface CorrectPrescriptionInput {
   prescriptionDate: CalendarDate;
   prescriberName?: string | null;
+  additionOd?: DecimalValue | null;
+  additionOi?: DecimalValue | null;
   notes?: string | null;
   values: CreatePrescriptionValueInput[];
   reason: string;
@@ -157,6 +163,8 @@ export interface PrescriptionRevision {
   reason: string;
   prescriptionDate: CalendarDate;
   prescriberName: string | null;
+  additionOd: DecimalValue | null;
+  additionOi: DecimalValue | null;
   notes: string | null;
   correctedAt: IsoTimestamp;
   values: PrescriptionRevisionValue[];

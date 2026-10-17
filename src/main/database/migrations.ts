@@ -180,6 +180,17 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    id: '005_prescription_additions',
+    up: (database) => {
+      database.exec(`
+        ALTER TABLE prescriptions ADD COLUMN addition_od INTEGER;
+        ALTER TABLE prescriptions ADD COLUMN addition_oi INTEGER;
+        ALTER TABLE prescription_revisions ADD COLUMN addition_od INTEGER;
+        ALTER TABLE prescription_revisions ADD COLUMN addition_oi INTEGER;
+      `);
+    },
+  },
 ];
 
 interface AppliedMigrationRow {

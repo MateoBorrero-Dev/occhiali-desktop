@@ -257,9 +257,14 @@ describe('handlers IPC de recetas', () => {
     const created = handlers.create({
       clientId: client.id,
       prescriptionDate: '2026-03-01',
+      additionOd: '+1,25',
+      additionOi: '0,00',
       values: [{ distance: 'FAR', eye: 'OD', sphere: '+1,25' }],
     });
-    expect(created).toMatchObject({ ok: true, data: { clientId: client.id } });
+    expect(created).toMatchObject({
+      ok: true,
+      data: { clientId: client.id, additionOd: '1.25', additionOi: '0.00' },
+    });
     if (!created.ok) throw new Error('No se pudo preparar la receta de prueba.');
     expect(handlers.get(created.data.id)).toEqual(created);
     expect(handlers.list({ query: 'Cliente' })).toMatchObject({ ok: true, data: { total: 1 } });
@@ -303,19 +308,26 @@ describe('handlers IPC de recetas', () => {
     const created = handlers.create({
       clientId: client.id,
       prescriptionDate: '2026-03-01',
+      additionOd: '1.00',
+      additionOi: '2.00',
       values: [{ distance: 'FAR', eye: 'OD', sphere: '1.00' }],
     });
     if (!created.ok) throw new Error('No se pudo preparar la receta de prueba.');
     expect(
       handlers.correct(created.data.id, {
         prescriptionDate: '2026-03-01',
+        additionOd: '1.50',
+        additionOi: null,
         reason: 'Error de carga',
         values: [{ distance: 'FAR', eye: 'OD', sphere: '2.00' }],
       }),
-    ).toMatchObject({ ok: true, data: { id: created.data.id } });
+    ).toMatchObject({
+      ok: true,
+      data: { id: created.data.id, additionOd: '1.50', additionOi: null },
+    });
     expect(handlers.revisions(created.data.id)).toMatchObject({
       ok: true,
-      data: [{ reason: 'Error de carga' }],
+      data: [{ reason: 'Error de carga', additionOd: '1.00', additionOi: '2.00' }],
     });
   });
 

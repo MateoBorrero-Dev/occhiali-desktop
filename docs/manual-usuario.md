@@ -41,17 +41,22 @@ general, escribí al menos dos caracteres del nombre, apellido, DNI o teléfono 
 cliente correcto.
 
 1. Indicá la fecha de prescripción.
-2. Completá solamente los valores informados para lejos/cerca y ojo derecho/izquierdo.
-3. Agregá profesional y notas si corresponde.
-4. Elegí **Guardar receta**.
+2. Si fue informada, cargá **ADD OD** y/o **ADD OI**. Cada ojo es independiente y puede quedar vacío.
+3. En el panel **Lejos**, completá solamente las celdas informadas para OD y OI.
+4. En el panel **Cerca**, hacé lo mismo para OD y OI.
+5. Agregá profesional y notas si corresponde.
+6. Elegí **Guardar receta**.
 
 Los campos ópticos vacíos significan “no informado”; no deben completarse con valores supuestos.
+`0,00` sí es un valor informado y es distinto de dejar el campo vacío. Occhiali no calcula Cerca ni
+ADD a partir de otros valores.
 
 ### Consultar historial y corregir una receta
 
 La ficha del cliente y el detalle de la receta muestran su historial. Si una receta contiene un
 error de carga, usá **Corregir receta**, indicá el motivo y guardá los valores correctos. Occhiali
 mantiene el mismo ID y conserva la versión anterior como revisión trazable.
+La revisión también conserva las adiciones OD/OI anteriores.
 
 No uses una corrección para reemplazar una prescripción nueva: una receta posterior debe registrarse
 como un nuevo registro.

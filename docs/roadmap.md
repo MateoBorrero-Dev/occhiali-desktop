@@ -69,3 +69,11 @@ Auditoría integral sin cambios comerciales, selección escalable de clientes en
 de UX, ensayo temporal con 1.000 clientes, backup/restauración y documentación para usuaria, entrega
 y soporte. Los cambios solicitados por la dueña se incorporarán después y todavía no se consideran
 implementados. La versión permanece en 0.9.0 y no constituye una entrega definitiva.
+
+## Ajustes de la clienta — Bloque 2
+
+**Estado:** implementación y pruebas automatizadas completadas; QA visual manual pendiente.
+
+Adición opcional e independiente para OD/OI, trazabilidad en revisiones y rediseño de graduaciones
+con paneles Lejos/Cerca. La migración incremental conserva recetas y revisiones anteriores sin
+inferencias ni cálculos clínicos.

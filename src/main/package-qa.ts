@@ -50,6 +50,13 @@ async function writeScenario(directory: string): Promise<void> {
       lastName: 'Ficticia',
       phone: '0000000000',
     });
+    const prescription = database.prescriptions.createWithValues({
+      clientId: client.id,
+      prescriptionDate: '2026-10-16',
+      additionOd: '+1,25',
+      additionOi: '0,00',
+      values: [{ distance: 'FAR', eye: 'OD', sphere: '-2,00' }],
+    });
     const job = database.opticalJobs.createWithTreatments({
       clientId: client.id,
       product: 'Lentes de contacto',
@@ -76,6 +83,9 @@ async function writeScenario(directory: string): Promise<void> {
       assertHealthy(candidate);
       if (candidate.clients.getById(client.id)?.firstName !== 'Empaquetada')
         throw new Error('La restauración empaquetada no conservó el registro ficticio.');
+      const restoredPrescription = candidate.prescriptions.getById(prescription.id);
+      if (restoredPrescription?.additionOd !== '1.25' || restoredPrescription.additionOi !== '0.00')
+        throw new Error('La restauración empaquetada no conservó las adiciones por ojo.');
       if (
         candidate.opticalJobs.getById(job.id)?.supplier !== 'Proveedor QA empaquetado' ||
         candidate.opticalJobs.getById(job.id)?.treatments[0]?.name !==
@@ -106,6 +116,9 @@ function readScenario(directory: string): void {
     if (stored.length !== 1 || stored[0]?.firstName !== 'Empaquetada')
       throw new Error('La reapertura empaquetada no conservó la información.');
     const job = database.opticalJobs.listByClient(stored[0].id)[0];
+    const prescription = database.prescriptions.listByClient(stored[0].id)[0];
+    if (prescription?.additionOd !== '1.25' || prescription.additionOi !== '0.00')
+      throw new Error('La reapertura empaquetada no conservó las adiciones por ojo.');
     if (
       job?.product !== 'Lentes de contacto' ||
       job.productColor !== 'Transparente' ||

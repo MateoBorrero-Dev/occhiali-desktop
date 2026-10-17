@@ -91,10 +91,14 @@ describe('backup cifrado y disaster recovery', () => {
     const prescription = context.database.prescriptions.createWithValues({
       clientId: client.id,
       prescriptionDate: '2026-10-09',
+      additionOd: '1.25',
+      additionOi: '0.00',
       values: [{ distance: 'FAR', eye: 'OD', sphere: '-1.25' }],
     });
     context.database.prescriptions.correct(prescription.id, {
       prescriptionDate: '2026-10-09',
+      additionOd: '1.50',
+      additionOi: null,
       reason: 'Prueba',
       values: [{ distance: 'FAR', eye: 'OD', sphere: '-1.50' }],
     });
@@ -128,6 +132,7 @@ describe('backup cifrado y disaster recovery', () => {
       '002_seed_treatments',
       '003_prescription_revisions',
       '004_optical_job_product_details',
+      '005_prescription_additions',
     ]);
   });
   it('respalda y restaura una base vacía real', async () => {
@@ -169,7 +174,13 @@ describe('backup cifrado y disaster recovery', () => {
       expect(restored.prescriptions.getById(value.prescription.id)?.values[0]?.sphere).toBe(
         '-1.50',
       );
-      expect(restored.prescriptions.listRevisions(value.prescription.id)).toHaveLength(1);
+      expect(restored.prescriptions.getById(value.prescription.id)).toMatchObject({
+        additionOd: '1.50',
+        additionOi: null,
+      });
+      expect(restored.prescriptions.listRevisions(value.prescription.id)).toMatchObject([
+        { additionOd: '1.25', additionOi: '0.00' },
+      ]);
       expect(restored.opticalJobs.getById(value.job.id)?.treatments[0]?.id).toBe('edge-polish');
       expect(
         restored.clients.create({ firstName: 'Nueva', lastName: 'Escritura' }).id,

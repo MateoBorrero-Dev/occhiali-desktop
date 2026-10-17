@@ -34,6 +34,8 @@ const PRESCRIPTION: Prescription = {
   clientId: CLIENT.id,
   prescriptionDate: '2026-03-04',
   prescriberName: 'Profesional Ficticio',
+  additionOd: '1.50',
+  additionOi: '0.00',
   notes: 'Control anual ficticio.',
   createdAt: '2026-03-04T12:00:00.000Z',
   updatedAt: '2026-03-04T12:00:00.000Z',
@@ -222,6 +224,18 @@ describe('módulo de recetas', () => {
     );
   });
 
+  it('permite guardar solo ADD en un ojo y conserva cero como valor informado', async () => {
+    window.location.hash = '#/clientes/7/recetas/nueva';
+    const api = installApi();
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(await screen.findByLabelText('ADD OI'), '0,00');
+    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
+    expect(api.prescriptions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ additionOd: null, additionOi: '0.00', values: [] }),
+    );
+  });
+
   it('encuentra clientes fuera de los primeros 100 mediante búsqueda acotada', async () => {
     window.location.hash = '#/recetas/nueva';
     const api = installApi();
@@ -282,6 +296,8 @@ describe('módulo de recetas', () => {
           reason: 'Error de carga',
           prescriptionDate: '2026-03-03',
           prescriberName: null,
+          additionOd: null,
+          additionOi: '2.00',
           notes: null,
           correctedAt: '2026-03-04T13:00:00.000Z',
           values: [
@@ -328,6 +344,9 @@ describe('módulo de recetas', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('+1,25')).toBeInTheDocument();
     expect(screen.getByText('-0,50')).toBeInTheDocument();
+    expect(screen.getByText('+1,50')).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'Lejos' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: 'Cerca' }).length).toBeGreaterThan(0);
     expect(screen.getByText(/Revisión 1/)).toBeInTheDocument();
     expect(screen.getByText(/Error de carga/)).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: /Ver ficha/ })).toHaveAttribute(
@@ -343,11 +362,13 @@ describe('módulo de recetas', () => {
     render(<App />);
     await user.click(await screen.findByRole('button', { name: 'Guardar corrección' }));
     expect(screen.getByText('Indicá el motivo de la corrección.')).toBeInTheDocument();
+    await user.clear(screen.getByLabelText('ADD OD'));
+    await user.type(screen.getByLabelText('ADD OD'), '2,25');
     await user.type(screen.getByLabelText(/Motivo de la corrección/), 'Error de transcripción');
     await user.click(screen.getByRole('button', { name: 'Guardar corrección' }));
     expect(api.prescriptions.correct).toHaveBeenCalledWith(
       11,
-      expect.objectContaining({ reason: 'Error de transcripción' }),
+      expect.objectContaining({ reason: 'Error de transcripción', additionOd: '2.25' }),
     );
   });
 

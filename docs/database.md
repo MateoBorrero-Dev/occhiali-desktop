@@ -110,6 +110,10 @@ Cada receta pertenece a un cliente y conserva por separado `prescription_date` y
 `(client_id, prescription_date DESC, id DESC)` permite recuperar el historial cronológico sin
 reemplazar recetas anteriores.
 
+`addition_od` y `addition_oi` son enteros escalados a centésimas o `NULL`. Representan ADD de cada
+ojo de manera independiente y no pertenecen a una distancia específica. `0` es un valor informado;
+`NULL` significa vacío. El modelo no deriva Cerca desde Lejos ni realiza cálculos clínicos.
+
 La restricción única `(id, client_id)` sirve como destino de la clave foránea compuesta de trabajos.
 
 ### `prescription_values`
@@ -129,7 +133,8 @@ No se impusieron límites clínicos a esfera, cilindro, DIP o altura porque no f
 
 ### Revisiones de recetas
 
-`prescription_revisions` conserva el encabezado anterior, número correlativo, fecha de corrección y
+`prescription_revisions` conserva el encabezado anterior —incluidas `addition_od` y `addition_oi`—,
+número correlativo, fecha de corrección y
 motivo obligatorio. `prescription_revision_values` conserva la instantánea completa de las filas
 ópticas anteriores con la misma precisión escalada. Una corrección mantiene el ID de la receta y se
 ejecuta en una transacción: insertar revisión, copiar valores, actualizar encabezado y reemplazar
@@ -220,10 +225,16 @@ Migraciones actuales:
    migraciones anteriores.
 4. `004_optical_job_product_details`: agrega `product_color` y `supplier` como columnas nullable;
    las fichas anteriores quedan intactas con ambos valores en `NULL`.
+5. `005_prescription_additions`: agrega `addition_od` y `addition_oi` como columnas nullable tanto a
+   recetas actuales como a revisiones; las recetas y revisiones anteriores quedan intactas con ADD
+   no informado.
 
 Fase 6 no agregó migraciones: las tres tablas de fichas y tratamientos ya representaban el dominio
 necesario. El Bloque 1 de ajustes de la clienta reutiliza esas relaciones para tratamientos libres y
 agrega únicamente la migración incremental de color y proveedor.
+
+El Bloque 2 agrega únicamente la migración incremental de adiciones por ojo. No modifica las
+migraciones 001–004 ni transforma valores históricos.
 
 Fase 7 tampoco agrega migraciones. Los conteos usan subconsultas `count(*)`; clientes activos
 aprovecha el índice de archivado. La búsqueda global usa parámetros, límite por grupo y la función

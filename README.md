@@ -94,12 +94,15 @@ pendiente. La aplicación continúa como versión preliminar y no está entregad
 **Ajustes de la clienta — Bloque 1:** fichas con tratamientos libres, color del producto, proveedor
 opcional y “Lentes de contacto” como sugerencia de producto; QA visual manual pendiente.
 
+**Ajustes de la clienta — Bloque 2:** adición independiente por ojo y paneles profesionales de
+graduación Lejos/Cerca implementados con historial compatible; QA visual manual pendiente.
+
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
 [Instalador Windows](docs/windows-installer.md).
 
 La aplicación permite gestionar clientes y registrar, buscar, consultar y corregir recetas ópticas
-con historial de revisiones. Los valores FAR/NEAR y OD/OI se guardan como enteros escalados en
+con historial de revisiones. Los valores FAR/NEAR, OD/OI y las adiciones independientes por ojo se guardan como enteros escalados en
 SQLite mediante canales IPC específicos y validados; no se usan datos simulados ni `localStorage`.
 Las fichas de trabajo registran productos, armazones, tratamientos y acabados comerciales,
 coloración y una receta opcional. Los tratamientos describen características de lentes, no

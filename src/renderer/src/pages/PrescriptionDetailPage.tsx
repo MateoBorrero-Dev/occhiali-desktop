@@ -166,7 +166,11 @@ export function PrescriptionDetailPage(): React.JSX.Element {
         </dl>
         <div className="mt-6">
           <h2 className="mb-3 text-base font-bold">Graduaciones actuales</h2>
-          <PrescriptionValuesTable values={prescription.values} />
+          <PrescriptionValuesTable
+            values={prescription.values}
+            additionOd={prescription.additionOd}
+            additionOi={prescription.additionOi}
+          />
         </div>
         <div className="mt-6">
           <h2 className="text-base font-bold">Observaciones</h2>
@@ -205,6 +209,8 @@ export function PrescriptionDetailPage(): React.JSX.Element {
                   </p>
                   <PrescriptionValuesTable
                     values={revision.values}
+                    additionOd={revision.additionOd}
+                    additionOi={revision.additionOi}
                     caption={`Valores anteriores de la revisión ${revision.revisionNumber}`}
                   />
                   {revision.notes && (

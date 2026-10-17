@@ -10,6 +10,8 @@ export type PrescriptionInputField =
   | 'clientId'
   | 'prescriptionDate'
   | 'prescriberName'
+  | 'additionOd'
+  | 'additionOi'
   | 'notes'
   | 'values'
   | 'reason'
@@ -39,10 +41,20 @@ export const PRESCRIPTION_FIELD_LIMITS = Object.freeze({
 });
 
 const VALUE_KEYS = ['distance', 'eye', 'sphere', 'cylinder', 'axis', 'dip', 'height'] as const;
-const CREATE_KEYS = ['clientId', 'prescriptionDate', 'prescriberName', 'notes', 'values'] as const;
+const CREATE_KEYS = [
+  'clientId',
+  'prescriptionDate',
+  'prescriberName',
+  'additionOd',
+  'additionOi',
+  'notes',
+  'values',
+] as const;
 const CORRECTION_KEYS = [
   'prescriptionDate',
   'prescriberName',
+  'additionOd',
+  'additionOi',
   'notes',
   'values',
   'reason',
@@ -203,11 +215,6 @@ function parseValues(value: unknown): CreatePrescriptionValueInput[] {
     ]);
   }
   const parsed = value.map(parseValue).filter(meaningfulValue);
-  if (parsed.length === 0) {
-    throw new PrescriptionValidationError([
-      { field: 'values', message: 'Ingresá al menos un dato óptico antes de guardar.' },
-    ]);
-  }
   const combinations = new Set<string>();
   for (const item of parsed) {
     const key = `${item.distance}:${item.eye}`;
@@ -222,6 +229,14 @@ function parseValues(value: unknown): CreatePrescriptionValueInput[] {
 }
 
 function parsePrescriptionCore(record: Record<string, unknown>) {
+  const additionOd = normalizeOpticalDecimal(record.additionOd, 'additionOd');
+  const additionOi = normalizeOpticalDecimal(record.additionOi, 'additionOi');
+  const values = parseValues(record.values);
+  if (values.length === 0 && additionOd === null && additionOi === null) {
+    throw new PrescriptionValidationError([
+      { field: 'values', message: 'Ingresá al menos un dato óptico antes de guardar.' },
+    ]);
+  }
   return {
     prescriptionDate: calendarDate(
       record.prescriptionDate,
@@ -229,8 +244,10 @@ function parsePrescriptionCore(record: Record<string, unknown>) {
       'La fecha de la receta',
     ),
     prescriberName: optionalText(record.prescriberName, 'prescriberName', 'El profesional'),
+    additionOd,
+    additionOi,
     notes: optionalText(record.notes, 'notes', 'Las observaciones'),
-    values: parseValues(record.values),
+    values,
   };
 }
 

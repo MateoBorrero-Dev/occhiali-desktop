@@ -43,6 +43,8 @@ interface FormValues {
   clientId: string;
   prescriptionDate: string;
   prescriberName: string;
+  additionOd: string;
+  additionOi: string;
   notes: string;
   reason: string;
   rows: OpticalRow[];
@@ -59,6 +61,14 @@ const ROWS: readonly [PrescriptionDistance, Eye][] = [
 
 const inputClassName =
   'min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100 aria-[invalid=true]:border-red-500';
+
+const graduationColumns = [
+  ['sphere', 'ESF'],
+  ['cylinder', 'CIL'],
+  ['axis', 'EJE'],
+  ['dip', 'DIP'],
+  ['height', 'ALT'],
+] as const;
 
 function makeRows(prescription?: Prescription): OpticalRow[] {
   return ROWS.map(([distance, eye]) => {
@@ -82,6 +92,8 @@ function initialValues(fixedClient?: Client, prescription?: Prescription): FormV
     clientId: String(fixedClient?.id ?? prescription?.clientId ?? ''),
     prescriptionDate: prescription?.prescriptionDate ?? new Date().toISOString().slice(0, 10),
     prescriberName: prescription?.prescriberName ?? '',
+    additionOd: prescription?.additionOd ?? '',
+    additionOi: prescription?.additionOi ?? '',
     notes: prescription?.notes ?? '',
     reason: '',
     rows: makeRows(prescription),
@@ -186,6 +198,8 @@ export function PrescriptionForm({
       const core = {
         prescriptionDate: values.prescriptionDate,
         prescriberName: values.prescriberName,
+        additionOd: values.additionOd,
+        additionOi: values.additionOi,
         notes: values.notes,
         values: toOpticalValues(values.rows),
       };
@@ -208,8 +222,8 @@ export function PrescriptionForm({
   };
 
   return (
-    <Card className="mt-6 p-6">
-      <form onSubmit={(event) => void handleSubmit(event)} noValidate>
+    <Card className="mt-6 min-w-0 p-4 sm:p-6">
+      <form className="min-w-0" onSubmit={(event) => void handleSubmit(event)} noValidate>
         {errors.form && (
           <div
             className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
@@ -341,7 +355,7 @@ export function PrescriptionForm({
           </label>
         </div>
 
-        <fieldset className="mt-7">
+        <fieldset className="mt-7 min-w-0 max-w-full">
           <legend className="text-base font-bold text-slate-950">Graduaciones</legend>
           <p className="mt-1 text-sm text-slate-600">
             Completá solo los valores informados. Los campos vacíos se conservan como no informados.
@@ -351,59 +365,152 @@ export function PrescriptionForm({
               {errors.values}
             </p>
           )}
-          <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
-            <table className="w-full min-w-[760px] border-collapse text-sm">
-              <thead className="bg-slate-50 text-xs font-bold tracking-wide text-slate-600 uppercase">
-                <tr>
-                  <th className="px-3 py-3 text-left">Visión</th>
-                  <th className="px-3 py-3 text-left">Ojo</th>
-                  {['ESF', 'CIL', 'EJE', 'DIP', 'ALT'].map((label) => (
-                    <th key={label} className="px-2 py-3 text-left">
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {values.rows.map((row, index) => (
-                  <tr key={`${row.distance}:${row.eye}`}>
-                    <th className="px-3 py-3 text-left font-semibold" scope="row">
-                      {row.distance === 'FAR' ? 'Lejos' : 'Cerca'}
-                    </th>
-                    <td className="px-3 py-3 font-semibold text-slate-600">{row.eye}</td>
-                    {(['sphere', 'cylinder', 'axis', 'dip', 'height'] as const).map((field) => {
-                      const error = errors[`values.${index}.${field}`];
-                      const label = `${field === 'sphere' ? 'ESF' : field === 'cylinder' ? 'CIL' : field === 'axis' ? 'EJE' : field === 'dip' ? 'DIP' : 'ALT'} ${row.distance === 'FAR' ? 'lejos' : 'cerca'} ${row.eye}`;
-                      return (
-                        <td key={field} className="px-2 py-2 align-top">
-                          <label className="sr-only" htmlFor={`value-${index}-${field}`}>
-                            {label}
-                          </label>
-                          <input
-                            id={`value-${index}-${field}`}
-                            inputMode={field === 'axis' ? 'numeric' : 'decimal'}
-                            className={`${inputClassName} min-w-24 px-2`}
-                            placeholder={field === 'axis' ? '0–180' : '0,00'}
-                            value={row[field]}
-                            onChange={(event) => updateRow(index, field, event.target.value)}
-                            aria-invalid={Boolean(error)}
-                            aria-label={label}
-                          />
-                          {error && (
-                            <span
-                              className="mt-1 block max-w-32 text-xs font-semibold text-red-700"
-                              role="alert"
+          <section className="mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border border-teal-200 bg-white shadow-sm">
+            <div className="flex items-center gap-3 border-b border-teal-200 bg-teal-50 px-4 py-3">
+              <span className="flex h-8 min-w-12 items-center justify-center rounded-lg bg-teal-700 px-2 text-xs font-black tracking-wider text-white">
+                ADD
+              </span>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-teal-950">Adición por ojo</h3>
+                <p className="mt-0.5 text-xs text-teal-900">
+                  Informá cada ojo por separado. Ambos valores son opcionales.
+                </p>
+              </div>
+            </div>
+            <div className="grid w-full max-w-2xl grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+              {(['additionOd', 'additionOi'] as const).map((field) => {
+                const eye = field === 'additionOd' ? 'OD' : 'OI';
+                return (
+                  <label
+                    key={field}
+                    className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-sm font-semibold text-slate-800 focus-within:border-teal-400 focus-within:bg-teal-50/40"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="rounded-md bg-teal-100 px-2 py-0.5 text-xs font-black text-teal-800">
+                        {eye}
+                      </span>
+                      Adición
+                    </span>
+                    <input
+                      inputMode="decimal"
+                      className={`${inputClassName} mt-1.5`}
+                      placeholder="0,00"
+                      value={values[field]}
+                      onChange={(event) => update(field, event.target.value)}
+                      aria-invalid={Boolean(errors[field])}
+                      aria-label={`ADD ${eye}`}
+                    />
+                    <FieldError id={`${field}-error`} message={errors[field]} />
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+          <div className="mt-4 min-w-0 max-w-full space-y-4">
+            {(['FAR', 'NEAR'] as const).map((distance) => (
+              <section
+                key={distance}
+                className="min-w-0 max-w-full overflow-hidden rounded-xl border border-teal-200 bg-white shadow-sm"
+                aria-labelledby={`graduation-${distance.toLowerCase()}`}
+              >
+                <div className="flex items-center gap-3 border-b border-teal-200 bg-teal-50 px-4 py-3">
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-700 text-xs font-black text-white"
+                    aria-hidden="true"
+                  >
+                    {distance === 'FAR' ? 'L' : 'C'}
+                  </span>
+                  <div>
+                    <h3
+                      id={`graduation-${distance.toLowerCase()}`}
+                      className="text-sm font-black tracking-[0.08em] text-teal-950 uppercase"
+                    >
+                      {distance === 'FAR' ? 'Lejos' : 'Cerca'}
+                    </h3>
+                    <p className="mt-0.5 text-xs text-teal-900">
+                      Graduación para ojo derecho e izquierdo
+                    </p>
+                  </div>
+                </div>
+                <div className="max-w-full overflow-x-auto" tabIndex={0}>
+                  <div className="w-full min-w-[752px] px-4">
+                    <table className="w-full max-w-[860px] table-fixed border-collapse text-sm">
+                      <caption className="sr-only">
+                        Graduación de {distance === 'FAR' ? 'lejos' : 'cerca'}
+                      </caption>
+                      <colgroup>
+                        <col className="w-24" />
+                        {graduationColumns.map(([, label]) => (
+                          <col key={label} />
+                        ))}
+                      </colgroup>
+                      <thead className="bg-slate-50/80 text-xs font-bold tracking-wide text-slate-600 uppercase">
+                        <tr>
+                          <th className="sticky left-0 z-10 border-r border-teal-100 bg-teal-50 px-4 py-3 text-left">
+                            Ojo
+                          </th>
+                          {graduationColumns.map(([, label]) => (
+                            <th key={label} className="px-3 py-3 text-left">
+                              {label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-teal-100">
+                        {values.rows.map((row, index) =>
+                          row.distance !== distance ? null : (
+                            <tr
+                              key={`${row.distance}:${row.eye}`}
+                              className="group hover:bg-teal-50/30"
                             >
-                              {error}
-                            </span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                              <th
+                                className="sticky left-0 z-10 border-r border-teal-100 bg-white px-4 py-3 text-left group-hover:bg-teal-50"
+                                scope="row"
+                              >
+                                <span className="inline-flex min-w-11 items-center justify-center rounded-md border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-black text-teal-800">
+                                  {row.eye}
+                                </span>
+                              </th>
+                              {graduationColumns.map(([field, shortLabel]) => {
+                                const error = errors[`values.${index}.${field}`];
+                                const label = `${shortLabel} ${distance === 'FAR' ? 'lejos' : 'cerca'} ${row.eye}`;
+                                return (
+                                  <td key={field} className="px-3 py-2 align-top">
+                                    <label className="sr-only" htmlFor={`value-${index}-${field}`}>
+                                      {label}
+                                    </label>
+                                    <input
+                                      id={`value-${index}-${field}`}
+                                      inputMode={field === 'axis' ? 'numeric' : 'decimal'}
+                                      className={`${inputClassName} min-w-24 px-2 tabular-nums`}
+                                      placeholder={field === 'axis' ? '0–180' : '0,00'}
+                                      value={row[field]}
+                                      onChange={(event) =>
+                                        updateRow(index, field, event.target.value)
+                                      }
+                                      aria-invalid={Boolean(error)}
+                                      aria-label={label}
+                                    />
+                                    {error && (
+                                      <span
+                                        className="mt-1 block max-w-32 text-xs font-semibold text-red-700"
+                                        role="alert"
+                                      >
+                                        {error}
+                                      </span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+            ))}
           </div>
         </fieldset>
 
