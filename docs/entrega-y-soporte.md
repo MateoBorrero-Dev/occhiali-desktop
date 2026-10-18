@@ -57,6 +57,10 @@ debe improvisar un borrado de configuración sobre la única copia disponible.
 - Una carpeta sincronizada sólo recibe el archivo; Occhiali no confirma la subida remota.
 - Restaurá únicamente un `.ocbackup` verificado y mantené el equipo encendido hasta el reinicio.
 
+Los comprobantes de retiro y su trazabilidad forman parte de la misma base SQLite y se incluyen en
+el backup cifrado. Después de restaurar en un perfil aislado, verificá una ficha con comprobante,
+su número, estado y eventos antes de reemplazar un entorno habitual.
+
 Ante `recovery-required`, un marcador dañado o un inicio bloqueado después de restaurar, no borres la
 base, el rollback ni el estado. Copiá de forma conservadora el perfil completo a una ubicación
 segura y realizá el diagnóstico sobre esa copia.

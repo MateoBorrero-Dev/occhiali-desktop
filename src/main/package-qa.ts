@@ -64,6 +64,18 @@ async function writeScenario(directory: string): Promise<void> {
       supplier: 'Proveedor QA empaquetado',
       treatmentNames: ['Tratamiento libre empaquetado'],
     });
+    const receipt = database.deliveryReceipts.create({
+      opticalJobId: job.id,
+      deliveredAt: '2026-10-17T18:30:00.000Z',
+      recipientType: 'AUTHORIZED_THIRD_PARTY',
+      recipientFullName: 'Tercera Ficticia',
+      recipientDocumentNumber: '00000000',
+      recipientRelationship: 'Persona autorizada de QA',
+      authorizationReference: 'Autorización ficticia de verificación empaquetada',
+      authorizationConfirmed: true,
+      deliveredBy: 'Responsable QA',
+      deliveryConfirmed: true,
+    });
     const created = await backups.create(database, recoveryPassword);
     const backupPath = join(directory, 'backups', created.fileName);
     if (!existsSync(backupPath)) throw new Error('No se generó el backup empaquetado.');
@@ -92,6 +104,11 @@ async function writeScenario(directory: string): Promise<void> {
           'Tratamiento libre empaquetado'
       )
         throw new Error('La restauración empaquetada no conservó la ficha del Bloque 1.');
+      if (
+        candidate.deliveryReceipts.getById(receipt.id)?.receiptNumber !== 'RET-000001' ||
+        candidate.deliveryReceipts.getById(receipt.id)?.recipientFullName !== 'Tercera Ficticia'
+      )
+        throw new Error('La restauración empaquetada no conservó el comprobante de retiro.');
     } finally {
       candidate.close();
     }
@@ -126,6 +143,9 @@ function readScenario(directory: string): void {
       job.treatments[0]?.name !== 'Tratamiento libre empaquetado'
     )
       throw new Error('La reapertura empaquetada no conservó la ficha del Bloque 1.');
+    const receipt = database.deliveryReceipts.getByJobId(job.id);
+    if (receipt?.receiptNumber !== 'RET-000001' || receipt.recipientFullName !== 'Tercera Ficticia')
+      throw new Error('La reapertura empaquetada no conservó el comprobante de retiro.');
   } finally {
     database.close();
   }

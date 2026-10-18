@@ -26,6 +26,10 @@ import type {
   BackupStatus,
   BackupMetadata,
   BackupOperationResult,
+  CreateDeliveryReceiptEventInput,
+  CreateDeliveryReceiptInput,
+  DeliveryReceipt,
+  DeliveryReceiptExportResult,
 } from './database-models';
 
 export const IPC_CHANNELS = {
@@ -49,6 +53,11 @@ export const IPC_CHANNELS = {
   opticalJobsCreate: 'optical-jobs:create',
   opticalJobsUpdate: 'optical-jobs:update',
   treatmentsList: 'treatments:list',
+  deliveryReceiptsGet: 'delivery-receipts:get',
+  deliveryReceiptsGetByJob: 'delivery-receipts:get-by-job',
+  deliveryReceiptsCreate: 'delivery-receipts:create',
+  deliveryReceiptsAddEvent: 'delivery-receipts:add-event',
+  deliveryReceiptsExportPdf: 'delivery-receipts:export-pdf',
   dashboardSummary: 'dashboard:get-summary',
   globalSearch: 'search:global',
   securityStatus: 'security:status',
@@ -155,6 +164,35 @@ export interface OpticalJobApi {
 
 export interface TreatmentApi {
   list: () => Promise<OpticalJobIpcResult<Treatment[]>>;
+}
+
+export type DeliveryReceiptIpcErrorCode =
+  | 'VALIDATION'
+  | 'NOT_FOUND'
+  | 'JOB_NOT_FOUND'
+  | 'DUPLICATE'
+  | 'INVALID_STATE'
+  | 'CONFLICT'
+  | 'PERSISTENCE'
+  | 'EXPORT';
+
+export interface DeliveryReceiptIpcError {
+  code: DeliveryReceiptIpcErrorCode;
+  message: string;
+  fields?: Record<string, string>;
+}
+
+export type DeliveryReceiptIpcResult<T> =
+  { ok: true; data: T } | { ok: false; error: DeliveryReceiptIpcError };
+
+export interface DeliveryReceiptApi {
+  get: (id: number) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt>>;
+  getByJob: (jobId: number) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt | null>>;
+  create: (input: CreateDeliveryReceiptInput) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt>>;
+  addEvent: (
+    input: CreateDeliveryReceiptEventInput,
+  ) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt>>;
+  exportPdf: (id: number) => Promise<DeliveryReceiptIpcResult<DeliveryReceiptExportResult>>;
 }
 
 export type QueryIpcErrorCode = 'VALIDATION' | 'CONFLICT' | 'PERSISTENCE';

@@ -77,6 +77,20 @@ como un nuevo registro.
 Los tratamientos son características comerciales de lentes, no procedimientos médicos. Desde el
 detalle puede editarse la ficha y consultarse su relación con cliente y receta.
 
+### Registrar y consultar un retiro
+
+1. Abrí el detalle de la ficha y elegí **Registrar retiro**.
+2. Confirmá fecha y hora, quién retira y quién realiza la entrega.
+3. Si retira un tercero, ingresá DNI, vínculo y referencia de autorización, y marcá la comprobación
+   realizada. Occhiali no verifica documentos automáticamente.
+4. Elegí **Revisar entrega**, controlá el resumen y confirmá expresamente la entrega.
+5. Desde el comprobante podés **Exportar PDF**. Cancelar el diálogo no crea un archivo ni otra
+   entrega.
+
+Una aclaración o anulación exige motivo y queda en el historial. No borra los datos originales. Los
+espacios de firma del PDF son para completar en papel; no existe firma digital. El comprobante no es
+una factura ni un comprobante fiscal.
+
 ### Dashboard y búsqueda global
 
 **Inicio** muestra los conteos reales de clientes activos, recetas y fichas. La búsqueda superior

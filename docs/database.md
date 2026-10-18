@@ -31,6 +31,8 @@ erDiagram
     PRESCRIPTION_REVISIONS ||--o{ PRESCRIPTION_REVISION_VALUES : contiene
     OPTICAL_JOBS ||--o{ OPTICAL_JOB_TREATMENTS : recibe
     TREATMENTS ||--o{ OPTICAL_JOB_TREATMENTS : clasifica
+    OPTICAL_JOBS ||--o| DELIVERY_RECEIPTS : entrega
+    DELIVERY_RECEIPTS ||--o{ DELIVERY_RECEIPT_EVENTS : registra
 
     CLIENTS {
         INTEGER id PK
@@ -187,6 +189,15 @@ comerciales del producto óptico, no tratamientos médicos ni procedimientos cl�
 Tabla de unión muchos a muchos. Su clave primaria compuesta evita asociaciones repetidas y sus dos
 claves foráneas impiden referenciar trabajos o tratamientos inexistentes.
 
+### Comprobantes de retiro
+
+`delivery_receipts` conserva una instantánea del cliente, ficha, producto, color, proveedor,
+tratamientos, receptor y entrega. `optical_job_id` es clave foránea y única: una ficha admite una
+entrega completa y no puede duplicarse por otra ruta. `delivery_receipt_sequence` reserva el próximo
+número mediante un `UPDATE ... RETURNING` dentro de la transacción; anular no decrementa ni libera
+la secuencia. `delivery_receipt_events` agrega aclaraciones o anulaciones con motivo y fecha sin
+sobrescribir el comprobante.
+
 ## Incertidumbre de la ficha física
 
 La ficha muestra DIP y ALT por fila, pero todavía debe confirmarse con la dueña si son valores
@@ -228,6 +239,8 @@ Migraciones actuales:
 5. `005_prescription_additions`: agrega `addition_od` y `addition_oi` como columnas nullable tanto a
    recetas actuales como a revisiones; las recetas y revisiones anteriores quedan intactas con ADD
    no informado.
+6. `006_delivery_receipts`: agrega secuencia, snapshots de entrega e historial de eventos. No altera
+   fichas existentes ni genera comprobantes retroactivos.
 
 Fase 6 no agregó migraciones: las tres tablas de fichas y tratamientos ya representaban el dominio
 necesario. El Bloque 1 de ajustes de la clienta reutiliza esas relaciones para tratamientos libres y

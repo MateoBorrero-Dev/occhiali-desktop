@@ -10,6 +10,7 @@ import type {
   SearchApi,
   SecurityApi,
   BackupApi,
+  DeliveryReceiptApi,
 } from '../../shared/ipc-contracts';
 
 declare global {
@@ -20,6 +21,7 @@ declare global {
       prescriptions: PrescriptionApi;
       opticalJobs: OpticalJobApi;
       treatments: TreatmentApi;
+      deliveryReceipts: DeliveryReceiptApi;
       dashboard: DashboardApi;
       search: SearchApi;
       security: SecurityApi;

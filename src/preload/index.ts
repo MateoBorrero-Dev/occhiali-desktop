@@ -10,6 +10,7 @@ import type {
   SearchApi,
   SecurityApi,
   BackupApi,
+  DeliveryReceiptApi,
 } from '../shared/ipc-contracts';
 
 const clientMethods: ClientApi = {
@@ -52,6 +53,15 @@ const treatmentMethods: TreatmentApi = {
 
 const treatments = Object.freeze(treatmentMethods);
 
+const deliveryReceiptMethods: DeliveryReceiptApi = {
+  get: (id) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsGet, id),
+  getByJob: (jobId) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsGetByJob, jobId),
+  create: (input) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsCreate, input),
+  addEvent: (input) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsAddEvent, input),
+  exportPdf: (id) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsExportPdf, id),
+};
+const deliveryReceipts = Object.freeze(deliveryReceiptMethods);
+
 const dashboard = Object.freeze<DashboardApi>({
   getSummary: () => ipcRenderer.invoke(IPC_CHANNELS.dashboardSummary),
 });
@@ -88,6 +98,7 @@ const opticaApi = Object.freeze({
   prescriptions,
   opticalJobs,
   treatments,
+  deliveryReceipts,
   dashboard,
   search,
   security,

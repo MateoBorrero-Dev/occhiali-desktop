@@ -9,6 +9,8 @@ import { createQueryIpcHandlers } from './query-handlers';
 import { createSecurityIpcHandlers } from './security-handlers';
 import type { SecurityManager } from '../security/security-manager';
 import type { BackupService } from '../backup/backup-service';
+import { createDeliveryReceiptIpcHandlers } from './delivery-receipt-handlers';
+import { ElectronDeliveryReceiptPdfExporter } from '../documents/delivery-receipt-pdf';
 
 export function registerIpcHandlers(
   database: ApplicationDatabase,
@@ -86,6 +88,26 @@ export function registerIpcHandlers(
   );
   ipcMain.handle(IPC_CHANNELS.treatmentsList, (_event, ...args: unknown[]) =>
     authorized(() => opticalJobs.treatments(...args)),
+  );
+
+  const deliveryReceipts = createDeliveryReceiptIpcHandlers(
+    database,
+    new ElectronDeliveryReceiptPdfExporter(),
+  );
+  ipcMain.handle(IPC_CHANNELS.deliveryReceiptsGet, (_event, ...args: unknown[]) =>
+    authorized(() => deliveryReceipts.get(...args)),
+  );
+  ipcMain.handle(IPC_CHANNELS.deliveryReceiptsGetByJob, (_event, ...args: unknown[]) =>
+    authorized(() => deliveryReceipts.getByJob(...args)),
+  );
+  ipcMain.handle(IPC_CHANNELS.deliveryReceiptsCreate, (_event, ...args: unknown[]) =>
+    authorized(() => deliveryReceipts.create(...args)),
+  );
+  ipcMain.handle(IPC_CHANNELS.deliveryReceiptsAddEvent, (_event, ...args: unknown[]) =>
+    authorized(() => deliveryReceipts.addEvent(...args)),
+  );
+  ipcMain.handle(IPC_CHANNELS.deliveryReceiptsExportPdf, (_event, ...args: unknown[]) =>
+    authorized(() => deliveryReceipts.exportPdf(...args)),
   );
 
   const queries = createQueryIpcHandlers(database);

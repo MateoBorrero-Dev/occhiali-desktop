@@ -97,6 +97,10 @@ opcional y “Lentes de contacto” como sugerencia de producto; QA visual manua
 **Ajustes de la clienta — Bloque 2:** adición independiente por ojo y paneles profesionales de
 graduación Lejos/Cerca implementados con historial compatible; QA visual manual pendiente.
 
+**Ajustes de la clienta — Bloque 3:** comprobantes históricos de retiro por titular o tercero,
+numeración transaccional, prevención de duplicados, aclaraciones/anulaciones y exportación PDF local
+implementados; QA visual manual pendiente.
+
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
 [Instalador Windows](docs/windows-installer.md).
@@ -121,6 +125,7 @@ Encontrá más información en:
 - [Gestión de clientes](docs/clients.md)
 - [Recetas ópticas](docs/prescriptions.md)
 - [Fichas de trabajo](docs/optical-jobs.md)
+- [Comprobantes de retiro](docs/delivery-receipts.md)
 - [Dashboard y búsqueda integrada](docs/search-and-dashboard.md)
 - [Seguridad](docs/security.md)
 - [Backup y restauración](docs/backup-restore.md)

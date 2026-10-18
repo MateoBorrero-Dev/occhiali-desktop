@@ -106,6 +106,10 @@ Fichas usa `optical-jobs:list`, `optical-jobs:list-by-client`, `optical-jobs:get
 `treatments:list`. Dashboard y búsqueda usan `dashboard:get-summary` y `search:global`. Main valida de
 nuevo cliente, receta, enumeraciones, textos y tratamientos antes de ejecutar repositorios.
 
+Comprobantes usa cinco canales explícitos `delivery-receipts:*` para consultar por ID o ficha,
+crear, agregar un evento histórico y exportar PDF. Todos requieren sesión autorizada. React no
+recibe acceso a archivos: Main abre el diálogo nativo y responde solo cancelación y nombre final.
+
 Los handlers convierten errores internos en resultados discriminados con códigos de validación,
 DNI duplicado, registro inexistente, conflicto o persistencia. Las respuestas nunca exponen rutas
 locales, SQL ni datos privados en logs.
@@ -150,6 +154,12 @@ de valores forman una sola transacción.
 
 El repositorio de fichas mantiene cliente e ID estables, valida la receta del mismo cliente y
 reemplaza las asociaciones de tratamientos dentro de la misma transacción que la actualización.
+
+`DeliveryReceiptRepository` reserva la numeración, captura el snapshot y crea el comprobante en una
+misma transacción. La unicidad de `optical_job_id` refuerza en SQLite la prevención de duplicados.
+Las aclaraciones y anulaciones son eventos append-only. El PDF se genera en Main con una ventana
+oculta aislada, HTML escapado y `webContents.printToPDF`; sus detalles están en
+[delivery-receipts.md](delivery-receipts.md).
 
 `QueryRepository` contiene exclusivamente lecturas: una consulta agregada para el dashboard y tres
 consultas limitadas para la búsqueda agrupada. No comparte una conexión ni SQL con React.

@@ -274,6 +274,76 @@ export interface OpticalJobTreatment {
   createdAt: IsoTimestamp;
 }
 
+export type DeliveryRecipientType = 'OWNER' | 'AUTHORIZED_THIRD_PARTY';
+export type DeliveryReceiptStatus = 'CONFIRMED' | 'CORRECTED' | 'ANNULLED';
+export type DeliveryReceiptEventType = 'CORRECTION_NOTE' | 'ANNULLED';
+
+export interface DeliveryReceiptEvent {
+  id: number;
+  receiptId: number;
+  type: DeliveryReceiptEventType;
+  reason: string;
+  createdAt: IsoTimestamp;
+}
+
+export interface DeliveryReceipt {
+  id: number;
+  receiptNumber: string;
+  opticalJobId: number;
+  deliveredAt: IsoTimestamp;
+  registeredAt: IsoTimestamp;
+  status: DeliveryReceiptStatus;
+  clientFirstName: string;
+  clientLastName: string;
+  clientDocumentNumber: string | null;
+  clientPhone: string | null;
+  jobNumber: string | null;
+  product: string | null;
+  frameCondition: FrameCondition | null;
+  frameMaterial: FrameMaterial | null;
+  frameModel: string | null;
+  productColor: string | null;
+  supplier: string | null;
+  colorType: ColorType | null;
+  productObservations: string | null;
+  treatmentNames: string[];
+  recipientType: DeliveryRecipientType;
+  recipientFullName: string;
+  recipientDocumentNumber: string | null;
+  recipientRelationship: string | null;
+  authorizationReference: string | null;
+  authorizationConfirmed: boolean;
+  deliveredBy: string;
+  deliveryNotes: string | null;
+  deliveryConfirmed: true;
+  events: DeliveryReceiptEvent[];
+}
+
+export interface CreateDeliveryReceiptInput {
+  opticalJobId: number;
+  deliveredAt: IsoTimestamp;
+  recipientType: DeliveryRecipientType;
+  recipientFullName: string;
+  recipientDocumentNumber?: string | null;
+  recipientRelationship?: string | null;
+  authorizationReference?: string | null;
+  authorizationConfirmed?: boolean;
+  deliveredBy: string;
+  deliveryNotes?: string | null;
+  deliveryConfirmed: boolean;
+}
+
+export interface CreateDeliveryReceiptEventInput {
+  receiptId: number;
+  type: DeliveryReceiptEventType;
+  reason: string;
+}
+
+export interface DeliveryReceiptExportResult {
+  canceled: boolean;
+  fileName: string | null;
+}
+
 export interface DashboardSummary {
   activeClients: number;
   totalPrescriptions: number;

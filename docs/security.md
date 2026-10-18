@@ -54,6 +54,12 @@ controlado; no se inventa una sesión ni se usa un valor por defecto.
 
 ## Límites restantes
 
+Los comprobantes requieren la sesión local activa. Main vuelve a validar campos y relaciones, y
+React no puede ejecutar SQL ni elegir rutas sin el diálogo nativo. Para PDF, los textos se escapan,
+la ventana interna mantiene sandbox, aislamiento de contexto y Node Integration deshabilitado, y se
+bloquean ventanas y navegación. El sistema registra la declaración de autorización de un tercero;
+no autentica su identidad, no almacena imágenes de DNI y no implementa firma digital.
+
 - Un administrador local puede modificar archivos de configuración o instrumentar la aplicación.
 - La base activa no está cifrada por Occhiali. Durante una restauración existe temporalmente un
   rollback descifrado; se elimina después del marcador confirmado, sin garantía de borrado físico en

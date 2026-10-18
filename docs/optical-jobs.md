@@ -41,6 +41,11 @@ incompatibilidades.
 
 ## Flujos de interfaz
 
+El detalle de ficha muestra **Registrar retiro** cuando no existe comprobante. Después de confirmar,
+la acción cambia a **Ver comprobante** y muestra su número y estado. La entrega captura un snapshot;
+editar luego la ficha no cambia el documento. El alcance es una entrega completa por ficha, sin
+entregas parciales. Ver [delivery-receipts.md](delivery-receipts.md).
+
 `/trabajos` pagina y busca por número, cliente, producto y modelo. El alta general busca clientes de
 a diez resultados mediante el repositorio existente, sin cargar miles. Desde `/clientes/:id`, el
 cliente queda preseleccionado. Al seleccionarlo se consultan solamente sus recetas, ordenadas desde

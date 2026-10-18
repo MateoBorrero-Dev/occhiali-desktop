@@ -191,6 +191,68 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    id: '006_delivery_receipts',
+    up: (database) => {
+      database.exec(`
+        CREATE TABLE delivery_receipt_sequence (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          last_number INTEGER NOT NULL CHECK (last_number >= 0)
+        ) STRICT;
+
+        INSERT INTO delivery_receipt_sequence (id, last_number) VALUES (1, 0);
+
+        CREATE TABLE delivery_receipts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          receipt_number TEXT NOT NULL UNIQUE,
+          optical_job_id INTEGER NOT NULL UNIQUE,
+          delivered_at TEXT NOT NULL,
+          registered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          status TEXT NOT NULL DEFAULT 'CONFIRMED'
+            CHECK (status IN ('CONFIRMED', 'CORRECTED', 'ANNULLED')),
+          client_first_name TEXT NOT NULL,
+          client_last_name TEXT NOT NULL,
+          client_document_number TEXT,
+          client_phone TEXT,
+          job_number TEXT,
+          product TEXT,
+          frame_condition TEXT CHECK (frame_condition IS NULL OR frame_condition IN ('NEW', 'USED')),
+          frame_material TEXT CHECK (frame_material IS NULL OR frame_material IN ('ZILO', 'METAL')),
+          frame_model TEXT,
+          product_color TEXT,
+          supplier TEXT,
+          color_type TEXT CHECK (color_type IS NULL OR color_type IN ('FULL', 'GRADIENT')),
+          product_observations TEXT,
+          treatment_names_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(treatment_names_json)),
+          recipient_type TEXT NOT NULL CHECK (recipient_type IN ('OWNER', 'AUTHORIZED_THIRD_PARTY')),
+          recipient_full_name TEXT NOT NULL,
+          recipient_document_number TEXT,
+          recipient_relationship TEXT,
+          authorization_reference TEXT,
+          authorization_confirmed INTEGER NOT NULL DEFAULT 0 CHECK (authorization_confirmed IN (0, 1)),
+          delivered_by TEXT NOT NULL,
+          delivery_notes TEXT,
+          delivery_confirmed INTEGER NOT NULL CHECK (delivery_confirmed = 1),
+          FOREIGN KEY (optical_job_id) REFERENCES optical_jobs(id) ON UPDATE RESTRICT ON DELETE RESTRICT
+        ) STRICT;
+
+        CREATE INDEX delivery_receipts_registered_index
+          ON delivery_receipts(registered_at DESC, id DESC);
+
+        CREATE TABLE delivery_receipt_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          receipt_id INTEGER NOT NULL,
+          event_type TEXT NOT NULL CHECK (event_type IN ('CORRECTION_NOTE', 'ANNULLED')),
+          reason TEXT NOT NULL CHECK (length(trim(reason)) > 0),
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          FOREIGN KEY (receipt_id) REFERENCES delivery_receipts(id) ON UPDATE RESTRICT ON DELETE RESTRICT
+        ) STRICT;
+
+        CREATE INDEX delivery_receipt_events_receipt_index
+          ON delivery_receipt_events(receipt_id, created_at, id);
+      `);
+    },
+  },
 ];
 
 interface AppliedMigrationRow {

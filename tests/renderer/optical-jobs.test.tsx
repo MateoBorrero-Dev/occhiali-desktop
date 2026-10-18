@@ -115,6 +115,13 @@ function installApi(items = [SUMMARY]) {
     update: vi.fn(() => Promise.resolve(ok(JOB))),
   };
   const treatments = { list: vi.fn(() => Promise.resolve(ok(TREATMENTS))) };
+  const deliveryReceipts = {
+    get: vi.fn(),
+    getByJob: vi.fn(() => Promise.resolve(ok(null))),
+    create: vi.fn(),
+    addEvent: vi.fn(),
+    exportPdf: vi.fn(),
+  };
   Object.defineProperty(window, 'optica', {
     configurable: true,
     value: {
@@ -123,11 +130,12 @@ function installApi(items = [SUMMARY]) {
       prescriptions,
       opticalJobs,
       treatments,
+      deliveryReceipts,
       dashboard: { getSummary: vi.fn() },
       search: { global: vi.fn() },
     },
   });
-  return { clients, prescriptions, opticalJobs, treatments };
+  return { clients, prescriptions, opticalJobs, treatments, deliveryReceipts };
 }
 
 describe('módulo de fichas de trabajo', () => {

@@ -1,7 +1,15 @@
-import { ArrowLeft, FileQuestion, FileText, Pencil, RefreshCw, UserRound } from 'lucide-react';
+import {
+  ArrowLeft,
+  FileQuestion,
+  FileText,
+  PackageCheck,
+  Pencil,
+  RefreshCw,
+  UserRound,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import type { Client, OpticalJob } from '../../../shared/database-models';
+import type { Client, DeliveryReceipt, OpticalJob } from '../../../shared/database-models';
 import { EmptyState } from '../components/common/EmptyState';
 import { PageHeader } from '../components/common/PageHeader';
 import { Button } from '../components/ui/Button';
@@ -16,12 +24,13 @@ import {
   OpticalJobRequestError,
   unwrapOpticalJobResult,
 } from '../lib/optical-job-api';
+import { deliveryStatusLabel, unwrapDeliveryReceiptResult } from '../lib/delivery-receipt-api';
 
 type State =
   | { status: 'loading' }
   | { status: 'not-found' }
   | { status: 'error' }
-  | { status: 'ready'; job: OpticalJob; client: Client };
+  | { status: 'ready'; job: OpticalJob; client: Client; receipt: DeliveryReceipt | null };
 function Detail({ label, value }: { label: string; value: string }): React.JSX.Element {
   return (
     <div>
@@ -49,6 +58,7 @@ export function OpticalJobDetailPage(): React.JSX.Element {
       .then(async (job) => ({
         job,
         client: unwrapClientResult(await window.optica.clients.get(job.clientId)),
+        receipt: unwrapDeliveryReceiptResult(await window.optica.deliveryReceipts.getByJob(job.id)),
       }))
       .then((data) => {
         if (active) setState({ status: 'ready', ...data });
@@ -106,7 +116,7 @@ export function OpticalJobDetailPage(): React.JSX.Element {
         />
       </Card>
     );
-  const { job, client } = state;
+  const { job, client, receipt } = state;
   return (
     <div>
       <PageHeader
@@ -123,6 +133,17 @@ export function OpticalJobDetailPage(): React.JSX.Element {
               <Pencil size={16} />
               Editar
             </Link>
+            {receipt ? (
+              <Link to={`/retiros/${receipt.id}`} className={buttonStyles()}>
+                <FileText size={16} />
+                Ver comprobante
+              </Link>
+            ) : (
+              <Link to={`/trabajos/${job.id}/retiro/nuevo`} className={buttonStyles()}>
+                <PackageCheck size={16} />
+                Registrar retiro
+              </Link>
+            )}
           </div>
         }
       />
@@ -183,6 +204,31 @@ export function OpticalJobDetailPage(): React.JSX.Element {
           </p>
         </Card>
       </div>
+      <Card className="mt-5 p-6">
+        <h2 className="text-base font-bold">Entrega del producto</h2>
+        {receipt ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-teal-200 bg-teal-50 p-4">
+            <div>
+              <p className="font-bold text-teal-950">{receipt.receiptNumber}</p>
+              <p className="mt-1 text-sm text-teal-900">
+                Estado: {deliveryStatusLabel(receipt.status)}
+              </p>
+            </div>
+            <Link to={`/retiros/${receipt.id}`} className={buttonStyles({ variant: 'secondary' })}>
+              <FileText size={16} /> Ver comprobante
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm text-slate-600">
+              Todavía no se registró la entrega de esta ficha.
+            </p>
+            <Link to={`/trabajos/${job.id}/retiro/nuevo`} className={buttonStyles()}>
+              <PackageCheck size={16} /> Registrar retiro
+            </Link>
+          </div>
+        )}
+      </Card>
       <Card className="mt-5 p-6">
         <h2 className="text-base font-bold">Tratamientos y acabados de lentes</h2>
         <p className="mt-1 text-sm text-slate-600">

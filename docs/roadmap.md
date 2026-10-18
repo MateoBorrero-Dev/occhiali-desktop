@@ -77,3 +77,11 @@ implementados. La versión permanece en 0.9.0 y no constituye una entrega defini
 Adición opcional e independiente para OD/OI, trazabilidad en revisiones y rediseño de graduaciones
 con paneles Lejos/Cerca. La migración incremental conserva recetas y revisiones anteriores sin
 inferencias ni cálculos clínicos.
+
+## Ajustes de la clienta — Bloque 3
+
+**Estado:** implementación y pruebas automatizadas completadas; QA visual manual pendiente.
+
+Registro de entrega por titular o tercero, snapshot histórico, numeración única, bloqueo de
+duplicados, vista A4, PDF local y trazabilidad append-only. No incorpora facturación, ventas,
+cobros, stock, firma digital ni entregas parciales. La versión permanece en 0.9.0.
