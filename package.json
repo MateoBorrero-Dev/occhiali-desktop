@@ -18,8 +18,10 @@
     "test:electron": "npm run test:electron:sqlite",
     "test:electron:sqlite": "electron scripts/verify-electron-sqlite.cjs",
     "build": "npm run typecheck && electron-vite build",
+    "package": "npm run package:win",
     "package:win": "node scripts/patch-electron-builder-collector.cjs && npm run build && electron-builder --win nsis --x64",
     "package:win:dir": "node scripts/patch-electron-builder-collector.cjs && npm run build && electron-builder --win dir --x64",
+    "verify": "npm run verify:package",
     "verify:package": "node scripts/verify-packaged-app.cjs"
   },
   "engines": {
@@ -71,6 +73,12 @@
       "output": "release",
       "buildResources": "build"
     },
+    "extraResources": [
+      {
+        "from": "resources/branding/occhiali-windows.ico",
+        "to": "branding/occhiali-windows.ico"
+      }
+    ],
     "files": [
       "out/**/*",
       "package.json",
@@ -105,9 +113,10 @@
           ]
         }
       ],
+      "icon": "resources/branding/occhiali-windows.ico",
       "executableName": "Occhiali",
       "artifactName": "Occhiali-Setup-${version}-${arch}.${ext}",
-      "signAndEditExecutable": false
+      "signExecutable": false
     },
     "nsis": {
       "oneClick": false,
@@ -118,6 +127,9 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Occhiali",
       "uninstallDisplayName": "Occhiali",
+      "installerIcon": "resources/branding/occhiali-windows.ico",
+      "uninstallerIcon": "resources/branding/occhiali-windows.ico",
+      "installerHeaderIcon": "resources/branding/occhiali-windows.ico",
       "deleteAppDataOnUninstall": false
     }
   }

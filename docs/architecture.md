@@ -84,8 +84,10 @@ limitados. `Ctrl+K` enfoca el campo dentro de la aplicación y `Escape` cierra l
 registrar atajos globales del sistema operativo.
 
 La paleta usa verde petróleo como color de marca, fondos neutros cálidos, tipografía del sistema e
-iconos de Lucide. Los estilos incluyen foco visible, estados activos, soporte de movimiento reducido
-y una anchura mínima alineada con la ventana de Electron para evitar una interfaz inutilizable.
+iconos de Lucide. La pantalla de acceso carga el logo oscuro completo sobre fondo claro; el sidebar
+usa la marca blanca de anteojos sobre su cápsula turquesa para conservar legibilidad a tamaño
+reducido. Los estilos incluyen foco visible, estados activos, soporte de movimiento reducido y una
+anchura mínima alineada con la ventana de Electron para evitar una interfaz inutilizable.
 
 ## IPC
 
@@ -175,6 +177,10 @@ electron-builder empaqueta `out/main`, `out/preload` y `out/renderer` en `app.as
 `better-sqlite3` como dependencia externa y su binario Node-API `win32-x64.node` queda en
 `app.asar.unpacked`; el resto de los prebuilds se excluye. NSIS genera un instalador asistido x64 por
 usuario con accesos directos y desinstalador. Ningún archivo de negocio se incorpora al paquete.
+
+El `.ico` oficial se asigna al ejecutable y a NSIS desde `package.json`. Además se copia como recurso
+externo y Main lo resuelve mediante `process.resourcesPath` para la ventana empaquetada; en desarrollo
+usa la ruta del repositorio. El verificador compara por SHA-256 la copia empaquetada con el original.
 
 `src/main/package-qa.ts` es un punto de entrada inerte salvo que se ejecute explícitamente con el
 runtime empaquetado, una variable de QA y una ruta bajo el directorio temporal. Valida sin mocks

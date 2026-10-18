@@ -85,3 +85,12 @@ inferencias ni cálculos clínicos.
 Registro de entrega por titular o tercero, snapshot histórico, numeración única, bloqueo de
 duplicados, vista A4, PDF local y trazabilidad append-only. No incorpora facturación, ventas,
 cobros, stock, firma digital ni entregas parciales. La versión permanece en 0.9.0.
+
+## Identidad visual definitiva
+
+**Estado:** implementación y validación automatizada completadas; QA visual/manual de accesos
+directos pendiente.
+
+Logo oficial en acceso y sidebar, e icono multirresolución para ventana, ejecutable, instalador,
+desinstalador y accesos directos. Se conserva la paleta turquesa y no se modifican funciones, datos,
+rutas ni contratos.

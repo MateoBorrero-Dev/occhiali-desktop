@@ -106,6 +106,10 @@ describe('interfaz principal', () => {
 
     expect(screen.getByText('OCCHIALI')).toBeInTheDocument();
     expect(screen.getByText('Sistema de Gestión Óptica')).toBeInTheDocument();
+    expect(document.querySelector('img[aria-hidden="true"]')).toHaveAttribute(
+      'src',
+      expect.stringContaining('occhiali-anteojos-blanco-transparente'),
+    );
     const navigation = screen.getByRole('navigation', { name: 'Navegación principal' });
     expect(within(navigation).getAllByRole('link')).toHaveLength(5);
     expect(

@@ -13,8 +13,8 @@ Desde un checkout confiable con las dependencias fijadas:
 
 ```bash
 npm ci --ignore-scripts
-npm run package:win
-npm run verify:package
+npm run package
+npm run verify
 ```
 
 `--ignore-scripts` evita que npm intente una compilación local innecesaria de `better-sqlite3` y
@@ -87,13 +87,21 @@ específico, scrypt y recuperación durable. ASAR fue inspeccionado para descart
 
 ## Firma, icono y SmartScreen
 
-No se proporcionaron logo oficial ni certificado Authenticode. Esta versión usa el icono
-predeterminado de Electron y el instalador está sin firma; Windows puede mostrar editor desconocido
-o advertencias de SmartScreen. No se debe desactivar ninguna protección.
+`resources/branding/occhiali-windows.ico` es el icono oficial multirresolución (16, 24, 32, 48, 64,
+128 y 256 px). electron-builder lo incrusta en `Occhiali.exe`, el instalador y el desinstalador; los
+accesos directos de Escritorio y menú Inicio apuntan al ejecutable. Main también lo asigna a la
+ventana y conserva una copia idéntica en `resources/branding` dentro de la distribución.
 
-Para una entrega final se necesitan un `.ico` oficial multirresolución y un certificado de firma de
-código confiable. La clave privada debe permanecer fuera de Git y del instalador, y la firma debe
-usar sello de tiempo. Conservar el mismo `appId` y ruta de datos al incorporar esos recursos.
+El instalador continúa sin certificado Authenticode; Windows puede mostrar editor desconocido o
+advertencias de SmartScreen. No se debe desactivar ninguna protección. Para una entrega firmada se
+necesita un certificado confiable con clave privada fuera de Git y sello de tiempo.
+
+Explorer, el menú Inicio y la barra de tareas pueden conservar una miniatura anterior después de
+reinstalar. Esto es caché de Windows si el icono extraído directamente del instalador y de
+`release/win-unpacked/Occhiali.exe` es el oficial y la copia empaquetada coincide por SHA-256. Para
+refrescar la vista se puede cerrar Occhiali, desanclar y volver a anclar el acceso, recrear el acceso
+directo o reiniciar Explorer/iniciar una nueva sesión. No se deben borrar datos de la aplicación ni
+modificar el paquete para resolver una caché visual.
 
 ## QA realizado y pendiente
 
@@ -110,12 +118,12 @@ leer la información.
 
 El controlador gráfico detectó la ventana, pero agotó el tiempo de aprobación al capturarla. Quedan
 pendientes el asistente visible, el flujo completo por UI, restauración con reinicio del `.exe`,
-resoluciones 820×600, 1180×760, 1366×768 y 1920×1080, icono final y actualización entre dos
+resoluciones 820×600, 1180×760, 1366×768 y 1920×1080 y actualización entre dos
 versiones distintas.
 
 ## Checklist de entrega
 
-- Ejecutar todas las validaciones y `npm run verify:package`.
+- Ejecutar todas las validaciones y `npm run verify`.
 - Revisar versión, `appId`, SHA-256, firma e icono.
 - Inspeccionar ASAR y el binario nativo x64.
 - Probar instalación limpia con un perfil aislado.

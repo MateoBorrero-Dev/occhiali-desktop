@@ -29,8 +29,8 @@ npm run format:check
 npm test
 npm run test:electron
 npm run build
-npm run package:win
-npm run verify:package
+npm run package
+npm run verify
 npm audit
 git diff --check
 ```
@@ -41,9 +41,10 @@ git diff --check
 - `test` ejecuta Vitest una sola vez.
 - `test:electron` carga el binario nativo en Electron y usa una base temporal aislada.
 - `build` repite el typecheck y genera `out/main`, `out/preload` y `out/renderer`.
-- `package:win` genera `release/win-unpacked` y el instalador NSIS x64.
-- `verify:package` inspecciona ASAR y ejecuta dos veces el runtime empaquetado sobre un perfil
-  temporal; prueba migraciones, persistencia, acceso local, backup y restauración.
+- `package` delega en `package:win` y genera `release/win-unpacked` y el instalador NSIS x64.
+- `verify` delega en `verify:package`, inspecciona ASAR, comprueba el icono oficial por SHA-256 y
+  ejecuta dos veces el runtime empaquetado sobre un perfil temporal; prueba migraciones,
+  persistencia, acceso local, backup y restauración.
 
 Las pruebas Vitest crean cada base debajo del directorio temporal del sistema. Nunca usan
 `app.getPath('userData')`. Para QA manual del arranque completo se puede establecer
@@ -179,8 +180,8 @@ medición de un equipo particular en una exigencia de producción.
 - La auditoría de dependencias de desarrollo conserva un aviso moderado transitivo en `sprintf-js`
   a través de electron-builder. El advisory no publica una versión corregida. No alcanza al runtime
   instalado y debe revisarse cuando exista una actualización compatible del proveedor.
-- El instalador de prueba no está firmado y usa el icono predeterminado de Electron porque no se
-  proporcionó un icono oficial. Windows puede mostrar advertencias de SmartScreen.
+- El instalador de prueba usa el icono oficial de Occhiali, pero continúa sin certificado
+  Authenticode. Windows puede mostrar advertencias de SmartScreen.
 - La actualización manual entre dos versiones distintas todavía requiere QA real; la
   desinstalación/reinstalación de 0.9.0 sí fue validada conservando el perfil temporal.
 - DIP y ALT se conservan por combinación distancia-ojo, pero su interpretación clínica exacta debe

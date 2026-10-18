@@ -20,8 +20,14 @@ interface PackageConfiguration {
     asar: boolean;
     npmRebuild: boolean;
     asarUnpack: string[];
+    extraResources: Array<{ from: string; to: string }>;
     files: string[];
-    win: { executableName: string; artifactName: string; signAndEditExecutable: boolean };
+    win: {
+      executableName: string;
+      artifactName: string;
+      icon: string;
+      signExecutable: boolean;
+    };
     nsis: Record<string, unknown>;
   };
 }
@@ -51,7 +57,8 @@ describe('configuración de distribución de Windows', () => {
         win: {
           executableName: 'Occhiali',
           artifactName: 'Occhiali-Setup-${version}-${arch}.${ext}',
-          signAndEditExecutable: false,
+          icon: 'resources/branding/occhiali-windows.ico',
+          signExecutable: false,
         },
         nsis: {
           oneClick: false,
@@ -59,11 +66,16 @@ describe('configuración de distribución de Windows', () => {
           allowElevation: false,
           createDesktopShortcut: 'always',
           createStartMenuShortcut: true,
+          installerIcon: 'resources/branding/occhiali-windows.ico',
+          uninstallerIcon: 'resources/branding/occhiali-windows.ico',
+          installerHeaderIcon: 'resources/branding/occhiali-windows.ico',
           deleteAppDataOnUninstall: false,
         },
       },
     });
     expect(packageConfiguration.scripts['package:win']).toContain('electron-builder');
+    expect(packageConfiguration.scripts.package).toBe('npm run package:win');
+    expect(packageConfiguration.scripts.verify).toBe('npm run verify:package');
     expect(packageConfiguration.scripts['package:win']).toContain(
       'patch-electron-builder-collector.cjs',
     );
@@ -75,6 +87,22 @@ describe('configuración de distribución de Windows', () => {
         'node_modules/node-addon-api/**/*',
       ]),
     );
+    expect(packageConfiguration.build.extraResources).toContainEqual({
+      from: 'resources/branding/occhiali-windows.ico',
+      to: 'branding/occhiali-windows.ico',
+    });
+  });
+
+  it('incluye un ICO multirresolución apto para Windows', () => {
+    const icon = readFileSync(join(process.cwd(), 'resources', 'branding', 'occhiali-windows.ico'));
+    expect(icon.readUInt16LE(0)).toBe(0);
+    expect(icon.readUInt16LE(2)).toBe(1);
+    const count = icon.readUInt16LE(4);
+    const sizes = Array.from({ length: count }, (_, index) => {
+      const value = icon[6 + index * 16];
+      return value === 0 ? 256 : value;
+    });
+    expect(sizes).toEqual([16, 24, 32, 48, 64, 128, 256]);
   });
 
   it('desempaqueta solamente el binario nativo Windows x64 y excluye datos sensibles', () => {

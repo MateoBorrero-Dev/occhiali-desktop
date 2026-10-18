@@ -1,7 +1,8 @@
-import { BriefcaseBusiness, FileText, Glasses, House, Settings, Users } from 'lucide-react';
+import { BriefcaseBusiness, FileText, House, Settings, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
+import occhialiGlassesWhite from '../../../../../resources/branding/occhiali-anteojos-blanco-transparente.png';
 
 interface NavigationItem {
   label: string;
@@ -55,8 +56,13 @@ export function Sidebar(): React.JSX.Element {
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col overflow-hidden bg-slate-950 text-white lg:w-60">
       <div className="flex min-h-20 items-center gap-3 border-b border-white/8 px-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white shadow-sm">
-          <Glasses size={23} strokeWidth={1.8} aria-hidden="true" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 shadow-sm">
+          <img
+            src={occhialiGlassesWhite}
+            alt=""
+            className="h-6 w-9 object-contain"
+            aria-hidden="true"
+          />
         </div>
         <div className="min-w-0">
           <p className="truncate text-base font-bold tracking-[0.08em]">OCCHIALI</p>

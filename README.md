@@ -15,6 +15,8 @@ navegación y módulos de clientes, recetas y fichas de trabajo conectados al al
 - ESLint y Prettier para calidad y formato.
 - SQLite mediante `better-sqlite3`, con almacenamiento bajo `app.getPath('userData')`.
 - electron-builder y NSIS para el instalador Windows x64.
+- Identidad visual oficial desde `resources/branding`, con logo adaptado al contraste e icono
+  multirresolución para Windows.
 
 Las versiones exactas instaladas están fijadas en `package.json` y `package-lock.json`.
 
@@ -52,8 +54,8 @@ npm run format:check
 npm test
 npm run test:electron
 npm run build
-npm run package:win
-npm run verify:package
+npm run package
+npm run verify
 ```
 
 Para aplicar el formato configurado:
@@ -100,6 +102,10 @@ graduación Lejos/Cerca implementados con historial compatible; QA visual manual
 **Ajustes de la clienta — Bloque 3:** comprobantes históricos de retiro por titular o tercero,
 numeración transaccional, prevención de duplicados, aclaraciones/anulaciones y exportación PDF local
 implementados; QA visual manual pendiente.
+
+**Identidad visual definitiva:** logo oficial incorporado al acceso y al menú lateral; icono
+multirresolución aplicado al ejecutable, ventana e instalador NSIS, sin cambios funcionales ni de
+datos.
 
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en

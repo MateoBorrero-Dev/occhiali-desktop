@@ -4,6 +4,7 @@ import { App } from '../../app/App';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import type { SecurityStatus } from '../../../../shared/database-models';
+import occhialiLogoDark from '../../../../../resources/branding/occhiali-logo-oscuro-transparente.png';
 
 function unwrap<T>(value: { ok: true; data: T } | { ok: false; error: { message: string } }): T {
   if (!value.ok) throw new Error(value.error.message);
@@ -91,14 +92,21 @@ export function SecurityGate(): React.JSX.Element {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
       <Card className="w-full max-w-md p-7">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-700 text-white">
-          {status.configured ? (
-            <LockKeyhole aria-hidden="true" />
-          ) : (
-            <ShieldCheck aria-hidden="true" />
-          )}
+        <div className="flex items-start justify-between gap-5">
+          <img
+            src={occhialiLogoDark}
+            alt="Occhiali Óptica"
+            className="h-auto w-36 object-contain"
+          />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white">
+            {status.configured ? (
+              <LockKeyhole aria-hidden="true" />
+            ) : (
+              <ShieldCheck aria-hidden="true" />
+            )}
+          </div>
         </div>
-        <h1 className="mt-5 text-2xl font-bold">
+        <h1 className="mt-4 text-2xl font-bold">
           {status.configured ? 'Desbloquear Occhiali' : 'Proteger Occhiali'}
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">

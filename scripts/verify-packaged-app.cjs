@@ -1,6 +1,7 @@
 const { listPackage, extractFile } = require('@electron/asar');
 const { execFileSync } = require('node:child_process');
-const { existsSync, mkdtempSync, rmSync, statSync } = require('node:fs');
+const { createHash } = require('node:crypto');
+const { existsSync, mkdtempSync, readFileSync, rmSync, statSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join, resolve } = require('node:path');
 
@@ -9,6 +10,8 @@ const releaseDirectory = join(projectRoot, 'release');
 const unpackedDirectory = join(releaseDirectory, 'win-unpacked');
 const executablePath = join(unpackedDirectory, 'Occhiali.exe');
 const resourcesDirectory = join(unpackedDirectory, 'resources');
+const sourceIconPath = join(projectRoot, 'resources', 'branding', 'occhiali-windows.ico');
+const packagedIconPath = join(resourcesDirectory, 'branding', 'occhiali-windows.ico');
 const asarPath = join(resourcesDirectory, 'app.asar');
 const nativePath = join(
   resourcesDirectory,
@@ -29,6 +32,15 @@ requireFile(executablePath, 'el ejecutable desempaquetado');
 requireFile(asarPath, 'app.asar');
 requireFile(nativePath, 'el binario nativo win32-x64 de better-sqlite3');
 requireFile(installerPath, 'el instalador NSIS');
+requireFile(sourceIconPath, 'el icono oficial de Windows');
+requireFile(packagedIconPath, 'el icono oficial incluido en el paquete');
+
+function sha256(path) {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+if (sha256(sourceIconPath) !== sha256(packagedIconPath))
+  throw new Error('El icono incluido en el paquete no coincide con el recurso oficial.');
 
 const entries = listPackage(asarPath);
 for (const required of [
@@ -85,7 +97,7 @@ try {
   process.stdout.write(writeOutput);
   process.stdout.write(readOutput);
   process.stdout.write(
-    `PACKAGED_ARTIFACT_OK installer=${installerPath} native=${nativePath} sensitive=0\n`,
+    `PACKAGED_ARTIFACT_OK installer=${installerPath} native=${nativePath} branding=${packagedIconPath} sensitive=0\n`,
   );
 } finally {
   rmSync(qaDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

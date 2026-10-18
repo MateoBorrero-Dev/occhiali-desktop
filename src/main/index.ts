@@ -12,6 +12,12 @@ const useMinimumQaWindow = process.env.OPTICA_QA_WINDOW_SIZE === 'minimum';
 let applicationDatabase: ApplicationDatabase | null = null;
 let qaConfigurationError: unknown = null;
 
+function windowIconPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'branding', 'occhiali-windows.ico')
+    : join(__dirname, '../../resources/branding/occhiali-windows.ico');
+}
+
 try {
   configureUserDataPath();
 } catch (error: unknown) {
@@ -66,6 +72,7 @@ function createMainWindow(): BrowserWindow {
     title: 'OCCHIALI — Sistema de Gestión Óptica',
     backgroundColor: '#f8fafc',
     autoHideMenuBar: true,
+    icon: windowIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,

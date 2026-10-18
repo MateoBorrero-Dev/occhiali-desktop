@@ -88,6 +88,10 @@ describe('protección de acceso en React', () => {
     const user = userEvent.setup();
     render(<SecurityGate />);
     expect(await screen.findByRole('heading', { name: 'Proteger Occhiali' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Occhiali Óptica' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('occhiali-logo-oscuro-transparente'),
+    );
     const fields = screen.getAllByLabelText(/Contraseña|Repetir contraseña/);
     await user.type(fields[0]!, 'Acceso-Ficticio-2026');
     await user.type(fields[1]!, 'No-Coincide-2026');
