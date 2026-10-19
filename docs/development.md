@@ -177,13 +177,16 @@ medición de un equipo particular en una exigencia de producción.
 
 ## Problemas conocidos
 
-- La auditoría de dependencias de desarrollo conserva un aviso moderado transitivo en `sprintf-js`
-  a través de electron-builder. El advisory no publica una versión corregida. No alcanza al runtime
-  instalado y debe revisarse cuando exista una actualización compatible del proveedor.
+- La auditoría informa siete ocurrencias moderadas asociadas al mismo advisory transitivo de
+  `sprintf-js` (`GHSA-hp3w-g68c-fv3c`) a través de la cadena de desarrollo
+  electron-builder → app-builder-lib → @electron/get → global-agent → roarr. No alcanza al runtime
+  instalado. `npm audit fix --force` propondría un cambio incompatible y una versión anterior de
+  electron-builder, por lo que no se aplica; debe revisarse cuando exista una corrección compatible.
 - El instalador de prueba usa el icono oficial de Occhiali, pero continúa sin certificado
   Authenticode. Windows puede mostrar advertencias de SmartScreen.
-- La actualización manual entre dos versiones distintas todavía requiere QA real; la
-  desinstalación/reinstalación de 0.9.0 sí fue validada conservando el perfil temporal.
+- La actualización manual 0.9.0 → 1.0.0 fue validada en la cuenta aislada de Windows `OcchialiQA`,
+  conservando perfil, información, credencial de acceso, persistencia, exportación PDF y restauración
+  de un backup 0.9.0. Las actualizaciones futuras deben repetir el ensayo con un perfil descartable.
 - DIP y ALT se conservan por combinación distancia-ojo, pero su interpretación clínica exacta debe
   confirmarse con la dueña antes de imponer nuevas reglas.
 - No existen precios, ventas, stock, pagos ni estados logísticos; son dominios fuera de Fase 8.

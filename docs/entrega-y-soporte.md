@@ -1,7 +1,7 @@
 # Entrega y soporte
 
-Este documento prepara Occhiali 0.9.0 para instalación, mantenimiento y futuras actualizaciones.
-La versión sigue siendo preliminar: no representa una entrega definitiva ni una versión 1.0.0.
+Este documento acompaña el código validado de Occhiali 1.0.0 para instalación, mantenimiento y
+futuras actualizaciones. El commit, tag, push y publicación son pasos manuales separados.
 
 ## Requisitos del equipo
 
@@ -17,7 +17,7 @@ permanente a internet.
 
 1. Cerrá versiones anteriores de Occhiali.
 2. Conservá un respaldo cifrado verificado si ya existen datos.
-3. Ejecutá `Occhiali-Setup-0.9.0-x64.exe`.
+3. Ejecutá `Occhiali-Setup-1.0.0-x64.exe`.
 4. Windows puede advertir “editor desconocido” porque la versión preliminar no tiene firma
    Authenticode. No desactives SmartScreen ni Defender de forma permanente.
 5. Elegí la carpeta de instalación y completá el asistente.
@@ -75,8 +75,11 @@ No existe actualización automática. Para actualizar:
 4. Abrir, iniciar sesión y comprobar conteos y registros.
 5. Crear un nuevo respaldo con la versión instalada.
 
-La reinstalación de 0.9.0 fue validada sin pérdida. Una actualización real entre versiones distintas
-debe probarse en un perfil duplicado antes de usarla con información habitual.
+La reinstalación de 0.9.0 fue validada sin pérdida. La actualización 0.9.0 → 1.0.0 también fue
+comprobada en la cuenta aislada de Windows `OcchialiQA`: conservó clientes, recetas, productos,
+fichas, credencial de acceso y persistencia; permitió exportar comprobantes PDF y restaurar desde
+1.0.0 un backup creado en 0.9.0. Las pruebas futuras deben seguir usando perfiles descartables y no
+deben reemplazar instalaciones operativas ni sus accesos directos.
 
 ## Desinstalación
 

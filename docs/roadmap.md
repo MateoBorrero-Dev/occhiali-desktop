@@ -94,3 +94,16 @@ directos pendiente.
 Logo oficial en acceso y sidebar, e icono multirresolución para ventana, ejecutable, instalador,
 desinstalador y accesos directos. Se conserva la paleta turquesa y no se modifican funciones, datos,
 rutas ni contratos.
+
+## Preparación de versión 1.0.0
+
+**Estado:** código validado para cierre; actualización real 0.9.0 → 1.0.0 aprobada.
+
+Se conserva `appId`, la carpeta histórica `optica-desktop`, las seis migraciones y el formato de
+backup. El instalador 1.0.0 se validó con el runtime empaquetado y se actualizó sobre 0.9.0 en la
+cuenta aislada `OcchialiQA`, sin pérdida de información o credenciales. No existe actualizador
+automático; el commit, tag y publicación se realizan manualmente.
+
+Las mejoras de respaldos automáticos, alertas globales e historial de operaciones se reservan para
+1.1.0. La versión 1.0.0 conserva la generación manual/asistida y la exportación opcional a una
+carpeta sincronizada.

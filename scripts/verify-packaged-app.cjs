@@ -65,7 +65,7 @@ const packagedMetadata = JSON.parse(extractFile(asarPath, 'package.json').toStri
 if (
   packagedMetadata.name !== 'optica-desktop' ||
   packagedMetadata.productName !== 'Occhiali' ||
-  packagedMetadata.version !== '0.9.0'
+  packagedMetadata.version !== packageJson.version
 )
   throw new Error('La identidad incluida en app.asar no es estable.');
 
@@ -75,6 +75,7 @@ const environment = {
   ...process.env,
   ELECTRON_RUN_AS_NODE: '1',
   OCCHIALI_PACKAGED_QA: '1',
+  OCCHIALI_PACKAGED_QA_APP_VERSION: packageJson.version,
 };
 
 try {

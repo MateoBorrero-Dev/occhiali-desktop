@@ -1,6 +1,6 @@
 # Manual de usuario
 
-Este manual describe el uso cotidiano de Occhiali 0.9.0. La aplicación funciona de manera local y
+Este manual describe el uso cotidiano de Occhiali 1.0.0. La aplicación funciona de manera local y
 sin conexión a internet. Los datos se guardan en la computadora donde está instalada.
 
 ## Tareas cotidianas

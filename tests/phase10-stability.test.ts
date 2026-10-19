@@ -100,13 +100,13 @@ describe('auditoría integral de estabilidad de Fase 10', () => {
     expect(database.foreignKeyViolations()).toHaveLength(0);
     expect(database.integrityCheck()).toBe('ok');
 
-    const backups = new BackupService(join(context.directory, 'backup-settings.json'), '0.9.0');
+    const backups = new BackupService(join(context.directory, 'backup-settings.json'), '1.0.0');
     startedAt = performance.now();
     const created = await backups.create(database, RECOVERY_PASSWORD);
     backups.setSelectedRestorePath(join(context.directory, 'backups', created.fileName));
     const metadata = await backups.verifySelected(RECOVERY_PASSWORD);
     measurements.encryptedBackupMs = performance.now() - startedAt;
-    expect(metadata.appVersion).toBe('0.9.0');
+    expect(metadata.appVersion).toBe('1.0.0');
 
     database.clients.create({ firstName: 'Posterior', lastName: 'No debe persistir' });
     const prepared = await backups.prepareRestore(RECOVERY_PASSWORD);

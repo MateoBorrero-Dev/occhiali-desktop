@@ -32,7 +32,7 @@ function assertHealthy(database: ApplicationDatabase): void {
     throw new Error('La aplicación empaquetada no aplicó todas las migraciones.');
 }
 
-async function writeScenario(directory: string): Promise<void> {
+async function writeScenario(directory: string, appVersion: string): Promise<void> {
   const databasePath = join(directory, 'optica.sqlite3');
   const settingsPath = join(directory, 'backup-settings.json');
   const securityPath = join(directory, 'security.json');
@@ -42,7 +42,7 @@ async function writeScenario(directory: string): Promise<void> {
 
   let database: ApplicationDatabase | null = ApplicationDatabase.open(databasePath);
   const recoveryPassword = randomBytes(24).toString('base64url');
-  const backups = new BackupService(settingsPath, '0.9.0');
+  const backups = new BackupService(settingsPath, appVersion);
   try {
     assertHealthy(database);
     const client = database.clients.create({
@@ -80,7 +80,9 @@ async function writeScenario(directory: string): Promise<void> {
     const backupPath = join(directory, 'backups', created.fileName);
     if (!existsSync(backupPath)) throw new Error('No se generó el backup empaquetado.');
     backups.setSelectedRestorePath(backupPath);
-    await backups.verifySelected(recoveryPassword);
+    const verifiedMetadata = await backups.verifySelected(recoveryPassword);
+    if (verifiedMetadata.appVersion !== appVersion)
+      throw new Error('El backup empaquetado no registró la versión de la aplicación.');
     const prepared = await backups.prepareRestore(recoveryPassword);
 
     database.close();
@@ -162,9 +164,12 @@ function readScenario(directory: string): void {
 async function main(): Promise<void> {
   if (process.env.OCCHIALI_PACKAGED_QA !== '1')
     throw new Error('La utilidad de QA empaquetado está deshabilitada.');
+  const appVersion = process.env.OCCHIALI_PACKAGED_QA_APP_VERSION;
+  if (!appVersion || !/^\d+\.\d+\.\d+$/.test(appVersion))
+    throw new Error('La versión esperada de QA no es válida.');
   const mode = process.argv[2];
   const directory = requireTemporaryQaDirectory(process.argv[3]);
-  if (mode === 'write') await writeScenario(directory);
+  if (mode === 'write') await writeScenario(directory, appVersion);
   else if (mode === 'read') readScenario(directory);
   else throw new Error('Modo de QA empaquetado desconocido.');
 }

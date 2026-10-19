@@ -70,7 +70,7 @@ no autentica su identidad, no almacena imágenes de DNI y no implementa firma di
 
 ## Distribución y confianza de Windows
 
-La versión 0.9.0 se genera sin certificado Authenticode. No contiene claves privadas ni intenta
+La versión 1.0.0 se genera sin certificado Authenticode. No contiene claves privadas ni intenta
 crear reputación SmartScreen; Windows puede advertir que el editor es desconocido. No debe
 recomendarse desactivar Defender o SmartScreen. Una distribución firmada requiere un certificado de
 firma de código a nombre del responsable, custodia privada de la clave y firma con sello de tiempo

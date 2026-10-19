@@ -2,7 +2,7 @@
 
 ## Alcance y requisitos
 
-Occhiali 0.9.0 es una versión preliminar offline para Windows 10 u 11 x64. La usuaria final solo
+Occhiali 1.0.0 es una candidata offline para Windows 10 u 11 x64. La usuaria final solo
 necesita ejecutar el instalador; no necesita Node.js, npm, Git, PowerShell ni herramientas de
 desarrollo. No hay versión portable, activación, telemetría, servidor ni actualizaciones
 automáticas.
@@ -23,9 +23,9 @@ prebuild Windows x64; las verificaciones posteriores prueban que Electron puede 
 
 electron-builder 26.16.1 genera:
 
-- `release/Occhiali-Setup-0.9.0-x64.exe`: instalador NSIS asistido.
+- `release/Occhiali-Setup-1.0.0-x64.exe`: instalador NSIS asistido.
 - `release/win-unpacked/Occhiali.exe`: aplicación desempaquetada para inspección.
-- `release/Occhiali-Setup-0.9.0-x64.exe.blockmap`: mapa auxiliar; no se usa para autoactualizar.
+- `release/Occhiali-Setup-1.0.0-x64.exe.blockmap`: mapa auxiliar; no se usa para autoactualizar.
 
 La versión se identifica con `appId` estable `com.occhiali.desktop`, `productName` y ejecutable
 `Occhiali`. NSIS instala por usuario, no solicita elevación, permite elegir carpeta, crea accesos en
@@ -53,8 +53,10 @@ reemplaza una existente por una vacía.
 Cerrar Occhiali y conservar un backup cifrado verificado antes de ejecutar el instalador posterior.
 El nuevo instalador debe mantener `appId`, nombre interno de `userData` y migraciones incrementales.
 No debe ejecutar resets ni borrar el perfil. En Fase 9 se comprobó reinstalar 0.9.0 conservando
-SQLite, seguridad, configuración y backup byte a byte; todavía no se probó una actualización real
-entre dos versiones distintas.
+SQLite, seguridad, configuración y backup byte a byte. La actualización real desde 0.9.0 a 1.0.0
+se completó en la cuenta aislada de Windows `OcchialiQA`, instalando por usuario y sin desinstalar la
+versión anterior. Se conservaron información y credenciales, se comprobó persistencia y se restauró
+correctamente desde 1.0.0 un backup creado en 0.9.0.
 
 ## Desinstalación y reinstalación
 
@@ -106,9 +108,11 @@ modificar el paquete para resolver una caché visual.
 ## QA realizado y pendiente
 
 Fase 10 actualizó electron-builder de 26.4.1 a 26.16.1 para retirar vulnerabilidades altas y
-críticas de la cadena de empaquetado. La auditoría completa conserva un aviso moderado transitivo en
-`sprintf-js`, sin versión corregida publicada; pertenece a herramientas de build y no se incluye en
-el runtime de Occhiali. Debe reevaluarse cuando el proveedor publique una corrección compatible.
+críticas de la cadena de empaquetado. La auditoría de 1.0.0 informa siete ocurrencias moderadas del
+mismo advisory de `sprintf-js` (`GHSA-hp3w-g68c-fv3c`) en dependencias transitivas de build; no se
+incluye en el runtime de Occhiali. `npm audit fix --force` propone un cambio incompatible y una
+versión anterior de electron-builder, por lo que no debe aplicarse. Debe reevaluarse cuando el
+proveedor publique una corrección compatible.
 
 Se generó e inspeccionó el instalador real. Se instaló silenciosamente en una carpeta temporal, se
 comprobaron ejecutable, desinstalador y accesos directos, y la aplicación instalada abrió una ventana
@@ -116,10 +120,10 @@ real. El runtime instalado validó SQLite, migraciones, persistencia, autenticac
 restauración. Después se desinstaló, se verificaron hashes del perfil, se reinstaló y se volvió a
 leer la información.
 
-El controlador gráfico detectó la ventana, pero agotó el tiempo de aprobación al capturarla. Quedan
-pendientes el asistente visible, el flujo completo por UI, restauración con reinicio del `.exe`,
-resoluciones 820×600, 1180×760, 1366×768 y 1920×1080 y actualización entre dos
-versiones distintas.
+El controlador gráfico detectó la ventana, pero agotó el tiempo de aprobación al capturarla. El QA
+visual automatizado en las resoluciones 820×600, 1180×760, 1366×768 y 1920×1080 continúa limitado
+por ese controlador. La actualización real entre 0.9.0 y 1.0.0, el login, la persistencia, la
+exportación PDF y la restauración de un backup anterior fueron validados manualmente en `OcchialiQA`.
 
 ## Checklist de entrega
 

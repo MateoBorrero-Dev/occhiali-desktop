@@ -100,7 +100,7 @@ function installApi() {
   Object.defineProperty(window, 'optica', {
     configurable: true,
     value: {
-      getAppInfo: vi.fn(() => Promise.resolve({ name: 'OCCHIALI', version: '0.9.0' })),
+      getAppInfo: vi.fn(() => Promise.resolve({ name: 'OCCHIALI', version: '1.0.0' })),
       clients: {
         get: vi.fn(() => Promise.resolve(ok(CLIENT))),
         list: vi.fn(),

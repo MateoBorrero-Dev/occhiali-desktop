@@ -91,7 +91,7 @@ validación real del runtime empaquetado implementados; QA visual/manual complet
 
 **Fase 10 — Auditoría integral y estabilización:** defectos comprobables corregidos, prueba integral
 con 1.000 clientes, backup/restauración y documentación operativa incorporados; QA visual manual
-pendiente. La aplicación continúa como versión preliminar y no está entregada como 1.0.0.
+pendiente en ese hito, previo a la preparación final de 1.0.0.
 
 **Ajustes de la clienta — Bloque 1:** fichas con tratamientos libres, color del producto, proveedor
 opcional y “Lentes de contacto” como sugerencia de producto; QA visual manual pendiente.
@@ -106,6 +106,11 @@ implementados; QA visual manual pendiente.
 **Identidad visual definitiva:** logo oficial incorporado al acceso y al menú lateral; icono
 multirresolución aplicado al ejecutable, ventana e instalador NSIS, sin cambios funcionales ni de
 datos.
+
+**Versión 1.0.0:** código, metadatos, instalador y documentación validados para su cierre. La suite
+automatizada aprueba 260 pruebas y la actualización real 0.9.0 → 1.0.0 fue comprobada en la cuenta
+aislada de Windows `OcchialiQA`, conservando datos, credenciales, PDF, persistencia y restauración de
+un backup anterior. El commit, tag, push y publicación continúan siendo pasos manuales separados.
 
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
@@ -139,4 +144,5 @@ Encontrá más información en:
 - [Instalador Windows](docs/windows-installer.md)
 - [Manual de usuario](docs/manual-usuario.md)
 - [Entrega y soporte](docs/entrega-y-soporte.md)
+- [Preparación de versión 1.0.0](docs/release-1.0.0.md)
 - [Roadmap](docs/roadmap.md)
