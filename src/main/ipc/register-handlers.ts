@@ -139,6 +139,7 @@ export function registerIpcHandlers(
   );
   strict(IPC_CHANNELS.securitySetInactivity, 1, (minutes) => secure.setInactivity(minutes));
   strict(IPC_CHANNELS.backupStatus, 0, () => secure.backupStatus());
+  strict(IPC_CHANNELS.backupHistory, 0, () => secure.backupHistory());
   strict(IPC_CHANNELS.backupConfigure, 1, (input) => secure.configureBackup(input));
   strict(IPC_CHANNELS.backupSelectExportDirectory, 0, () => secure.selectExportDirectory());
   strict(IPC_CHANNELS.backupCreate, 1, (password) => secure.createBackup(password));

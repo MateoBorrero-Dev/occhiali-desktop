@@ -81,6 +81,20 @@ describe('autorización IPC de Fase 8', () => {
     });
   });
 
+  it('protege el historial y rechaza argumentos o rutas desde React', async () => {
+    const history = registered.get(IPC_CHANNELS.backupHistory)!;
+    expect(() => history({}, 'C:\\ruta-no-permitida')).toThrow('requiere 0 argumento');
+    await expect(history({})).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'SECURITY' },
+    });
+    await security.setup('Acceso-Ficticio-2026', 15);
+    await expect(history({})).resolves.toMatchObject({
+      ok: true,
+      data: { events: [], available: true },
+    });
+  });
+
   it('convierte un fallo de archivos en un mensaje seguro para la interfaz', async () => {
     await security.setup('Acceso-Ficticio-2026', 15);
     vi.spyOn(backups, 'create').mockRejectedValue(
@@ -120,5 +134,10 @@ describe('autorización IPC de Fase 8', () => {
     }
     expect(existsSync(`${context.filePath}.restore-rollback`)).toBe(false);
     expect(existsSync(`${context.filePath}.restore-state.json`)).toBe(false);
+    expect(backups.history().events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ operation: 'RESTORE', result: 'SUCCESS' }),
+      ]),
+    );
   });
 });

@@ -59,6 +59,14 @@ archivos con patrón administrado dentro de la carpeta local, conserva como mín
 archivos externos, manuales o ajenos. La versión actual conserva los últimos N; no implementa aún
 estratos diarios/semanales/mensuales.
 
+Desde 1.1.0 Bloque 1, el recordatorio se calcula contra la hora local configurada y el sistema
+comprueba de forma eficiente si el último archivo administrado continúa disponible. Las alertas de
+24 y 72 horas y el estado externo se muestran en todas las pantallas. Esto no crea un scheduler: la
+usuaria todavía debe iniciar manualmente la copia e ingresar su contraseña de recuperación.
+
+Las operaciones se registran en `backup-history.json`, separado de SQLite y limitado a 90 eventos.
+Su diseño, seguridad y recuperación se documentan en [Alertas e historial](backup-observability.md).
+
 ## Restauración
 
 1. La usuaria elige `.ocbackup` mediante diálogo nativo.

@@ -6,7 +6,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SecurityGate } from '../../src/renderer/src/components/security/SecurityGate';
 import { SettingsPage } from '../../src/renderer/src/pages/SettingsPage';
-import type { BackupStatus, SecurityStatus } from '../../src/shared/database-models';
+import type {
+  BackupHistorySnapshot,
+  BackupStatus,
+  SecurityStatus,
+} from '../../src/shared/database-models';
 import type { SecurityResult } from '../../src/shared/ipc-contracts';
 
 const unlocked: SecurityStatus = {
@@ -21,13 +25,28 @@ const backupStatus: BackupStatus = {
   exportDirectory: null,
   lastBackupAt: null,
   lastBackupFile: null,
+  lastBackupSizeBytes: null,
+  lastBackupExists: false,
+  lastBackupAgeHours: null,
   lastErrorAt: null,
+  lastExternalCopyAt: null,
+  lastRestoreAt: null,
   automaticEnabled: false,
   automaticHour: 20,
   retentionCount: 14,
   due: false,
+  alertLevel: 'NONE',
+  externalCopyStatus: 'NOT_CONFIGURED',
+  historyAvailable: true,
+  historyRecoveredFromDamage: false,
   busy: false,
   remoteSyncVerified: false,
+};
+
+const emptyHistory: BackupHistorySnapshot = {
+  events: [],
+  available: true,
+  recoveredFromDamage: false,
 };
 
 function installApis(configured: boolean) {
@@ -54,6 +73,12 @@ function installApis(configured: boolean) {
   };
   const backup = {
     status: vi.fn(() => Promise.resolve({ ok: true as const, data: backupStatus })),
+    history: vi.fn(() =>
+      Promise.resolve({
+        ok: true as const,
+        data: emptyHistory,
+      }),
+    ),
     configure: vi.fn(() => Promise.resolve({ ok: true as const, data: backupStatus })),
     selectExportDirectory: vi.fn(() => Promise.resolve({ ok: true as const, data: backupStatus })),
     create: vi.fn(
@@ -181,5 +206,39 @@ describe('configuración de respaldos en React', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No se pudo abrir la carpeta de respaldos.',
     );
+  });
+
+  it('presenta el historial en un contenedor responsive sin exponer rutas', async () => {
+    const { backup } = installApis(true);
+    backup.history.mockResolvedValue({
+      ok: true as const,
+      data: {
+        available: true,
+        recoveredFromDamage: false,
+        events: [
+          {
+            id: 'evento-1',
+            occurredAt: '2026-10-19T12:00:00.000Z',
+            operation: 'CREATE',
+            result: 'PARTIAL',
+            localState: 'VALID',
+            externalState: 'FAILED',
+            fileName: 'occhiali-backup-20261019120000000.ocbackup',
+            sizeBytes: 2048,
+            error: 'El respaldo local es válido, pero falló la copia externa.',
+          },
+        ],
+      },
+    });
+
+    render(<SettingsPage />);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Historial de respaldos' }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Parcial')).toBeInTheDocument();
+    expect(screen.getByText('2.0 KB')).toBeInTheDocument();
+    expect(screen.queryByText(/C:\\QA\\backups/)).not.toBeInTheDocument();
+    expect(screen.getByRole('table').parentElement).toHaveClass('overflow-x-auto');
   });
 });

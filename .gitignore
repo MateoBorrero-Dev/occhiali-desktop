@@ -26,3 +26,4 @@ Thumbs.db
 *.restore-state.json*
 security.json
 backup-settings.json
+backup-history.json*

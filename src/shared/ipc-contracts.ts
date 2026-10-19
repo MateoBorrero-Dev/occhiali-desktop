@@ -24,6 +24,7 @@ import type {
   GlobalSearchResults,
   SecurityStatus,
   BackupStatus,
+  BackupHistorySnapshot,
   BackupMetadata,
   BackupOperationResult,
   CreateDeliveryReceiptEventInput,
@@ -68,6 +69,7 @@ export const IPC_CHANNELS = {
   securityChangePassword: 'security:change-password',
   securitySetInactivity: 'security:set-inactivity',
   backupStatus: 'backup:status',
+  backupHistory: 'backup:history',
   backupConfigure: 'backup:configure',
   backupSelectExportDirectory: 'backup:select-export-directory',
   backupCreate: 'backup:create',
@@ -228,6 +230,7 @@ export interface SecurityApi {
 
 export interface BackupApi {
   status: () => Promise<SecurityResult<BackupStatus>>;
+  history: () => Promise<SecurityResult<BackupHistorySnapshot>>;
   configure: (input: {
     automaticEnabled: boolean;
     automaticHour: number;

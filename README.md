@@ -140,6 +140,7 @@ Encontrá más información en:
 - [Dashboard y búsqueda integrada](docs/search-and-dashboard.md)
 - [Seguridad](docs/security.md)
 - [Backup y restauración](docs/backup-restore.md)
+- [Alertas e historial de respaldos](docs/backup-observability.md)
 - [Exportación a carpeta sincronizada](docs/cloud-backup.md)
 - [Instalador Windows](docs/windows-installer.md)
 - [Manual de usuario](docs/manual-usuario.md)

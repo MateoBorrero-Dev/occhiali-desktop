@@ -107,3 +107,11 @@ automático; el commit, tag y publicación se realizan manualmente.
 Las mejoras de respaldos automáticos, alertas globales e historial de operaciones se reservan para
 1.1.0. La versión 1.0.0 conserva la generación manual/asistida y la exportación opcional a una
 carpeta sincronizada.
+
+## 1.1.0 — Bloque 1: alertas e historial de respaldos
+
+**Estado:** implementación y pruebas automatizadas completadas; QA manual pendiente.
+
+Estado real del último respaldo, cálculo por horario local, avisos globales a las 24 y 72 horas,
+detección de archivos locales o externos ausentes e historial atómico limitado a 90 eventos. No
+incluye scheduler, credenciales persistidas ni integración directa con servicios de nube.

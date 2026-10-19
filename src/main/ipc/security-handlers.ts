@@ -13,6 +13,7 @@ import {
 import type { SecurityResult } from '../../shared/ipc-contracts';
 import type {
   BackupMetadata,
+  BackupHistorySnapshot,
   BackupOperationResult,
   BackupStatus,
   SecurityStatus,
@@ -65,6 +66,11 @@ export function createSecurityIpcHandlers(
         security.requireAuthenticated();
         return backups.status();
       }),
+    backupHistory: (): Promise<SecurityResult<BackupHistorySnapshot>> =>
+      result(() => {
+        security.requireAuthenticated();
+        return backups.history();
+      }),
     configureBackup: (input: unknown) =>
       result(() => {
         security.requireAuthenticated();
@@ -115,7 +121,13 @@ export function createSecurityIpcHandlers(
         security.requireAuthenticated();
         if (confirmed !== true)
           throw new BackupError('La restauración requiere confirmación explícita.');
-        const prepared = await backups.prepareRestore(password);
+        let prepared;
+        try {
+          prepared = await backups.prepareRestore(password);
+        } catch (error: unknown) {
+          backups.recordRestore('FAILURE', error);
+          throw error;
+        }
         const coordinator = new RestoreCoordinator(activeDatabasePath);
         let databaseClosed = false;
         try {
@@ -137,7 +149,9 @@ export function createSecurityIpcHandlers(
           }
           coordinator.markVerified();
           coordinator.confirmAndCleanup();
+          backups.recordRestore('SUCCESS');
         } catch (error: unknown) {
+          backups.recordRestore('FAILURE', error);
           let recovered: boolean;
           try {
             const recovery = coordinator.rollbackPending();

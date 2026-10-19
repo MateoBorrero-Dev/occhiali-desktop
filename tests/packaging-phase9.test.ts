@@ -114,6 +114,7 @@ describe('configuración de distribución de Windows', () => {
       '!**/*.ocbackup',
       '!**/security.json',
       '!**/backup-settings.json',
+      '!**/backup-history.json*',
       '!**/.env',
     ])
       expect(packageConfiguration.build.files).toContain(pattern);

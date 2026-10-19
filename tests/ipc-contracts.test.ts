@@ -45,6 +45,7 @@ describe('contratos IPC', () => {
       securityChangePassword: 'security:change-password',
       securitySetInactivity: 'security:set-inactivity',
       backupStatus: 'backup:status',
+      backupHistory: 'backup:history',
       backupConfigure: 'backup:configure',
       backupSelectExportDirectory: 'backup:select-export-directory',
       backupCreate: 'backup:create',

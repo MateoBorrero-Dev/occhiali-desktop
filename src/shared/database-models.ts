@@ -400,13 +400,46 @@ export interface BackupStatus {
   exportDirectory: string | null;
   lastBackupAt: IsoTimestamp | null;
   lastBackupFile: string | null;
+  lastBackupSizeBytes: number | null;
+  lastBackupExists: boolean;
+  lastBackupAgeHours: number | null;
   lastErrorAt: IsoTimestamp | null;
+  lastExternalCopyAt: IsoTimestamp | null;
+  lastRestoreAt: IsoTimestamp | null;
   automaticEnabled: boolean;
   automaticHour: number;
   retentionCount: number;
   due: boolean;
+  alertLevel: 'NONE' | 'WARNING' | 'CRITICAL' | 'MISSING';
+  externalCopyStatus: 'NOT_CONFIGURED' | 'UNKNOWN' | 'COPIED' | 'FAILED' | 'MISSING';
+  historyAvailable: boolean;
+  historyRecoveredFromDamage: boolean;
   busy: boolean;
   remoteSyncVerified: false;
+}
+
+export type BackupHistoryOperation = 'CREATE' | 'VERIFY' | 'EXPORT' | 'RESTORE';
+export type BackupHistoryResult = 'SUCCESS' | 'PARTIAL' | 'FAILURE';
+export type BackupLocalState = 'VALID' | 'MISSING' | 'FAILED' | 'NOT_APPLICABLE';
+export type BackupExternalState =
+  'NOT_CONFIGURED' | 'COPIED' | 'FAILED' | 'MISSING' | 'UNKNOWN' | 'NOT_APPLICABLE';
+
+export interface BackupHistoryEvent {
+  id: string;
+  occurredAt: IsoTimestamp;
+  operation: BackupHistoryOperation;
+  result: BackupHistoryResult;
+  localState: BackupLocalState;
+  externalState: BackupExternalState;
+  fileName?: string;
+  sizeBytes?: number;
+  error?: string;
+}
+
+export interface BackupHistorySnapshot {
+  events: BackupHistoryEvent[];
+  available: boolean;
+  recoveredFromDamage: boolean;
 }
 
 export interface BackupMetadata {

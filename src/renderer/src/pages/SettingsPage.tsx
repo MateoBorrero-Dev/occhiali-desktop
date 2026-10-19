@@ -1,6 +1,23 @@
-import { Cloud, FolderOpen, KeyRound, Lock, RefreshCw, Save, ShieldCheck } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Cloud,
+  FolderOpen,
+  History,
+  KeyRound,
+  Lock,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { BackupMetadata, BackupStatus, SecurityStatus } from '../../../shared/database-models';
+import type {
+  BackupHistoryEvent,
+  BackupHistorySnapshot,
+  BackupMetadata,
+  BackupStatus,
+  SecurityStatus,
+} from '../../../shared/database-models';
 import { PageHeader } from '../components/common/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -10,8 +27,37 @@ function unwrap<T>(value: { ok: true; data: T } | { ok: false; error: { message:
   return value.data;
 }
 
+function formatAge(hours: number | null): string {
+  if (hours === null) return 'Sin copias registradas';
+  if (hours < 1) return 'Hace menos de una hora';
+  if (hours < 24) return `Hace ${Math.floor(hours)} hora${Math.floor(hours) === 1 ? '' : 's'}`;
+  const days = Math.floor(hours / 24);
+  return `Hace ${days} día${days === 1 ? '' : 's'}`;
+}
+
+function formatSize(bytes?: number): string {
+  if (bytes === undefined) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const operationLabels: Record<BackupHistoryEvent['operation'], string> = {
+  CREATE: 'Creación',
+  VERIFY: 'Verificación',
+  EXPORT: 'Copia externa',
+  RESTORE: 'Restauración',
+};
+
+const resultLabels: Record<BackupHistoryEvent['result'], string> = {
+  SUCCESS: 'Correcto',
+  PARTIAL: 'Parcial',
+  FAILURE: 'Fallido',
+};
+
 export function SettingsPage(): React.JSX.Element {
   const [backup, setBackup] = useState<BackupStatus | null>(null);
+  const [history, setHistory] = useState<BackupHistorySnapshot | null>(null);
   const [access, setAccess] = useState<SecurityStatus | null>(null);
   const [recoveryPassword, setRecoveryPassword] = useState('');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -27,6 +73,12 @@ export function SettingsPage(): React.JSX.Element {
         .then(unwrap)
         .then(setBackup)
         .catch(() => setError('No se pudo consultar el estado de las copias.'));
+    if (api)
+      void api
+        .history()
+        .then(unwrap)
+        .then(setHistory)
+        .catch(() => setError('No se pudo consultar el historial de respaldos.'));
     if (window.optica.security)
       void window.optica.security
         .status()
@@ -34,6 +86,17 @@ export function SettingsPage(): React.JSX.Element {
         .then(setAccess)
         .catch(() => setError('No se pudo consultar el estado de seguridad.'));
   }, [api]);
+  useEffect(() => {
+    if (!backup || !window.location.hash.includes('seccion=respaldos')) return;
+    const target = document.getElementById('respaldos');
+    if (target && typeof target.scrollIntoView === 'function') target.scrollIntoView();
+  }, [backup]);
+  const refreshBackupData = async (): Promise<void> => {
+    const [nextStatus, nextHistory] = await Promise.all([api.status(), api.history()]);
+    setBackup(unwrap(nextStatus));
+    setHistory(unwrap(nextHistory));
+    window.dispatchEvent(new Event('occhiali-backup-changed'));
+  };
   const run = async (operation: () => Promise<string>): Promise<void> => {
     setBusy(true);
     setError(null);
@@ -138,31 +201,57 @@ export function SettingsPage(): React.JSX.Element {
             }}
           />
         </Card>
-        <Card className="p-6 xl:col-span-2">
+        <Card id="respaldos" className="scroll-mt-6 p-6 xl:col-span-2">
           <div className="flex items-center gap-3">
             <Save className="text-teal-700" />
             <h2 className="text-base font-bold">Copias de seguridad</h2>
           </div>
           {backup && (
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
               <div>
-                <dt className="font-bold text-slate-500">Último respaldo válido</dt>
+                <dt className="font-bold text-slate-500">Último respaldo creado y verificado</dt>
                 <dd>
                   {backup.lastBackupAt
                     ? new Date(backup.lastBackupAt).toLocaleString('es-AR')
                     : 'Todavía no existe'}
                 </dd>
+                <dd className="mt-1 text-slate-600">{formatAge(backup.lastBackupAgeHours)}</dd>
               </div>
               <div>
-                <dt className="font-bold text-slate-500">Ubicación local</dt>
-                <dd className="break-all">{backup.localDirectory}</dd>
+                <dt className="font-bold text-slate-500">Archivo local</dt>
+                <dd className="flex items-center gap-1.5 font-semibold">
+                  {backup.lastBackupExists ? (
+                    <CheckCircle2 aria-hidden="true" size={16} className="text-teal-700" />
+                  ) : (
+                    <AlertCircle aria-hidden="true" size={16} className="text-amber-700" />
+                  )}
+                  {backup.lastBackupAt
+                    ? backup.lastBackupExists
+                      ? 'Disponible'
+                      : 'No encontrado'
+                    : 'Todavía no existe'}
+                </dd>
+                {backup.lastBackupSizeBytes !== null && (
+                  <dd className="mt-1 text-slate-600">{formatSize(backup.lastBackupSizeBytes)}</dd>
+                )}
               </div>
               <div>
-                <dt className="font-bold text-slate-500">Carpeta sincronizada</dt>
-                <dd className="break-all">{backup.exportDirectory ?? 'No configurada'}</dd>
+                <dt className="font-bold text-slate-500">Destino externo</dt>
+                <dd className="font-semibold">
+                  {backup.externalCopyStatus === 'NOT_CONFIGURED'
+                    ? 'No configurado'
+                    : backup.externalCopyStatus === 'COPIED'
+                      ? 'Última copia depositada'
+                      : backup.externalCopyStatus === 'FAILED'
+                        ? 'Última copia fallida'
+                        : backup.externalCopyStatus === 'MISSING'
+                          ? 'Copia no encontrada'
+                          : 'Pendiente de primera copia'}
+                </dd>
+                <dd className="mt-1 text-slate-600">Sincronización remota no verificada</dd>
               </div>
               <div>
-                <dt className="font-bold text-slate-500">Automatización</dt>
+                <dt className="font-bold text-slate-500">Recordatorio asistido</dt>
                 <dd>
                   {backup.automaticEnabled
                     ? backup.due
@@ -172,6 +261,30 @@ export function SettingsPage(): React.JSX.Element {
                 </dd>
               </div>
             </dl>
+          )}
+          {backup?.lastBackupAt && backup.lastBackupExists && (
+            <p className="mt-4 text-xs text-slate-500">
+              La disponibilidad comprueba que el archivo exista. Usá Verificar respaldo para validar
+              nuevamente su contenido cifrado.
+            </p>
+          )}
+          {backup?.exportDirectory && (
+            <p className="mt-4 break-all rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              Carpeta seleccionada: {backup.exportDirectory}
+            </p>
+          )}
+          {backup && !backup.historyAvailable && (
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+              El respaldo puede seguir siendo válido, pero no se pudo actualizar el historial de
+              operaciones.
+            </p>
+          )}
+          {backup?.historyRecoveredFromDamage && (
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+              {backup.historyAvailable
+                ? 'Se preservó un historial dañado para revisión y se inició uno nuevo.'
+                : 'Se detectó un historial dañado que no pudo ponerse en cuarentena. Se preservó sin sobrescribirlo y el registro de nuevos eventos quedó deshabilitado.'}
+            </p>
           )}
           {backup && !backup.lastBackupAt && (
             <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
@@ -195,7 +308,7 @@ export function SettingsPage(): React.JSX.Element {
               onClick={() =>
                 void run(async () => {
                   const created = unwrap(await api.create(recoveryPassword));
-                  setBackup(unwrap(await api.status()));
+                  await refreshBackupData();
                   return created.exportError
                     ? 'Respaldo local cifrado y verificado. No se pudo copiar a la carpeta sincronizada.'
                     : created.exportedToSyncFolder
@@ -211,6 +324,8 @@ export function SettingsPage(): React.JSX.Element {
               onClick={() =>
                 void run(async () => {
                   setBackup(unwrap(await api.selectExportDirectory()));
+                  setHistory(unwrap(await api.history()));
+                  window.dispatchEvent(new Event('occhiali-backup-changed'));
                   return 'Carpeta de exportación actualizada. La sincronización remota no puede verificarse.';
                 })
               }
@@ -291,6 +406,7 @@ export function SettingsPage(): React.JSX.Element {
                         }),
                       ),
                     );
+                    window.dispatchEvent(new Event('occhiali-backup-changed'));
                     return 'Programación asistida actualizada.';
                   })
                 }
@@ -300,6 +416,73 @@ export function SettingsPage(): React.JSX.Element {
             </div>
           </Card>
         )}
+        <Card className="p-6 xl:col-span-2">
+          <div className="flex items-center gap-3">
+            <History className="text-teal-700" />
+            <h2 className="text-base font-bold">Historial de respaldos</h2>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Registra operaciones locales y copias externas. No guarda contraseñas ni información de
+            clientes.
+          </p>
+          {!history || history.events.length === 0 ? (
+            <p className="mt-4 rounded-lg bg-slate-50 px-4 py-5 text-sm text-slate-600">
+              Todavía no hay operaciones registradas.
+            </p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-slate-500">
+                    <th className="border-b border-slate-200 px-3 py-2">Fecha</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Operación</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Resultado</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Archivo</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Tamaño</th>
+                    <th className="border-b border-slate-200 px-3 py-2">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.events.slice(0, 10).map((event) => (
+                    <tr key={event.id} className="align-top">
+                      <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap">
+                        {new Date(event.occurredAt).toLocaleString('es-AR')}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3 font-semibold">
+                        {operationLabels[event.operation]}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                            event.result === 'SUCCESS'
+                              ? 'bg-teal-50 text-teal-800'
+                              : event.result === 'PARTIAL'
+                                ? 'bg-amber-50 text-amber-900'
+                                : 'bg-red-50 text-red-800'
+                          }`}
+                        >
+                          {resultLabels[event.result]}
+                        </span>
+                      </td>
+                      <td className="max-w-48 border-b border-slate-100 px-3 py-3 break-all">
+                        {event.fileName ?? '—'}
+                      </td>
+                      <td className="border-b border-slate-100 px-3 py-3 whitespace-nowrap">
+                        {formatSize(event.sizeBytes)}
+                      </td>
+                      <td className="max-w-64 border-b border-slate-100 px-3 py-3 text-slate-600">
+                        {event.error ??
+                          (event.externalState === 'COPIED'
+                            ? 'Depositado externamente; sincronización remota no verificada.'
+                            : 'Operación completada.')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
         <Card className="p-6 xl:col-span-2">
           <div className="flex items-center gap-3">
             <RefreshCw className="text-teal-700" />
@@ -329,7 +512,10 @@ export function SettingsPage(): React.JSX.Element {
               disabled={!selectedFile || busy}
               onClick={() =>
                 void run(async () => {
-                  const meta = unwrap(await api.verify(recoveryPassword));
+                  const verification = await api.verify(recoveryPassword);
+                  const nextHistory = await api.history();
+                  if (nextHistory.ok) setHistory(nextHistory.data);
+                  const meta = unwrap(verification);
                   setVerified(meta);
                   return `Respaldo válido del ${new Date(meta.createdAt).toLocaleString('es-AR')}.`;
                 })

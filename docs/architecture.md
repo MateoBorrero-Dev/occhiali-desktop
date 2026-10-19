@@ -100,8 +100,8 @@ No existe un método genérico `send`, `invoke` ni SQL accesible desde React.
 
 Seguridad agrega canales explícitos `security:*` para estado, alta, login, logout, actividad, cambio
 de contraseña e inactividad. Backup agrega `backup:*` para estado, configuración, selección mediante
-diálogo nativo, creación, verificación y restauración. Todos validan la cantidad de argumentos en
-Main. Los canales de datos y mantenimiento requieren la sesión local activa.
+diálogo nativo, creación, historial, verificación y restauración. Todos validan la cantidad de
+argumentos en Main. Los canales de datos y mantenimiento requieren la sesión local activa.
 
 Fichas usa `optical-jobs:list`, `optical-jobs:list-by-client`, `optical-jobs:get`,
 `optical-jobs:list-by-prescription`, `optical-jobs:create` y `optical-jobs:update`; el catálogo usa
@@ -166,10 +166,11 @@ oculta aislada, HTML escapado y `webContents.printToPDF`; sus detalles están en
 `QueryRepository` contiene exclusivamente lecturas: una consulta agregada para el dashboard y tres
 consultas limitadas para la búsqueda agrupada. No comparte una conexión ni SQL con React.
 
-`src/main/backup` implementa backup SQLite consistente, cifrado autenticado, retención, exportación
-y recuperación de una restauración interrumpida. La estructura relacional e índices están en
-[database.md](database.md); los límites de seguridad y recuperación están en [security.md](security.md)
-y [backup-restore.md](backup-restore.md).
+`src/main/backup` implementa backup SQLite consistente, cifrado autenticado, retención, exportación,
+historial operativo atómico y recuperación de una restauración interrumpida. El historial permanece
+fuera de SQLite para evitar dependencias circulares y sus fallos no invalidan una copia. La estructura
+relacional e índices están en [database.md](database.md); los límites de seguridad y recuperación
+están en [security.md](security.md) y [backup-restore.md](backup-restore.md).
 
 ## Distribución Windows
 
