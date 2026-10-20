@@ -31,9 +31,14 @@ const backupStatus: BackupStatus = {
   lastErrorAt: null,
   lastExternalCopyAt: null,
   lastRestoreAt: null,
+  lastAutomaticBackupAt: null,
+  lastAutomaticAttemptAt: null,
+  lastAutomaticErrorAt: null,
   automaticEnabled: false,
   automaticHour: 20,
   retentionCount: 14,
+  protectedCredentialState: 'MISSING',
+  automaticState: 'DISABLED',
   due: false,
   alertLevel: 'NONE',
   externalCopyStatus: 'NOT_CONFIGURED',
@@ -80,6 +85,10 @@ function installApis(configured: boolean) {
       }),
     ),
     configure: vi.fn(() => Promise.resolve({ ok: true as const, data: backupStatus })),
+    setAutomaticCredential: vi.fn(() => Promise.resolve({ ok: true as const, data: backupStatus })),
+    clearAutomaticCredential: vi.fn(() =>
+      Promise.resolve({ ok: true as const, data: backupStatus }),
+    ),
     selectExportDirectory: vi.fn(() => Promise.resolve({ ok: true as const, data: backupStatus })),
     create: vi.fn(
       () =>
@@ -152,12 +161,30 @@ describe('protección de acceso en React', () => {
 });
 
 describe('configuración de respaldos en React', () => {
+  it('no informa que la automatización está al día antes de la primera copia', async () => {
+    const { backup } = installApis(true);
+    backup.status.mockResolvedValue({
+      ok: true as const,
+      data: {
+        ...backupStatus,
+        automaticEnabled: true,
+        protectedCredentialState: 'READY',
+        automaticState: 'PENDING',
+      },
+    });
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByText('Esperando primera copia programada')).toBeInTheDocument();
+    expect(screen.queryByText('Automática y al día')).not.toBeInTheDocument();
+  });
+
   it('muestra estado real, guarda programación y evita doble creación', async () => {
     const { backup } = installApis(true);
     const user = userEvent.setup();
     render(<SettingsPage />);
     expect(await screen.findByText(/Todavía no existe una copia válida/)).toBeInTheDocument();
-    await user.click(screen.getByLabelText('Recordatorio diario'));
+    await user.click(screen.getByLabelText(/Modo automático/));
     await user.clear(screen.getByLabelText('Cantidad de respaldos'));
     await user.type(screen.getByLabelText('Cantidad de respaldos'), '7');
     await user.click(screen.getByRole('button', { name: 'Guardar programación' }));
@@ -217,6 +244,15 @@ describe('configuración de respaldos en React', () => {
         recoveredFromDamage: false,
         events: [
           {
+            id: 'evento-iniciado',
+            occurredAt: '2026-10-19T11:59:59.000Z',
+            operation: 'CREATE',
+            trigger: 'AUTOMATIC',
+            result: 'STARTED',
+            localState: 'NOT_APPLICABLE',
+            externalState: 'UNKNOWN',
+          },
+          {
             id: 'evento-1',
             occurredAt: '2026-10-19T12:00:00.000Z',
             operation: 'CREATE',
@@ -237,8 +273,69 @@ describe('configuración de respaldos en React', () => {
       await screen.findByRole('heading', { name: 'Historial de respaldos' }),
     ).toBeInTheDocument();
     expect(await screen.findByText('Parcial')).toBeInTheDocument();
+    expect(screen.getByText('Iniciado')).toBeInTheDocument();
+    expect(
+      screen.getByText('Operación iniciada; el resultado final se registra por separado.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('2.0 KB')).toBeInTheDocument();
     expect(screen.queryByText(/C:\\QA\\backups/)).not.toBeInTheDocument();
     expect(screen.getByRole('table').parentElement).toHaveClass('overflow-x-auto');
+  });
+
+  it('advierte claramente cuando falla la copia externa pero el respaldo local es válido', async () => {
+    const { backup } = installApis(true);
+    backup.status.mockResolvedValue({
+      ok: true as const,
+      data: {
+        ...backupStatus,
+        lastBackupAt: '2026-10-20T04:00:00.000Z',
+        lastBackupFile: 'occhiali-backup-20261020040000000.ocbackup',
+        lastBackupExists: true,
+        lastBackupSizeBytes: 2048,
+        externalCopyStatus: 'FAILED',
+      },
+    });
+
+    render(<SettingsPage />);
+
+    expect(await screen.findByText('Última copia fallida')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'El respaldo local se creó correctamente, pero falló la copia externa.',
+    );
+  });
+
+  it('configura la credencial automática sin permitir verla ni recuperarla', async () => {
+    const { backup } = installApis(true);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.type(
+      await screen.findByLabelText('Contraseña automática'),
+      'Recuperacion-Automatica-2026',
+    );
+    await user.type(
+      screen.getByLabelText('Repetir contraseña automática'),
+      'Recuperacion-Automatica-2026',
+    );
+    expect(screen.getByLabelText('Contraseña automática')).toHaveAttribute('type', 'password');
+    await user.click(screen.getByRole('button', { name: /Proteger contraseña/ }));
+
+    expect(backup.setAutomaticCredential).toHaveBeenCalledWith('Recuperacion-Automatica-2026');
+    expect(screen.queryByText('Recuperacion-Automatica-2026')).not.toBeInTheDocument();
+  });
+
+  it('rechaza localmente contraseñas automáticas que no coinciden', async () => {
+    const { backup } = installApis(true);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await user.type(await screen.findByLabelText('Contraseña automática'), 'Primera-Ficticia-2026');
+    await user.type(
+      screen.getByLabelText('Repetir contraseña automática'),
+      'Segunda-Ficticia-2026',
+    );
+    await user.click(screen.getByRole('button', { name: /Proteger contraseña/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('no coinciden');
+    expect(backup.setAutomaticCredential).not.toHaveBeenCalled();
   });
 });

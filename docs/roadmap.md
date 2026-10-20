@@ -115,3 +115,13 @@ carpeta sincronizada.
 Estado real del último respaldo, cálculo por horario local, avisos globales a las 24 y 72 horas,
 detección de archivos locales o externos ausentes e historial atómico limitado a 90 eventos. No
 incluye scheduler, credenciales persistidas ni integración directa con servicios de nube.
+
+## 1.1.0 — Bloque 2: respaldos automáticos
+
+**Estado:** implementación y validación técnica automatizada completadas; QA manual de Windows
+pendiente.
+
+Scheduler activo sólo mientras Occhiali permanece abierto, credencial protegida mediante
+`safeStorage`, recuperación de ventanas pendientes, reanudación después de suspensión, exclusión
+mutua con restauraciones e historial diferenciado. No incorpora servicios externos ni retención
+avanzada de copias externas.

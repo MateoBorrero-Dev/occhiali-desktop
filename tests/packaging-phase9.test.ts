@@ -115,6 +115,7 @@ describe('configuración de distribución de Windows', () => {
       '!**/security.json',
       '!**/backup-settings.json',
       '!**/backup-history.json*',
+      '!**/backup-credential.json*',
       '!**/.env',
     ])
       expect(packageConfiguration.build.files).toContain(pattern);

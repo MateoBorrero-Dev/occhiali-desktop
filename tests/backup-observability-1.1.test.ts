@@ -61,6 +61,13 @@ describe('observabilidad de respaldos 1.1', () => {
     ).toBe(false);
   });
 
+  it('considera pendiente la primera copia si la automatización se activa después del corte', () => {
+    const started = new Date(2026, 9, 20, 0, 53, 50, 752).toISOString();
+    expect(calculateBackupDue(null, true, 0, started, false, new Date(2026, 9, 20, 0, 58, 0))).toBe(
+      true,
+    );
+  });
+
   it('mide antigüedad por instante aunque el respaldo incluya otro huso horario', () => {
     const lastBackup = '2026-01-10T20:00:00-03:00';
     const monitoring = '2026-01-01T00:00:00Z';
@@ -261,7 +268,7 @@ describe('observabilidad de respaldos 1.1', () => {
         lastBackupAt: null,
         lastBackupFile: null,
         lastErrorAt: null,
-        automaticEnabled: false,
+        automaticEnabled: true,
         automaticHour: 20,
         retentionCount: 14,
       }),
@@ -269,6 +276,7 @@ describe('observabilidad de respaldos 1.1', () => {
     const service = new BackupService(join(root, 'backup-settings.json'), '1.0.0');
     expect(service.status()).toMatchObject({
       alertLevel: 'NONE',
+      automaticEnabled: false,
       externalCopyStatus: 'NOT_CONFIGURED',
       historyAvailable: true,
     });

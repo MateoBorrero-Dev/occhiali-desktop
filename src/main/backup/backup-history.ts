@@ -14,6 +14,7 @@ import type {
   BackupHistoryEvent,
   BackupHistoryOperation,
   BackupHistoryResult,
+  BackupHistoryTrigger,
   BackupHistorySnapshot,
   BackupLocalState,
 } from '../../shared/database-models';
@@ -29,7 +30,8 @@ interface HistoryFile {
 export type BackupHistoryInput = Omit<BackupHistoryEvent, 'id'>;
 
 const operations: BackupHistoryOperation[] = ['CREATE', 'VERIFY', 'EXPORT', 'RESTORE'];
-const results: BackupHistoryResult[] = ['SUCCESS', 'PARTIAL', 'FAILURE'];
+const results: BackupHistoryResult[] = ['STARTED', 'SUCCESS', 'PARTIAL', 'FAILURE'];
+const triggers: BackupHistoryTrigger[] = ['MANUAL', 'AUTOMATIC'];
 const localStates: BackupLocalState[] = ['VALID', 'MISSING', 'FAILED', 'NOT_APPLICABLE'];
 const externalStates: BackupExternalState[] = [
   'NOT_CONFIGURED',
@@ -50,6 +52,7 @@ function isEvent(value: unknown): value is BackupHistoryEvent {
     Number.isFinite(Date.parse(event.occurredAt)) &&
     !!event.operation &&
     operations.includes(event.operation) &&
+    (event.trigger === undefined || triggers.includes(event.trigger)) &&
     !!event.result &&
     results.includes(event.result) &&
     !!event.localState &&

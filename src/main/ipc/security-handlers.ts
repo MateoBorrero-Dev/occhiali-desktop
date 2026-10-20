@@ -4,6 +4,7 @@ import { basename } from 'node:path';
 import { ApplicationDatabase } from '../database';
 import type { BackupService } from '../backup/backup-service';
 import { BackupError } from '../backup/backup-service';
+import type { BackupCredentialStore } from '../backup/backup-credential-store';
 import { RestoreCoordinator } from '../backup/restore-recovery';
 import type { SecurityManager } from '../security/security-manager';
 import {
@@ -48,6 +49,8 @@ export function createSecurityIpcHandlers(
   backups: BackupService,
   database: ApplicationDatabase,
   activeDatabasePath: string,
+  credentials: BackupCredentialStore,
+  onAutomationChanged: () => Promise<unknown>,
 ) {
   return {
     status: (): Promise<SecurityResult<SecurityStatus>> => result(() => security.status()),
@@ -62,8 +65,9 @@ export function createSecurityIpcHandlers(
       }),
     setInactivity: (minutes: unknown) => result(() => security.setInactivity(minutes)),
     backupStatus: (): Promise<SecurityResult<BackupStatus>> =>
-      result(() => {
+      result(async () => {
         security.requireAuthenticated();
+        backups.setProtectedCredentialState(await credentials.inspect());
         return backups.status();
       }),
     backupHistory: (): Promise<SecurityResult<BackupHistorySnapshot>> =>
@@ -72,9 +76,50 @@ export function createSecurityIpcHandlers(
         return backups.history();
       }),
     configureBackup: (input: unknown) =>
+      result(async () => {
+        security.requireAuthenticated();
+        if (
+          input &&
+          typeof input === 'object' &&
+          !Array.isArray(input) &&
+          (input as Record<string, unknown>).automaticEnabled === true &&
+          (await credentials.inspect()) !== 'READY'
+        )
+          throw new BackupError(
+            'Configurá una contraseña protegida antes de activar los respaldos automáticos.',
+          );
+        backups.configure(input);
+        await onAutomationChanged();
+        return backups.status();
+      }),
+    setAutomaticCredential: (password: unknown) =>
+      result(async () => {
+        security.requireAuthenticated();
+        if (backups.isCriticalOperation())
+          throw new BackupError(
+            'Esperá a que termine el respaldo o la restauración antes de cambiar la contraseña protegida.',
+          );
+        await credentials.store(password);
+        backups.setProtectedCredentialState(credentials.state());
+        backups.resetAutomaticAttempt();
+        await onAutomationChanged();
+        return backups.status();
+      }),
+    clearAutomaticCredential: () =>
       result(() => {
         security.requireAuthenticated();
-        return backups.configure(input);
+        if (backups.isCriticalOperation())
+          throw new BackupError(
+            'Esperá a que termine el respaldo o la restauración antes de eliminar la contraseña protegida.',
+          );
+        credentials.clear();
+        backups.setProtectedCredentialState(credentials.state());
+        const current = backups.status();
+        return backups.configure({
+          automaticEnabled: false,
+          automaticHour: current.automaticHour,
+          retentionCount: current.retentionCount,
+        });
       }),
     selectExportDirectory: () =>
       result(async () => {
@@ -121,17 +166,19 @@ export function createSecurityIpcHandlers(
         security.requireAuthenticated();
         if (confirmed !== true)
           throw new BackupError('La restauración requiere confirmación explícita.');
+        backups.beginRestore();
         let prepared;
         try {
           prepared = await backups.prepareRestore(password);
         } catch (error: unknown) {
           backups.recordRestore('FAILURE', error);
+          backups.endRestore();
           throw error;
         }
         const coordinator = new RestoreCoordinator(activeDatabasePath);
         let databaseClosed = false;
         try {
-          await backups.create(database, password);
+          await backups.create(database, password, 'RESTORE_SAFETY');
           coordinator.begin(prepared.sqlitePath);
           prepared.transferOwnership();
           database.close();
@@ -152,6 +199,7 @@ export function createSecurityIpcHandlers(
           backups.recordRestore('SUCCESS');
         } catch (error: unknown) {
           backups.recordRestore('FAILURE', error);
+          backups.endRestore();
           let recovered: boolean;
           try {
             const recovery = coordinator.rollbackPending();

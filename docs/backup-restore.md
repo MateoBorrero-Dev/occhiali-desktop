@@ -67,6 +67,10 @@ usuaria todavía debe iniciar manualmente la copia e ingresar su contraseña de 
 Las operaciones se registran en `backup-history.json`, separado de SQLite y limitado a 90 eventos.
 Su diseño, seguridad y recuperación se documentan en [Alertas e historial](backup-observability.md).
 
+El modo automático opcional reutiliza exactamente esta creación verificada y el mismo formato. La
+contraseña se protege fuera de SQLite mediante `safeStorage`; el scheduler, sus bloqueos y límites se
+documentan en [Respaldos automáticos](backup-automation.md).
+
 ## Restauración
 
 1. La usuaria elige `.ocbackup` mediante diálogo nativo.

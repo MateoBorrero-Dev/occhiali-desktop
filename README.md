@@ -141,6 +141,7 @@ Encontrá más información en:
 - [Seguridad](docs/security.md)
 - [Backup y restauración](docs/backup-restore.md)
 - [Alertas e historial de respaldos](docs/backup-observability.md)
+- [Respaldos automáticos y credenciales protegidas](docs/backup-automation.md)
 - [Exportación a carpeta sincronizada](docs/cloud-backup.md)
 - [Instalador Windows](docs/windows-installer.md)
 - [Manual de usuario](docs/manual-usuario.md)

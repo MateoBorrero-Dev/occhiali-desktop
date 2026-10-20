@@ -147,3 +147,18 @@ procedimiento de soporte.
 - No compartas contraseñas por mensajes inseguros ni las guardes junto al `.ocbackup`.
 - No edites, renombres parcialmente ni abras la base SQLite con herramientas externas.
 - No copies sólo `optica.sqlite3` mientras Occhiali está abierto; usá el respaldo incorporado.
+
+### Configurar respaldos automáticos
+
+En **Configuración → Respaldos** podés conservar el modo asistido o activar el modo automático. Para
+el modo automático primero configurá una contraseña de recuperación protegida y guardá otra copia de
+esa contraseña fuera de la computadora. Occhiali no puede mostrarla si la olvidás.
+
+Elegí una hora y guardá la programación. La copia pendiente se realiza cuando Occhiali está abierto,
+también al iniciar después del horario o al reanudar Windows. Si la aplicación está cerrada, no se
+ejecutan respaldos. El estado y el historial indican si la copia local fue correcta y, por separado,
+si falló el destino externo; depositar un archivo en una carpeta sincronizada no confirma que haya
+subido a la nube.
+
+Podés reemplazar o eliminar la credencial protegida. Al eliminarla, Occhiali vuelve al modo asistido.
+La contraseña de acceso a la aplicación y la contraseña de recuperación de respaldos son distintas.

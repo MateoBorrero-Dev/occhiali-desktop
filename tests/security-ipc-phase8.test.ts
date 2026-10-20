@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,6 +23,7 @@ vi.mock('electron', () => ({
 }));
 
 import { BackupError, BackupService } from '../src/main/backup/backup-service';
+import { BackupCredentialStore } from '../src/main/backup/backup-credential-store';
 import { ApplicationDatabase } from '../src/main/database';
 import { registerIpcHandlers } from '../src/main/ipc/register-handlers';
 import { SecurityManager } from '../src/main/security/security-manager';
@@ -35,6 +36,7 @@ describe('autorización IPC de Fase 8', () => {
   let directory: string;
   let security: SecurityManager;
   let backups: BackupService;
+  let credentials: BackupCredentialStore;
 
   beforeEach(() => {
     registered.clear();
@@ -42,7 +44,18 @@ describe('autorización IPC de Fase 8', () => {
     directory = mkdtempSync(join(tmpdir(), 'occhiali-ipc-security-'));
     security = new SecurityManager(join(directory, 'security.json'));
     backups = new BackupService(join(context.directory, 'backup-settings.json'), '0.1.0');
-    registerIpcHandlers(context.database, security, backups, context.filePath);
+    credentials = new BackupCredentialStore(join(directory, 'backup-credential.json'), {
+      isEncryptionAvailable: () => true,
+      encryptStringAsync: (value) => Promise.resolve(Buffer.from(`protected:${value}`)),
+      decryptStringAsync: (value) =>
+        Promise.resolve({
+          result: value.toString().replace(/^protected:/, ''),
+          shouldReEncrypt: false,
+        }),
+    });
+    registerIpcHandlers(context.database, security, backups, context.filePath, credentials, () =>
+      Promise.resolve(),
+    );
   });
 
   afterEach(async () => {
@@ -93,6 +106,73 @@ describe('autorización IPC de Fase 8', () => {
       ok: true,
       data: { events: [], available: true },
     });
+  });
+
+  it('protege, reemplaza y elimina la credencial automática sin exponerla por IPC', async () => {
+    const setCredential = registered.get(IPC_CHANNELS.backupSetAutomaticCredential)!;
+    const clearCredential = registered.get(IPC_CHANNELS.backupClearAutomaticCredential)!;
+    const configure = registered.get(IPC_CHANNELS.backupConfigure)!;
+    const password = 'Recuperacion-Automatica-IPC-2026';
+
+    await expect(setCredential({}, password)).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'SECURITY' },
+    });
+    await security.setup('Acceso-Ficticio-2026', 15);
+    await expect(setCredential({}, password)).resolves.toMatchObject({
+      ok: true,
+      data: { protectedCredentialState: 'READY' },
+    });
+    expect(readFileSync(join(directory, 'backup-credential.json'), 'utf8')).not.toContain(password);
+    await expect(
+      configure({}, { automaticEnabled: true, automaticHour: 20, retentionCount: 14 }),
+    ).resolves.toMatchObject({ ok: true, data: { automaticEnabled: true } });
+    await expect(clearCredential({})).resolves.toMatchObject({
+      ok: true,
+      data: { automaticEnabled: false, protectedCredentialState: 'MISSING' },
+    });
+    expect(existsSync(join(directory, 'backup-credential.json'))).toBe(false);
+  });
+
+  it('rechaza activar la automatización sin una credencial protegida', async () => {
+    await security.setup('Acceso-Ficticio-2026', 15);
+    const configure = registered.get(IPC_CHANNELS.backupConfigure)!;
+    await expect(
+      configure({}, { automaticEnabled: true, automaticHour: 20, retentionCount: 14 }),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: 'BACKUP',
+        message: 'Configurá una contraseña protegida antes de activar los respaldos automáticos.',
+      },
+    });
+  });
+
+  it('no cambia la credencial protegida durante un respaldo o una restauración', async () => {
+    await security.setup('Acceso-Ficticio-2026', 15);
+    const setCredential = registered.get(IPC_CHANNELS.backupSetAutomaticCredential)!;
+    const clearCredential = registered.get(IPC_CHANNELS.backupClearAutomaticCredential)!;
+    const password = 'Recuperacion-Automatica-IPC-2026';
+    await expect(setCredential({}, password)).resolves.toMatchObject({ ok: true });
+    vi.spyOn(backups, 'isCriticalOperation').mockReturnValue(true);
+
+    await expect(setCredential({}, 'Recuperacion-Nueva-IPC-2026')).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: 'BACKUP',
+        message:
+          'Esperá a que termine el respaldo o la restauración antes de cambiar la contraseña protegida.',
+      },
+    });
+    await expect(clearCredential({})).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: 'BACKUP',
+        message:
+          'Esperá a que termine el respaldo o la restauración antes de eliminar la contraseña protegida.',
+      },
+    });
+    expect(existsSync(join(directory, 'backup-credential.json'))).toBe(true);
   });
 
   it('convierte un fallo de archivos en un mensaje seguro para la interfaz', async () => {

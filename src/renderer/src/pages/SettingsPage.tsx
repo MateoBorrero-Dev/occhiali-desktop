@@ -50,6 +50,7 @@ const operationLabels: Record<BackupHistoryEvent['operation'], string> = {
 };
 
 const resultLabels: Record<BackupHistoryEvent['result'], string> = {
+  STARTED: 'Iniciado',
   SUCCESS: 'Correcto',
   PARTIAL: 'Parcial',
   FAILURE: 'Fallido',
@@ -60,6 +61,8 @@ export function SettingsPage(): React.JSX.Element {
   const [history, setHistory] = useState<BackupHistorySnapshot | null>(null);
   const [access, setAccess] = useState<SecurityStatus | null>(null);
   const [recoveryPassword, setRecoveryPassword] = useState('');
+  const [automaticPassword, setAutomaticPassword] = useState('');
+  const [automaticPasswordRepeat, setAutomaticPasswordRepeat] = useState('');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [verified, setVerified] = useState<BackupMetadata | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -85,6 +88,15 @@ export function SettingsPage(): React.JSX.Element {
         .then(unwrap)
         .then(setAccess)
         .catch(() => setError('No se pudo consultar el estado de seguridad.'));
+  }, [api]);
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void Promise.all([api.status(), api.history()]).then(([nextStatus, nextHistory]) => {
+        if (nextStatus.ok) setBackup(nextStatus.data);
+        if (nextHistory.ok) setHistory(nextHistory.data);
+      });
+    }, 60_000);
+    return () => window.clearInterval(interval);
   }, [api]);
   useEffect(() => {
     if (!backup || !window.location.hash.includes('seccion=respaldos')) return;
@@ -251,13 +263,21 @@ export function SettingsPage(): React.JSX.Element {
                 <dd className="mt-1 text-slate-600">Sincronización remota no verificada</dd>
               </div>
               <div>
-                <dt className="font-bold text-slate-500">Recordatorio asistido</dt>
+                <dt className="font-bold text-slate-500">Automatización</dt>
                 <dd>
-                  {backup.automaticEnabled
-                    ? backup.due
-                      ? 'Respaldo asistido pendiente'
-                      : 'Al día'
-                    : 'Desactivada'}
+                  {backup.automaticState === 'DISABLED'
+                    ? 'Modo asistido'
+                    : backup.automaticState === 'RUNNING'
+                      ? 'Creando respaldo…'
+                      : backup.automaticState === 'BLOCKED'
+                        ? 'Bloqueada por credencial'
+                        : backup.automaticState === 'ERROR'
+                          ? 'Último intento fallido'
+                          : backup.automaticState === 'PENDING'
+                            ? backup.due
+                              ? 'Respaldo pendiente'
+                              : 'Esperando primera copia programada'
+                            : 'Automática y al día'}
                 </dd>
               </div>
             </dl>
@@ -284,6 +304,16 @@ export function SettingsPage(): React.JSX.Element {
               {backup.historyAvailable
                 ? 'Se preservó un historial dañado para revisión y se inició uno nuevo.'
                 : 'Se detectó un historial dañado que no pudo ponerse en cuarentena. Se preservó sin sobrescribirlo y el registro de nuevos eventos quedó deshabilitado.'}
+            </p>
+          )}
+          {backup?.externalCopyStatus === 'FAILED' && (
+            <p
+              role="alert"
+              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
+            >
+              {backup.lastBackupExists
+                ? 'El respaldo local se creó correctamente, pero falló la copia externa. Revisá la carpeta seleccionada.'
+                : 'Falló la última copia externa y el respaldo local ya no está disponible. Creá una nueva copia.'}
             </p>
           )}
           {backup && !backup.lastBackupAt && (
@@ -347,23 +377,40 @@ export function SettingsPage(): React.JSX.Element {
         </Card>
         {backup && (
           <Card className="p-6 xl:col-span-2">
-            <h2 className="text-base font-bold">Respaldo automático asistido</h2>
+            <h2 className="text-base font-bold">Programación de respaldos</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Occhiali avisa cuando corresponde una copia diaria. Por seguridad no guarda la
-              contraseña de recuperación: la copia se confirma manualmente y no puede ejecutarse con
-              la aplicación cerrada.
+              El modo automático funciona sólo mientras Occhiali está abierto. La contraseña se
+              protege con el almacenamiento seguro de Windows y nunca puede mostrarse ni recuperarse
+              desde la aplicación.
             </p>
-            <div className="mt-4 flex flex-wrap items-end gap-4">
-              <label className="flex min-h-10 items-center gap-2 text-sm font-semibold">
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="flex min-h-12 items-start gap-3 rounded-lg border border-slate-200 p-4 text-sm">
                 <input
-                  type="checkbox"
-                  checked={backup.automaticEnabled}
-                  onChange={(event) =>
-                    setBackup({ ...backup, automaticEnabled: event.target.checked })
-                  }
+                  type="radio"
+                  name="backup-mode"
+                  checked={!backup.automaticEnabled}
+                  onChange={() => setBackup({ ...backup, automaticEnabled: false })}
                 />
-                Recordatorio diario
+                <span>
+                  <strong className="block">Modo asistido</strong>
+                  Occhiali avisa, pero la copia se inicia manualmente con la contraseña.
+                </span>
               </label>
+              <label className="flex min-h-12 items-start gap-3 rounded-lg border border-teal-200 bg-teal-50/50 p-4 text-sm">
+                <input
+                  type="radio"
+                  name="backup-mode"
+                  checked={backup.automaticEnabled}
+                  disabled={backup.protectedCredentialState === 'UNAVAILABLE'}
+                  onChange={() => setBackup({ ...backup, automaticEnabled: true })}
+                />
+                <span>
+                  <strong className="block">Modo automático</strong>
+                  Crea la copia pendiente a la hora elegida, al iniciar o al reanudar Windows.
+                </span>
+              </label>
+            </div>
+            <div className="mt-4 flex flex-wrap items-end gap-4">
               <label className="text-sm font-semibold">
                 Hora
                 <input
@@ -407,12 +454,96 @@ export function SettingsPage(): React.JSX.Element {
                       ),
                     );
                     window.dispatchEvent(new Event('occhiali-backup-changed'));
-                    return 'Programación asistida actualizada.';
+                    return backup.automaticEnabled
+                      ? 'Respaldo automático activado.'
+                      : 'Modo asistido activado.';
                   })
                 }
               >
                 Guardar programación
               </Button>
+            </div>
+            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold">Contraseña protegida</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {backup.protectedCredentialState === 'READY'
+                      ? 'Configurada y protegida por Windows.'
+                      : backup.protectedCredentialState === 'UNAVAILABLE'
+                        ? 'El almacenamiento seguro de Windows no está disponible.'
+                        : backup.protectedCredentialState === 'DAMAGED'
+                          ? 'La credencial está dañada o ya no puede descifrarse.'
+                          : 'Todavía no está configurada.'}
+                  </p>
+                </div>
+                {backup.lastAutomaticBackupAt && (
+                  <p className="text-xs text-slate-500">
+                    Último automático:{' '}
+                    {new Date(backup.lastAutomaticBackupAt).toLocaleString('es-AR')}
+                  </p>
+                )}
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-semibold">
+                  Nueva contraseña de recuperación
+                  <input
+                    aria-label="Contraseña automática"
+                    type="password"
+                    value={automaticPassword}
+                    onChange={(event) => setAutomaticPassword(event.target.value)}
+                    placeholder="Mínimo 12 caracteres"
+                    className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+                  />
+                </label>
+                <label className="text-sm font-semibold">
+                  Repetir contraseña
+                  <input
+                    aria-label="Repetir contraseña automática"
+                    type="password"
+                    value={automaticPasswordRepeat}
+                    onChange={(event) => setAutomaticPasswordRepeat(event.target.value)}
+                    className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3"
+                  />
+                </label>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-600">
+                Conservá esta contraseña fuera de la computadora. La protección de Windows no
+                reemplaza esa copia: si la perdés, podrías no poder restaurar en otro equipo.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={busy || backup.protectedCredentialState === 'UNAVAILABLE'}
+                  onClick={() =>
+                    void run(async () => {
+                      if (automaticPassword !== automaticPasswordRepeat)
+                        throw new Error('Las contraseñas de recuperación no coinciden.');
+                      setBackup(unwrap(await api.setAutomaticCredential(automaticPassword)));
+                      setAutomaticPassword('');
+                      setAutomaticPasswordRepeat('');
+                      await refreshBackupData();
+                      return 'Contraseña protegida actualizada.';
+                    })
+                  }
+                >
+                  {backup.protectedCredentialState === 'READY' ? 'Reemplazar' : 'Proteger'}
+                  {' contraseña'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={busy || backup.protectedCredentialState === 'MISSING'}
+                  onClick={() =>
+                    void run(async () => {
+                      setBackup(unwrap(await api.clearAutomaticCredential()));
+                      window.dispatchEvent(new Event('occhiali-backup-changed'));
+                      return 'Credencial eliminada y modo automático desactivado.';
+                    })
+                  }
+                >
+                  Eliminar credencial
+                </Button>
+              </div>
             </div>
           </Card>
         )}
@@ -450,15 +581,20 @@ export function SettingsPage(): React.JSX.Element {
                       </td>
                       <td className="border-b border-slate-100 px-3 py-3 font-semibold">
                         {operationLabels[event.operation]}
+                        <span className="mt-1 block text-xs font-normal text-slate-500">
+                          {event.trigger === 'AUTOMATIC' ? 'Automática' : 'Manual'}
+                        </span>
                       </td>
                       <td className="border-b border-slate-100 px-3 py-3">
                         <span
                           className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
-                            event.result === 'SUCCESS'
-                              ? 'bg-teal-50 text-teal-800'
-                              : event.result === 'PARTIAL'
-                                ? 'bg-amber-50 text-amber-900'
-                                : 'bg-red-50 text-red-800'
+                            event.result === 'STARTED'
+                              ? 'bg-sky-50 text-sky-800'
+                              : event.result === 'SUCCESS'
+                                ? 'bg-teal-50 text-teal-800'
+                                : event.result === 'PARTIAL'
+                                  ? 'bg-amber-50 text-amber-900'
+                                  : 'bg-red-50 text-red-800'
                           }`}
                         >
                           {resultLabels[event.result]}
@@ -471,10 +607,12 @@ export function SettingsPage(): React.JSX.Element {
                         {formatSize(event.sizeBytes)}
                       </td>
                       <td className="max-w-64 border-b border-slate-100 px-3 py-3 text-slate-600">
-                        {event.error ??
-                          (event.externalState === 'COPIED'
-                            ? 'Depositado externamente; sincronización remota no verificada.'
-                            : 'Operación completada.')}
+                        {event.result === 'STARTED'
+                          ? 'Operación iniciada; el resultado final se registra por separado.'
+                          : (event.error ??
+                            (event.externalState === 'COPIED'
+                              ? 'Depositado externamente; sincronización remota no verificada.'
+                              : 'Operación completada.'))}
                       </td>
                     </tr>
                   ))}

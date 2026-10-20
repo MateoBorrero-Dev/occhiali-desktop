@@ -172,6 +172,12 @@ fuera de SQLite para evitar dependencias circulares y sus fallos no invalidan un
 relacional e índices están en [database.md](database.md); los límites de seguridad y recuperación
 están en [security.md](security.md) y [backup-restore.md](backup-restore.md).
 
+`BackupCredentialStore` protege la contraseña automática mediante `safeStorage` y nunca la expone al
+renderer. `BackupScheduler` se ejecuta sólo en Main, al inicio, por intervalo y al reanudar Windows.
+Comparte el bloqueo de operaciones críticas con creación y restauración; `before-quit` espera que la
+operación activa finalice antes de cerrar SQLite. El diseño completo está en
+[backup-automation.md](backup-automation.md).
+
 ## Distribución Windows
 
 electron-builder empaqueta `out/main`, `out/preload` y `out/renderer` en `app.asar`. Main mantiene

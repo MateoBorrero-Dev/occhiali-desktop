@@ -32,6 +32,7 @@ interface AuthenticatedHeader {
   cipher: Pick<BackupEnvelope['cipher'], 'name' | 'nonce'>;
 }
 interface Settings {
+  automationConfigurationVersion: 1;
   localDirectory: string;
   exportDirectory: string | null;
   lastBackupAt: string | null;
@@ -42,6 +43,9 @@ interface Settings {
   lastExternalCopyFile: string | null;
   lastExternalCopyStatus: 'UNKNOWN' | 'COPIED' | 'FAILED';
   lastRestoreAt: string | null;
+  lastAutomaticBackupAt: string | null;
+  lastAutomaticAttemptAt: string | null;
+  lastAutomaticErrorAt: string | null;
   monitoringStartedAt: string;
   automaticEnabled: boolean;
   automaticHour: number;
@@ -49,6 +53,8 @@ interface Settings {
 }
 
 export class BackupError extends Error {}
+
+export type BackupCreationTrigger = 'MANUAL' | 'AUTOMATIC' | 'RESTORE_SAFETY';
 
 async function removeSqliteArtifacts(path: string): Promise<void> {
   await rm(path, { force: true });
@@ -75,7 +81,7 @@ export class PreparedRestore {
   }
 }
 
-function validateRecoveryPassword(value: unknown): asserts value is string {
+export function validateRecoveryPassword(value: unknown): asserts value is string {
   if (typeof value !== 'string' || value.length < 12 || value.length > 128)
     throw new BackupError('La contraseña de recuperación debe tener entre 12 y 128 caracteres.');
 }
@@ -121,13 +127,22 @@ export function calculateBackupDue(
 ): boolean {
   if (!automaticEnabled) return false;
   if (lastBackupAt && !lastBackupExists) return true;
+  const todayCutoff = new Date(now);
+  todayCutoff.setHours(automaticHour, 0, 0, 0);
+  const cutoff = new Date(todayCutoff);
+  const beforeTodayCutoff = now < todayCutoff;
+  if (beforeTodayCutoff) cutoff.setDate(cutoff.getDate() - 1);
+  const monitoring = validDate(monitoringStartedAt) ?? now;
+  if (beforeTodayCutoff && cutoff < monitoring) return false;
+  const last = validDate(lastBackupAt);
+  return !last || last < cutoff;
+}
+
+export function scheduledBackupWindowStart(now: Date, automaticHour: number): Date {
   const cutoff = new Date(now);
   cutoff.setHours(automaticHour, 0, 0, 0);
   if (now < cutoff) cutoff.setDate(cutoff.getDate() - 1);
-  const monitoring = validDate(monitoringStartedAt) ?? now;
-  if (cutoff < monitoring) return false;
-  const last = validDate(lastBackupAt);
-  return !last || last < cutoff;
+  return cutoff;
 }
 
 export function calculateBackupAlert(
@@ -162,6 +177,10 @@ export class BackupService {
   private settings: Settings;
   private readonly historyStore: BackupHistoryStore;
   private busy = false;
+  private restoreInProgress = false;
+  private automaticRunning = false;
+  private protectedCredentialState: BackupStatus['protectedCredentialState'] = 'MISSING';
+  private readonly idleWaiters = new Set<() => void>();
   private selectedRestorePath: string | null = null;
 
   public constructor(
@@ -200,9 +219,14 @@ export class BackupService {
       lastErrorAt: this.settings.lastErrorAt,
       lastExternalCopyAt: this.settings.lastExternalCopyAt,
       lastRestoreAt: this.settings.lastRestoreAt,
+      lastAutomaticBackupAt: this.settings.lastAutomaticBackupAt,
+      lastAutomaticAttemptAt: this.settings.lastAutomaticAttemptAt,
+      lastAutomaticErrorAt: this.settings.lastAutomaticErrorAt,
       automaticEnabled: this.settings.automaticEnabled,
       automaticHour: this.settings.automaticHour,
       retentionCount: this.settings.retentionCount,
+      protectedCredentialState: this.protectedCredentialState,
+      automaticState: this.automaticState(),
       due: calculateBackupDue(
         this.settings.lastBackupAt,
         this.settings.automaticEnabled,
@@ -221,7 +245,7 @@ export class BackupService {
       externalCopyStatus: this.externalCopyStatus(),
       historyAvailable: history.available,
       historyRecoveredFromDamage: history.recoveredFromDamage,
-      busy: this.busy,
+      busy: this.isCriticalOperation(),
       remoteSyncVerified: false,
     };
   }
@@ -252,14 +276,77 @@ export class BackupService {
       value.retentionCount > 90
     )
       throw new BackupError('La configuración no es válida.');
+    const scheduleChanged =
+      this.settings.automaticEnabled !== value.automaticEnabled ||
+      this.settings.automaticHour !== value.automaticHour;
     this.settings = {
       ...this.settings,
       automaticEnabled: value.automaticEnabled,
       automaticHour: value.automaticHour,
       retentionCount: value.retentionCount,
+      ...(scheduleChanged ? { lastAutomaticAttemptAt: null, lastAutomaticErrorAt: null } : {}),
     };
     this.save();
     return this.status();
+  }
+
+  public setProtectedCredentialState(
+    state: BackupStatus['protectedCredentialState'],
+  ): BackupStatus {
+    this.protectedCredentialState = state;
+    return this.status();
+  }
+
+  public resetAutomaticAttempt(): void {
+    this.settings.lastAutomaticAttemptAt = null;
+    this.settings.lastAutomaticErrorAt = null;
+    this.save();
+  }
+
+  public automaticAttemptedForCurrentWindow(now: Date = this.now()): boolean {
+    const attempted = validDate(this.settings.lastAutomaticAttemptAt);
+    return !!attempted && attempted >= scheduledBackupWindowStart(now, this.settings.automaticHour);
+  }
+
+  public recordAutomaticFailure(error: unknown): void {
+    const occurredAt = this.now().toISOString();
+    this.settings.lastAutomaticAttemptAt = occurredAt;
+    this.settings.lastAutomaticErrorAt = occurredAt;
+    this.settings.lastErrorAt = occurredAt;
+    try {
+      this.save();
+    } catch {
+      // A scheduler status error must not stop the commercial application.
+    }
+    this.recordHistory({
+      occurredAt,
+      operation: 'CREATE',
+      trigger: 'AUTOMATIC',
+      result: 'FAILURE',
+      localState: 'FAILED',
+      externalState: this.settings.exportDirectory ? 'UNKNOWN' : 'NOT_CONFIGURED',
+      error: sanitizedError(error),
+    });
+  }
+
+  public beginRestore(): void {
+    if (this.isCriticalOperation())
+      throw new BackupError('Hay otra operación de respaldo o restauración en curso.');
+    this.restoreInProgress = true;
+  }
+
+  public endRestore(): void {
+    this.restoreInProgress = false;
+    this.notifyIdle();
+  }
+
+  public isCriticalOperation(): boolean {
+    return this.busy || this.restoreInProgress;
+  }
+
+  public waitUntilIdle(): Promise<void> {
+    if (!this.isCriticalOperation()) return Promise.resolve();
+    return new Promise((resolve) => this.idleWaiters.add(resolve));
   }
 
   public setExportDirectory(path: string | null): BackupStatus {
@@ -283,16 +370,34 @@ export class BackupService {
   public async create(
     database: ApplicationDatabase,
     recoveryPassword: unknown,
+    trigger: BackupCreationTrigger = 'MANUAL',
   ): Promise<BackupOperationResult> {
     validateRecoveryPassword(recoveryPassword);
+    if (this.restoreInProgress && trigger !== 'RESTORE_SAFETY')
+      throw new BackupError('Hay una restauración en curso.');
     if (this.busy) throw new BackupError('Ya hay una copia de seguridad en curso.');
     this.busy = true;
+    this.automaticRunning = trigger === 'AUTOMATIC';
     const now = this.now();
     const fileName = `occhiali-backup-${safeTimestamp(now)}.ocbackup`;
     const temporarySqlite = join(this.settings.localDirectory, `.${fileName}.sqlite.tmp`);
     const partial = join(this.settings.localDirectory, `${fileName}.partial`);
     const finalPath = join(this.settings.localDirectory, fileName);
+    const historyTrigger = trigger === 'AUTOMATIC' ? 'AUTOMATIC' : 'MANUAL';
     try {
+      if (trigger === 'AUTOMATIC') {
+        this.settings.lastAutomaticAttemptAt = now.toISOString();
+        this.settings.lastAutomaticErrorAt = null;
+        this.save();
+        this.recordHistory({
+          occurredAt: now.toISOString(),
+          operation: 'CREATE',
+          trigger: 'AUTOMATIC',
+          result: 'STARTED',
+          localState: 'NOT_APPLICABLE',
+          externalState: this.settings.exportDirectory ? 'UNKNOWN' : 'NOT_CONFIGURED',
+        });
+      }
       await mkdir(this.settings.localDirectory, { recursive: true });
       await database.backupTo(temporarySqlite);
       const checked = ApplicationDatabase.open(temporarySqlite);
@@ -341,11 +446,16 @@ export class BackupService {
         this.settings.lastExternalCopyFile = fileName;
         this.settings.lastExternalCopyStatus = exportError ? 'FAILED' : 'COPIED';
       }
+      if (trigger === 'AUTOMATIC') {
+        this.settings.lastAutomaticBackupAt = metadata.createdAt;
+        this.settings.lastAutomaticErrorAt = exportError ? metadata.createdAt : null;
+      }
       this.save();
       await this.applyRetention();
       this.recordHistory({
         occurredAt: metadata.createdAt,
         operation: 'CREATE',
+        trigger: historyTrigger,
         result: exportError ? 'PARTIAL' : 'SUCCESS',
         localState: 'VALID',
         externalState: this.historyExternalState(exportError, exportedToSyncFolder),
@@ -359,6 +469,7 @@ export class BackupService {
         this.recordHistory({
           occurredAt: metadata.createdAt,
           operation: 'EXPORT',
+          trigger: historyTrigger,
           result: exportError ? 'FAILURE' : 'SUCCESS',
           localState: 'VALID',
           externalState: exportError ? 'FAILED' : 'COPIED',
@@ -377,11 +488,13 @@ export class BackupService {
     } catch (error: unknown) {
       const occurredAt = this.now().toISOString();
       this.settings.lastErrorAt = occurredAt;
+      if (trigger === 'AUTOMATIC') this.settings.lastAutomaticErrorAt = occurredAt;
       this.save();
       const localExists = existsSync(finalPath);
       this.recordHistory({
         occurredAt,
         operation: 'CREATE',
+        trigger: historyTrigger,
         result: localExists ? 'PARTIAL' : 'FAILURE',
         localState: localExists ? 'VALID' : 'FAILED',
         externalState: this.settings.exportDirectory ? 'FAILED' : 'NOT_CONFIGURED',
@@ -392,6 +505,8 @@ export class BackupService {
       throw new BackupError('No se pudo crear la copia de seguridad.');
     } finally {
       this.busy = false;
+      this.automaticRunning = false;
+      this.notifyIdle();
       await rm(temporarySqlite, { force: true }).catch(() => undefined);
       await rm(partial, { force: true }).catch(() => undefined);
     }
@@ -574,6 +689,7 @@ export class BackupService {
   private load(defaultDirectory: string): Settings {
     const now = this.now().toISOString();
     const defaults: Settings = {
+      automationConfigurationVersion: 1,
       localDirectory: defaultDirectory,
       exportDirectory: null,
       lastBackupAt: null,
@@ -584,6 +700,9 @@ export class BackupService {
       lastExternalCopyFile: null,
       lastExternalCopyStatus: 'UNKNOWN',
       lastRestoreAt: null,
+      lastAutomaticBackupAt: null,
+      lastAutomaticAttemptAt: null,
+      lastAutomaticErrorAt: null,
       monitoringStartedAt: now,
       automaticEnabled: false,
       automaticHour: 20,
@@ -591,9 +710,13 @@ export class BackupService {
     };
     if (!existsSync(this.settingsPath)) return defaults;
     try {
+      const stored = JSON.parse(readFileSync(this.settingsPath, 'utf8')) as Partial<Settings>;
       return {
         ...defaults,
-        ...(JSON.parse(readFileSync(this.settingsPath, 'utf8')) as Partial<Settings>),
+        ...stored,
+        automationConfigurationVersion: 1,
+        automaticEnabled:
+          stored.automationConfigurationVersion === 1 && stored.automaticEnabled === true,
         localDirectory: defaultDirectory,
       };
     } catch {
@@ -632,5 +755,38 @@ export class BackupService {
     } catch {
       // Observability must never invalidate a completed backup or restore.
     }
+  }
+
+  private automaticState(): BackupStatus['automaticState'] {
+    if (!this.settings.automaticEnabled) return 'DISABLED';
+    if (this.automaticRunning) return 'RUNNING';
+    if (this.protectedCredentialState !== 'READY') return 'BLOCKED';
+    const error = validDate(this.settings.lastAutomaticErrorAt);
+    const success = validDate(this.settings.lastAutomaticBackupAt);
+    if (error && (!success || error >= success)) return 'ERROR';
+    const lastBackupFile = safeBackupFileName(this.settings.lastBackupFile);
+    if (!lastBackupFile || !existsSync(join(this.settings.localDirectory, lastBackupFile)))
+      return 'PENDING';
+    if (this.statusDueWithoutRecursion()) return 'PENDING';
+    return 'READY';
+  }
+
+  private statusDueWithoutRecursion(): boolean {
+    const fileName = safeBackupFileName(this.settings.lastBackupFile);
+    const exists = !!fileName && existsSync(join(this.settings.localDirectory, fileName));
+    return calculateBackupDue(
+      this.settings.lastBackupAt,
+      this.settings.automaticEnabled,
+      this.settings.automaticHour,
+      this.settings.monitoringStartedAt,
+      exists,
+      this.now(),
+    );
+  }
+
+  private notifyIdle(): void {
+    if (this.isCriticalOperation()) return;
+    for (const resolve of this.idleWaiters) resolve();
+    this.idleWaiters.clear();
   }
 }

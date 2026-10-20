@@ -84,6 +84,9 @@ const backup = Object.freeze<BackupApi>({
   status: () => ipcRenderer.invoke(IPC_CHANNELS.backupStatus),
   history: () => ipcRenderer.invoke(IPC_CHANNELS.backupHistory),
   configure: (input) => ipcRenderer.invoke(IPC_CHANNELS.backupConfigure, input),
+  setAutomaticCredential: (recoveryPassword) =>
+    ipcRenderer.invoke(IPC_CHANNELS.backupSetAutomaticCredential, recoveryPassword),
+  clearAutomaticCredential: () => ipcRenderer.invoke(IPC_CHANNELS.backupClearAutomaticCredential),
   selectExportDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.backupSelectExportDirectory),
   create: (recoveryPassword) => ipcRenderer.invoke(IPC_CHANNELS.backupCreate, recoveryPassword),
   openDirectory: () => ipcRenderer.invoke(IPC_CHANNELS.backupOpenDirectory),

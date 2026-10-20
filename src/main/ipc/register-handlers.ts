@@ -9,6 +9,7 @@ import { createQueryIpcHandlers } from './query-handlers';
 import { createSecurityIpcHandlers } from './security-handlers';
 import type { SecurityManager } from '../security/security-manager';
 import type { BackupService } from '../backup/backup-service';
+import type { BackupCredentialStore } from '../backup/backup-credential-store';
 import { createDeliveryReceiptIpcHandlers } from './delivery-receipt-handlers';
 import { ElectronDeliveryReceiptPdfExporter } from '../documents/delivery-receipt-pdf';
 
@@ -17,6 +18,8 @@ export function registerIpcHandlers(
   security: SecurityManager,
   backups: BackupService,
   databasePath: string,
+  credentials: BackupCredentialStore,
+  onAutomationChanged: () => Promise<unknown>,
 ): void {
   const authorized = <T>(operation: () => T): T => {
     security.requireAuthenticated();
@@ -118,7 +121,14 @@ export function registerIpcHandlers(
     authorized(() => queries.globalSearch(...args)),
   );
 
-  const secure = createSecurityIpcHandlers(security, backups, database, databasePath);
+  const secure = createSecurityIpcHandlers(
+    security,
+    backups,
+    database,
+    databasePath,
+    credentials,
+    onAutomationChanged,
+  );
   const strict = (
     channel: string,
     expected: number,
@@ -141,6 +151,10 @@ export function registerIpcHandlers(
   strict(IPC_CHANNELS.backupStatus, 0, () => secure.backupStatus());
   strict(IPC_CHANNELS.backupHistory, 0, () => secure.backupHistory());
   strict(IPC_CHANNELS.backupConfigure, 1, (input) => secure.configureBackup(input));
+  strict(IPC_CHANNELS.backupSetAutomaticCredential, 1, (password) =>
+    secure.setAutomaticCredential(password),
+  );
+  strict(IPC_CHANNELS.backupClearAutomaticCredential, 0, () => secure.clearAutomaticCredential());
   strict(IPC_CHANNELS.backupSelectExportDirectory, 0, () => secure.selectExportDirectory());
   strict(IPC_CHANNELS.backupCreate, 1, (password) => secure.createBackup(password));
   strict(IPC_CHANNELS.backupOpenDirectory, 0, () => secure.openBackupDirectory());

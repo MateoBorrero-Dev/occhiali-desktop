@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, session } from 'electron';
+import { app, BrowserWindow, dialog, powerMonitor, safeStorage, session } from 'electron';
 import { join } from 'node:path';
 import { ApplicationDatabase } from './database';
 import { configureUserDataPath, getDatabaseFilePath } from './database/paths';
@@ -6,11 +6,17 @@ import { registerIpcHandlers } from './ipc/register-handlers';
 import { SecurityManager } from './security/security-manager';
 import { BackupService } from './backup/backup-service';
 import { recoverInterruptedRestore } from './backup/restore-recovery';
+import { BackupCredentialStore } from './backup/backup-credential-store';
+import { BackupScheduler } from './backup/backup-scheduler';
 
 const isDevelopment = process.env.ELECTRON_RENDERER_URL !== undefined;
 const useMinimumQaWindow = process.env.OPTICA_QA_WINDOW_SIZE === 'minimum';
 let applicationDatabase: ApplicationDatabase | null = null;
+let backupService: BackupService | null = null;
+let backupScheduler: BackupScheduler | null = null;
 let qaConfigurationError: unknown = null;
+let waitingToQuit = false;
+let quitAfterCriticalOperation = false;
 
 function windowIconPath(): string {
   return app.isPackaged
@@ -107,13 +113,28 @@ app
     recoverInterruptedRestore(databasePath);
     applicationDatabase = ApplicationDatabase.open(databasePath);
     const securityManager = new SecurityManager(join(app.getPath('userData'), 'security.json'));
-    const backupService = new BackupService(
+    backupService = new BackupService(
       join(app.getPath('userData'), 'backup-settings.json'),
       app.getVersion(),
     );
+    const backupCredentials = new BackupCredentialStore(
+      join(app.getPath('userData'), 'backup-credential.json'),
+      safeStorage,
+    );
+    backupService.setProtectedCredentialState(backupCredentials.state());
+    backupScheduler = new BackupScheduler(backupService, backupCredentials, applicationDatabase);
     configureSecurity();
-    registerIpcHandlers(applicationDatabase, securityManager, backupService, databasePath);
+    registerIpcHandlers(
+      applicationDatabase,
+      securityManager,
+      backupService,
+      databasePath,
+      backupCredentials,
+      () => backupScheduler!.refreshCredentialAndCheck('CONFIGURATION'),
+    );
     createMainWindow();
+    backupScheduler.start();
+    powerMonitor.on('resume', () => void backupScheduler?.checkNow('RESUME'));
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -129,7 +150,19 @@ app
     app.quit();
   });
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+  backupScheduler?.stop();
+  if (backupService?.isCriticalOperation() && !quitAfterCriticalOperation) {
+    event.preventDefault();
+    if (!waitingToQuit) {
+      waitingToQuit = true;
+      void backupService.waitUntilIdle().then(() => {
+        quitAfterCriticalOperation = true;
+        app.quit();
+      });
+    }
+    return;
+  }
   applicationDatabase?.close();
   applicationDatabase = null;
 });

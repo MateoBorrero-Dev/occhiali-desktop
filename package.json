@@ -102,6 +102,7 @@
       "!**/security.json",
       "!**/backup-settings.json",
       "!**/backup-history.json*",
+      "!**/backup-credential.json*",
       "!**/.env",
       "!**/.env.*"
     ],

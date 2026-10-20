@@ -58,13 +58,19 @@ resumen, el estado externo y los últimos diez eventos en una tabla con scroll h
 Depositar un archivo en una carpeta sincronizada nunca se presenta como confirmación de subida a la
 nube. La existencia del archivo tampoco sustituye la verificación manual de su contenido cifrado.
 
+## Evolución en el Bloque 2
+
+El Bloque 2 agrega un modo automático optativo con credencial protegida. Las alertas y el historial
+de este documento se conservan y ahora distinguen ejecuciones manuales y automáticas. Consultar
+[Respaldos automáticos y credenciales protegidas](backup-automation.md).
+
 ## Límites pendientes
 
-- No hay scheduler ni ejecución en segundo plano.
+- El scheduler sólo funciona mientras Occhiali está abierto.
 - La contraseña se introduce manualmente para cada creación o restauración.
 - Occhiali no consulta APIs de Google Drive ni OneDrive.
 - El historial es operativo y local; no sustituye una copia externa del `.ocbackup`.
-- La automatización y el almacenamiento seguro de credenciales corresponden a bloques posteriores.
+- La retención avanzada de copias externas corresponde al Bloque 3.
 
 ## QA manual en Windows
 

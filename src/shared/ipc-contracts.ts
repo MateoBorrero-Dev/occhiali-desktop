@@ -71,6 +71,8 @@ export const IPC_CHANNELS = {
   backupStatus: 'backup:status',
   backupHistory: 'backup:history',
   backupConfigure: 'backup:configure',
+  backupSetAutomaticCredential: 'backup:set-automatic-credential',
+  backupClearAutomaticCredential: 'backup:clear-automatic-credential',
   backupSelectExportDirectory: 'backup:select-export-directory',
   backupCreate: 'backup:create',
   backupOpenDirectory: 'backup:open-directory',
@@ -236,6 +238,8 @@ export interface BackupApi {
     automaticHour: number;
     retentionCount: number;
   }) => Promise<SecurityResult<BackupStatus>>;
+  setAutomaticCredential: (recoveryPassword: string) => Promise<SecurityResult<BackupStatus>>;
+  clearAutomaticCredential: () => Promise<SecurityResult<BackupStatus>>;
   selectExportDirectory: () => Promise<SecurityResult<BackupStatus>>;
   create: (recoveryPassword: string) => Promise<SecurityResult<BackupOperationResult>>;
   openDirectory: () => Promise<SecurityResult<true>>;
