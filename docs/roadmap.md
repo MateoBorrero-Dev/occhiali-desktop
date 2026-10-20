@@ -134,3 +134,12 @@ Publicación externa mediante temporal exclusivo con comprobación de tamaño y 
 persistentes y acotados sobre el mismo respaldo local, estados diferenciados e historial real. La
 retención local sólo elimina respaldos propios reconocidos, omite enlaces y archivos ambiguos,
 protege copias en uso y nunca aplica borrado automático al destino externo.
+
+## 1.1.0 — Bloque 4: recuperación ante desastres y compatibilidad
+
+**Estado:** implementación y validación automatizada completadas; QA manual de Windows pendiente.
+
+Compatibilidad demostrada con fixtures cifrados controlados de 0.9.0 y 1.0.0, restauración en un
+perfil nuevo sin DPAPI, cobertura integral de datos comerciales, rechazo conservador de archivos
+incorrectos o truncados y exclusión mutua con scheduler y reintentos. La interfaz advierte la fecha
+del respaldo y la pérdida de cambios posteriores antes de confirmar.

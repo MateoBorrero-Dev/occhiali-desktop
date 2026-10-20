@@ -185,6 +185,13 @@ aplica una política conservadora únicamente a archivos locales propios, regula
 sigue enlaces y omite cualquier eliminación dudosa. Véase
 [backup-resilience.md](backup-resilience.md).
 
+`RestoreCoordinator` separa preparación, reemplazo y confirmación mediante staging, rollback y un
+marcador durable. La clave del `.ocbackup` se deriva directamente de la contraseña de recuperación;
+`safeStorage`/DPAPI no interviene al verificar o restaurar. El bloqueo crítico permanece activo si
+SQLite ya se cerró y sólo el relanzamiento vuelve a habilitar scheduler y reintentos. Compatibilidad,
+datos incluidos y QA de un equipo nuevo se documentan en
+[disaster-recovery.md](disaster-recovery.md).
+
 ## Distribución Windows
 
 electron-builder empaqueta `out/main`, `out/preload` y `out/renderer` en `app.asar`. Main mantiene

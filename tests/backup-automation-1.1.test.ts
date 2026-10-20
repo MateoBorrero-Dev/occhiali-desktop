@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -275,6 +283,31 @@ describe('scheduler de respaldos automáticos', () => {
     expect(value.backups.status().lastAutomaticAttemptAt).toBeNull();
     value.backups.endRestore();
     expect(await value.scheduler.checkNow('INTERVAL')).toBe('CREATED');
+  });
+
+  it('no ejecuta un reintento externo pendiente durante una restauración', async () => {
+    const value = await fixture();
+    const external = join(value.root, 'externo-temporal');
+    mkdirSync(external);
+    await value.backups.setExportDirectory(external);
+    rmSync(external, { recursive: true });
+    await value.backups.create(context!.database, RECOVERY_PASSWORD);
+    const localBefore = readdirSync(join(value.root, 'backups')).filter((name) =>
+      name.endsWith('.ocbackup'),
+    );
+    value.setNow(new Date(2026, 0, 10, 8, 2, 0));
+
+    value.backups.beginRestore();
+    expect(await value.scheduler.checkNow('INTERVAL')).toBe('BUSY');
+    expect(value.backups.status()).toMatchObject({
+      busy: true,
+      externalCopyStatus: 'PENDING',
+      externalRetryAttempts: 1,
+    });
+    expect(
+      readdirSync(join(value.root, 'backups')).filter((name) => name.endsWith('.ocbackup')),
+    ).toEqual(localBefore);
+    value.backups.endRestore();
   });
 
   it('no compite con una creación manual en curso', async () => {

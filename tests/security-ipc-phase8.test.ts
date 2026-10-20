@@ -28,6 +28,7 @@ import { ApplicationDatabase } from '../src/main/database';
 import { registerIpcHandlers } from '../src/main/ipc/register-handlers';
 import { SecurityManager } from '../src/main/security/security-manager';
 import { IPC_CHANNELS } from '../src/shared/ipc-contracts';
+import type { SecurityResult } from '../src/shared/ipc-contracts';
 import { createTestDatabase, destroyTestDatabase } from './database/helpers';
 import type { TestDatabase } from './database/helpers';
 
@@ -219,5 +220,39 @@ describe('autorización IPC de Fase 8', () => {
         expect.objectContaining({ operation: 'RESTORE', result: 'SUCCESS' }),
       ]),
     );
+  });
+
+  it('mantiene el bloqueo si falla después de cerrar SQLite y recupera la base anterior', async () => {
+    await security.setup('Acceso-Ficticio-2026', 15);
+    context.database.clients.create({ firstName: 'Anterior', lastName: 'QA' });
+    const created = await backups.create(context.database, 'Recuperacion-Ficticia-2026');
+    backups.setSelectedRestorePath(join(context.directory, 'backups', created.fileName));
+    context.database.clients.create({ firstName: 'Más reciente', lastName: 'QA' });
+    const realOpen = ApplicationDatabase.open.bind(ApplicationDatabase);
+    vi.spyOn(ApplicationDatabase, 'open').mockImplementation((path) => {
+      if (path === context.filePath && existsSync(`${path}.restore-rollback`))
+        throw new Error('fallo final simulado');
+      return realOpen(path);
+    });
+
+    const restore = registered.get(IPC_CHANNELS.backupRestore)!;
+    const result = (await restore({}, 'Recuperacion-Ficticia-2026', true)) as SecurityResult<{
+      restartRequired: true;
+    }>;
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('La restauración fallida no debía informar éxito.');
+    expect(result.error.code).toBe('BACKUP');
+    expect(result.error.message).toContain('Se conservó la base anterior');
+
+    expect(backups.isCriticalOperation()).toBe(true);
+    expect(existsSync(`${context.filePath}.restore-rollback`)).toBe(false);
+    const recovered = realOpen(context.filePath);
+    try {
+      expect(recovered.clients.list({ includeArchived: true })).toHaveLength(2);
+      expect(recovered.integrityCheck()).toBe('ok');
+    } finally {
+      recovered.close();
+      backups.endRestore();
+    }
   });
 });

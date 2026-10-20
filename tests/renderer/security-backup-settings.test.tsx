@@ -11,7 +11,7 @@ import type {
   BackupStatus,
   SecurityStatus,
 } from '../../src/shared/database-models';
-import type { SecurityResult } from '../../src/shared/ipc-contracts';
+import type { BackupApi, SecurityResult } from '../../src/shared/ipc-contracts';
 
 const unlocked: SecurityStatus = {
   configured: true,
@@ -101,7 +101,9 @@ function installApis(configured: boolean) {
     openDirectory: vi.fn((): Promise<SecurityResult<true>> =>
       Promise.resolve({ ok: true as const, data: true as const }),
     ),
-    selectRestoreFile: vi.fn(() => Promise.resolve({ ok: true as const, data: null })),
+    selectRestoreFile: vi.fn<BackupApi['selectRestoreFile']>(() =>
+      Promise.resolve({ ok: true as const, data: null }),
+    ),
     verify: vi.fn(),
     restore: vi.fn(),
   };
@@ -339,5 +341,45 @@ describe('configuración de respaldos en React', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('no coinciden');
     expect(backup.setAutomaticCredential).not.toHaveBeenCalled();
+  });
+
+  it('advierte la fecha y la pérdida de cambios antes de restaurar datos antiguos', async () => {
+    const { backup } = installApis(true);
+    backup.selectRestoreFile.mockResolvedValue({
+      ok: true as const,
+      data: { fileName: 'occhiali-backup-20261018090000000.ocbackup' },
+    });
+    backup.verify.mockResolvedValue({
+      ok: true as const,
+      data: {
+        formatVersion: 1,
+        createdAt: '2026-10-18T12:00:00.000Z',
+        appVersion: '0.9.0',
+        schemaMigrations: ['001_initial_schema'],
+      },
+    });
+    backup.restore.mockResolvedValue({
+      ok: true as const,
+      data: { restartRequired: true as const },
+    });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    await user.type(
+      await screen.findByLabelText('Contraseña de recuperación'),
+      'Recuperacion-Historica-2026',
+    );
+    await user.click(screen.getByRole('button', { name: 'Seleccionar respaldo' }));
+    await user.click(screen.getByRole('button', { name: 'Verificar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'se perderán los cambios realizados después de esa fecha',
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Occhiali 0.9.0');
+
+    await user.click(screen.getByRole('button', { name: 'Restaurar respaldo' }));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Los cambios posteriores'));
+    expect(backup.restore).toHaveBeenCalledWith('Recuperacion-Historica-2026', true);
   });
 });

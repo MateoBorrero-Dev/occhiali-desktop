@@ -140,6 +140,16 @@ Antes de reemplazar datos, Occhiali crea una copia preventiva cifrada. Si aparec
 recuperación requerida, no repitas la restauración ni borres archivos: cerrá el programa y seguí el
 procedimiento de soporte.
 
+En una computadora nueva, primero creá una contraseña de acceso local nueva. Después podés restaurar
+el `.ocbackup` usando solamente su contraseña de recuperación: no necesitás la cuenta de Windows ni
+la credencial DPAPI del equipo anterior. La base recupera clientes, recetas, fichas, tratamientos y
+comprobantes, pero no traslada la contraseña de acceso, la programación automática, la carpeta
+externa, el historial de respaldos ni los PDF exportados. Configurá nuevamente esos elementos.
+
+Antes de confirmar, compará la fecha mostrada con tu actividad reciente. Restaurar una copia antigua
+reemplaza los datos activos y los cambios posteriores dejan de estar visibles. Conservá la copia
+preventiva hasta comprobar que la recuperación es correcta.
+
 ## Recomendaciones
 
 - Activá BitLocker o Cifrado de dispositivo de Windows.

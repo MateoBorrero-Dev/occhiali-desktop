@@ -115,17 +115,23 @@ simultáneamente base, rollback y marcador requiere soporte y el backup cifrado 
 ## Disaster recovery probado
 
 La prueba automatizada crea en SQLite temporal una persona ficticia, receta, graduación, corrección,
-ficha y tratamiento; genera un backup cifrado con WAL activo, prepara otra ruta, abre la base
-restaurada sin depender de la original y compara IDs, valores, revisión, relación y tratamiento.
-Finalmente escribe un cliente nuevo en la recuperada. También se prueban base vacía, contraseña
-incorrecta, alteración, versión futura, retención, concurrencia, exportación y recuperación de una
-interrupción antes del movimiento, después del movimiento, con candidata colocada, verificada sin
-confirmar y confirmada pendiente de limpieza. También se prueba un segundo intento posterior a la
-recuperación y la ausencia de staging tras una validación fallida.
+ficha, producto, tratamientos y comprobante. Fixtures criptográficos controlados de 0.9.0 y 1.0.0
+se producen con una implementación independiente y se restauran en perfiles nuevos sin credencial
+DPAPI. Se comparan IDs, valores, revisiones, relaciones y comprobantes. También se prueban base
+vacía, contraseña incorrecta, alteración, truncamiento, versión futura, retención, concurrencia,
+exportación y recuperación de una interrupción antes del movimiento, después del movimiento, con
+candidata colocada, verificada sin confirmar y confirmada pendiente de limpieza.
+
+Si una restauración falla después de cerrar SQLite, el bloqueo crítico se mantiene hasta el
+relanzamiento. Una prueba específica demuestra que un reintento externo pendiente tampoco se
+ejecuta durante la restauración y que una falla repone la base previa sin perder sus cambios.
 
 Para soporte, usar siempre un perfil temporal o una copia del `userData`, verificar el backup antes
 de confirmar, conservar la contraseña fuera de los archivos y no trabajar directamente sobre la
 única base disponible.
+
+El contenido incluido y excluido y el procedimiento completo con dos perfiles aislados están en
+[Recuperación ante desastres](disaster-recovery.md).
 
 La prueba del runtime empaquetado crea y verifica un `.ocbackup`, prepara la restauración, recorre la
 máquina de estados hasta `confirmed`, reabre SQLite y conserva el backup cifrado tras

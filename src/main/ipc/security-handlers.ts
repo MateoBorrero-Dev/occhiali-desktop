@@ -199,7 +199,6 @@ export function createSecurityIpcHandlers(
           backups.recordRestore('SUCCESS');
         } catch (error: unknown) {
           backups.recordRestore('FAILURE', error);
-          backups.endRestore();
           let recovered: boolean;
           try {
             const recovery = coordinator.rollbackPending();
@@ -213,6 +212,8 @@ export function createSecurityIpcHandlers(
               app.relaunch();
               app.exit(1);
             }, 250);
+          } else {
+            backups.endRestore();
           }
           if (!recovered)
             throw new BackupError(

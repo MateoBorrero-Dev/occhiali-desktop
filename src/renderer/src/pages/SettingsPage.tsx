@@ -648,6 +648,17 @@ export function SettingsPage(): React.JSX.Element {
             El archivo se autentica y verifica antes de reemplazar la base. Occhiali crea primero
             una copia de la base actual y reinicia después de restaurar.
           </p>
+          {verified && (
+            <p
+              role="alert"
+              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950"
+            >
+              El respaldo es del {new Date(verified.createdAt).toLocaleString('es-AR')} (Occhiali{' '}
+              {verified.appVersion}). Al restaurarlo se reemplazarán los datos actuales y se
+              perderán los cambios realizados después de esa fecha. Antes del reemplazo se creará
+              una copia local de seguridad.
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"
@@ -683,9 +694,15 @@ export function SettingsPage(): React.JSX.Element {
               disabled={!verified || busy}
               onClick={() =>
                 void run(async () => {
+                  const metadata = verified;
+                  if (!metadata) return 'Primero verificá el respaldo.';
                   if (
                     !window.confirm(
-                      'Se restaurará el respaldo y Occhiali se reiniciará. ¿Continuar?',
+                      `Se reemplazarán los datos actuales por el respaldo del ${new Date(
+                        metadata.createdAt,
+                      ).toLocaleString(
+                        'es-AR',
+                      )}. Los cambios posteriores dejarán de estar activos. Occhiali creará antes una copia local de seguridad y se reiniciará. ¿Continuar?`,
                     )
                   )
                     return 'Restauración cancelada.';
