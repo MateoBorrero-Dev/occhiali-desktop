@@ -122,22 +122,24 @@ describe('observabilidad de respaldos 1.1', () => {
     const root = directory('occhiali-external-history-');
     const missingExternal = join(root, 'destino-ausente');
     const service = new BackupService(join(root, 'backup-settings.json'), '1.0.0');
-    service.setExportDirectory(missingExternal);
+    mkdirSync(missingExternal);
+    await service.setExportDirectory(missingExternal);
+    rmSync(missingExternal, { recursive: true });
     const created = await service.create(context.database, RECOVERY_PASSWORD);
 
     expect(created).toMatchObject({ exportedToSyncFolder: false, exportError: true });
     expect(existsSync(join(root, 'backups', created.fileName))).toBe(true);
     expect(service.status()).toMatchObject({
       lastBackupExists: true,
-      externalCopyStatus: 'FAILED',
+      externalCopyStatus: 'PENDING',
     });
     expect(service.history().events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ operation: 'CREATE', result: 'PARTIAL', localState: 'VALID' }),
         expect.objectContaining({
           operation: 'EXPORT',
-          result: 'FAILURE',
-          externalState: 'FAILED',
+          result: 'PARTIAL',
+          externalState: 'PENDING',
         }),
       ]),
     );
@@ -170,7 +172,7 @@ describe('observabilidad de respaldos 1.1', () => {
     const external = join(root, 'externo');
     mkdirSync(external);
     const service = new BackupService(join(root, 'backup-settings.json'), '1.0.0');
-    service.setExportDirectory(external);
+    await service.setExportDirectory(external);
     const created = await service.create(context.database, RECOVERY_PASSWORD);
     expect(service.status().externalCopyStatus).toBe('COPIED');
     rmSync(join(external, created.fileName));

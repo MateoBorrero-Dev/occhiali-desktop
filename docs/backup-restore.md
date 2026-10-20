@@ -45,24 +45,22 @@ las migraciones incrementales normales. No se modifican migraciones históricas.
 
 ## Programación asistida y retención
 
-Configuración permite activar un recordatorio diario, elegir hora y conservar entre 2 y 90 copias;
-el valor inicial es 14. La aplicación marca una copia pendiente cuando no existe una del día. Como
-no guarda la contraseña de recuperación ni una clave reversible, la dueña debe confirmarla y
-escribirla. Es una automatización **asistida**, no un proceso desatendido.
+Configuración permite elegir modo asistido o automático, hora y conservar entre 2 y 90 copias; el
+valor inicial es 14. En modo automático la contraseña de recuperación se protege con `safeStorage`
+de Electron/DPAPI y no puede mostrarse ni recuperarse desde la interfaz.
 
-Occhiali no puede crear copias cuando está cerrado o la computadora está apagada. Tampoco persiste
-un secreto con DPAPI: eso facilitaría la automatización, pero una clave atada al Windows original no
-sería suficiente para recuperar en otra computadora y ampliaría el impacto del robo del equipo.
+Occhiali no crea copias cuando está cerrado o la computadora está apagada. La contraseña debe
+conservarse también fuera del equipo porque la protección DPAPI está ligada a la cuenta Windows.
 
-La rotación se ejecuta únicamente después de publicar y verificar una copia nueva. Ordena solo
-archivos con patrón administrado dentro de la carpeta local, conserva como mínimo uno y nunca borra
-archivos externos, manuales o ajenos. La versión actual conserva los últimos N; no implementa aún
-estratos diarios/semanales/mensuales.
+La rotación se ejecuta después de publicar y verificar una copia local nueva. Sólo considera archivos
+regulares con nombre y estructura administrados dentro de la carpeta local; conserva como mínimo
+uno, protege copias en uso y nunca sigue enlaces ni borra archivos externos, manuales o ajenos. La
+versión actual conserva los últimos N; no implementa estratos diarios/semanales/mensuales.
 
-Desde 1.1.0 Bloque 1, el recordatorio se calcula contra la hora local configurada y el sistema
-comprueba de forma eficiente si el último archivo administrado continúa disponible. Las alertas de
-24 y 72 horas y el estado externo se muestran en todas las pantallas. Esto no crea un scheduler: la
-usuaria todavía debe iniciar manualmente la copia e ingresar su contraseña de recuperación.
+Desde 1.1.0, el estado se calcula contra la hora local configurada y el sistema comprueba si el
+último archivo administrado continúa disponible. Las alertas de 24 y 72 horas y el estado externo se
+muestran en todas las pantallas. El scheduler se ejecuta sólo mientras la aplicación permanece
+abierta.
 
 Las operaciones se registran en `backup-history.json`, separado de SQLite y limitado a 90 eventos.
 Su diseño, seguridad y recuperación se documentan en [Alertas e historial](backup-observability.md).
@@ -70,6 +68,8 @@ Su diseño, seguridad y recuperación se documentan en [Alertas e historial](bac
 El modo automático opcional reutiliza exactamente esta creación verificada y el mismo formato. La
 contraseña se protege fuera de SQLite mediante `safeStorage`; el scheduler, sus bloqueos y límites se
 documentan en [Respaldos automáticos](backup-automation.md).
+Las transferencias verificadas, reintentos y reglas conservadoras de eliminación se documentan en
+[Copias externas robustas y retención segura](backup-resilience.md).
 
 ## Restauración
 

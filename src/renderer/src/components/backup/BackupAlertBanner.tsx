@@ -34,7 +34,9 @@ export function BackupAlertBanner(): React.JSX.Element | null {
 
   if (!status) return null;
   const externalProblem =
-    status.externalCopyStatus === 'FAILED' || status.externalCopyStatus === 'MISSING';
+    status.externalCopyStatus === 'PENDING' ||
+    status.externalCopyStatus === 'FAILED' ||
+    status.externalCopyStatus === 'MISSING';
   if (status.alertLevel === 'NONE' && !externalProblem) return null;
 
   const critical = status.alertLevel === 'CRITICAL' || status.alertLevel === 'MISSING';
@@ -45,7 +47,9 @@ export function BackupAlertBanner(): React.JSX.Element | null {
     messages.push('Pasaron más de 72 horas sin un respaldo válido.');
   else if (status.alertLevel === 'WARNING')
     messages.push('Pasaron más de 24 horas sin un respaldo válido.');
-  if (status.externalCopyStatus === 'FAILED')
+  if (status.externalCopyStatus === 'PENDING')
+    messages.push('La copia externa está pendiente de reintento; el respaldo local es válido.');
+  else if (status.externalCopyStatus === 'FAILED')
     messages.push('La última copia al destino externo falló.');
   else if (status.externalCopyStatus === 'MISSING')
     messages.push('La última copia externa registrada ya no está disponible.');

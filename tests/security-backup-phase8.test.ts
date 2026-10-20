@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -212,7 +212,7 @@ describe('backup cifrado y disaster recovery', () => {
     const value = fixture();
     const exportDirectory = join(value.directory, 'carpeta sincronizada');
     mkdirSync(exportDirectory);
-    value.service.setExportDirectory(exportDirectory);
+    await value.service.setExportDirectory(exportDirectory);
     const created = await value.service.create(context!.database, RECOVERY);
     expect(created.exportedToSyncFolder).toBe(true);
     expect(created.exportError).toBe(false);
@@ -222,7 +222,10 @@ describe('backup cifrado y disaster recovery', () => {
   });
   it('conserva el backup local si la carpeta externa deja de existir', async () => {
     const value = fixture();
-    value.service.setExportDirectory(join(value.directory, 'inexistente'));
+    const external = join(value.directory, 'inexistente');
+    mkdirSync(external);
+    await value.service.setExportDirectory(external);
+    rmSync(external, { recursive: true });
     const created = await value.service.create(context!.database, RECOVERY);
     expect(created.exportedToSyncFolder).toBe(false);
     expect(created.exportError).toBe(true);

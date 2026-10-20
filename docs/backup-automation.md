@@ -52,12 +52,13 @@ crítica está activa, Main detiene el scheduler, espera que finalice y recién 
 La credencial protegida tampoco puede reemplazarse ni eliminarse durante esas operaciones; si cambia
 mientras el scheduler la está obteniendo, ese intento se cancela antes de crear el respaldo.
 
-La exportación externa fallida no invalida el respaldo local: se informa como resultado parcial y
-la sincronización remota continúa figurando como no verificada.
+La exportación externa fallida no invalida el respaldo local: se informa como resultado parcial,
+queda pendiente y se reintenta de forma acotada sobre el mismo archivo. La sincronización remota
+continúa figurando como no verificada.
 
 ## Historial
 
-Los eventos de creación y exportación incluyen `trigger: MANUAL | AUTOMATIC`. Una ejecución
+Los eventos de creación y exportación incluyen `trigger: MANUAL | AUTOMATIC | RETRY`. Una ejecución
 automática registra inicio y resultado final. Los errores previos a la creación, como credencial
 ausente o dañada, se sanitizan y registran sin secretos ni rutas.
 
@@ -147,7 +148,8 @@ Remove-Item -LiteralPath $externalFailure -Recurse -Force
 Reabrir Occhiali con el mismo perfil, guardar primero el modo asistido y después activar el modo
 automático con la hora local actual. La ausencia controlada de la copia anterior vuelve pendiente la
 ventana y el cambio de modo habilita un nuevo intento. Deben aparecer: un archivo local nuevo y
-verificable, advertencia de copia externa fallida, `Creación — Parcial` y `Copia externa — Fallido`.
+verificable, advertencia de copia externa pendiente, `Creación — Parcial` y
+`Copia externa — Parcial`. Si el destino reaparece, los reintentos se registran por separado.
 
 Al terminar, cerrar Electron y eliminar solamente el perfil temporal registrado en `$qaRoot`:
 
@@ -162,4 +164,5 @@ Remove-Item -LiteralPath $qaRoot -Recurse -Force
 - No hay servicio, tarea programada ni notificación del sistema operativo.
 - No se confirma la subida real a Google Drive u OneDrive.
 - DPAPI no constituye defensa frente a malware con la misma cuenta Windows.
-- La retención avanzada de copias externas pertenece al Bloque 3.
+- La retención no elimina automáticamente copias externas; su disponibilidad remota sigue bajo
+  control del cliente de sincronización y de la usuaria.

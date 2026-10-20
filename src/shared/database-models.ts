@@ -405,6 +405,8 @@ export interface BackupStatus {
   lastBackupAgeHours: number | null;
   lastErrorAt: IsoTimestamp | null;
   lastExternalCopyAt: IsoTimestamp | null;
+  nextExternalRetryAt: IsoTimestamp | null;
+  externalRetryAttempts: number;
   lastRestoreAt: IsoTimestamp | null;
   lastAutomaticBackupAt: IsoTimestamp | null;
   lastAutomaticAttemptAt: IsoTimestamp | null;
@@ -416,19 +418,19 @@ export interface BackupStatus {
   automaticState: 'DISABLED' | 'READY' | 'PENDING' | 'RUNNING' | 'BLOCKED' | 'ERROR';
   due: boolean;
   alertLevel: 'NONE' | 'WARNING' | 'CRITICAL' | 'MISSING';
-  externalCopyStatus: 'NOT_CONFIGURED' | 'UNKNOWN' | 'COPIED' | 'FAILED' | 'MISSING';
+  externalCopyStatus: 'NOT_CONFIGURED' | 'UNKNOWN' | 'PENDING' | 'COPIED' | 'FAILED' | 'MISSING';
   historyAvailable: boolean;
   historyRecoveredFromDamage: boolean;
   busy: boolean;
   remoteSyncVerified: false;
 }
 
-export type BackupHistoryOperation = 'CREATE' | 'VERIFY' | 'EXPORT' | 'RESTORE';
+export type BackupHistoryOperation = 'CREATE' | 'VERIFY' | 'EXPORT' | 'RESTORE' | 'RETENTION';
 export type BackupHistoryResult = 'STARTED' | 'SUCCESS' | 'PARTIAL' | 'FAILURE';
-export type BackupHistoryTrigger = 'MANUAL' | 'AUTOMATIC';
+export type BackupHistoryTrigger = 'MANUAL' | 'AUTOMATIC' | 'RETRY';
 export type BackupLocalState = 'VALID' | 'MISSING' | 'FAILED' | 'NOT_APPLICABLE';
 export type BackupExternalState =
-  'NOT_CONFIGURED' | 'COPIED' | 'FAILED' | 'MISSING' | 'UNKNOWN' | 'NOT_APPLICABLE';
+  'NOT_CONFIGURED' | 'PENDING' | 'COPIED' | 'FAILED' | 'MISSING' | 'UNKNOWN' | 'NOT_APPLICABLE';
 
 export interface BackupHistoryEvent {
   id: string;
@@ -461,5 +463,6 @@ export interface BackupOperationResult {
   createdAt: IsoTimestamp;
   exportedToSyncFolder: boolean;
   exportError: boolean;
+  externalCopyPending: boolean;
   remoteSyncVerified: false;
 }

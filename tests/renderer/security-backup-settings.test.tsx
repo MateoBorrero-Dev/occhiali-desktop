@@ -30,6 +30,8 @@ const backupStatus: BackupStatus = {
   lastBackupAgeHours: null,
   lastErrorAt: null,
   lastExternalCopyAt: null,
+  nextExternalRetryAt: null,
+  externalRetryAttempts: 0,
   lastRestoreAt: null,
   lastAutomaticBackupAt: null,
   lastAutomaticAttemptAt: null,

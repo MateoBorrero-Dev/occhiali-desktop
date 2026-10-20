@@ -1,10 +1,17 @@
 import { createCipheriv, createDecipheriv, randomBytes, scrypt as nodeScrypt } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { ApplicationDatabase } from '../database';
 import { getMigrationIds } from '../database/migrations';
 import { BackupHistoryStore } from './backup-history';
+import { applySafeLocalRetention } from './backup-retention';
+import {
+  ExternalBackupCopier,
+  ExternalBackupCopyError,
+  isSafeExternalBackupFileSync,
+  validateExternalDirectorySync,
+} from './external-backup-copy';
 import type {
   BackupExternalState,
   BackupHistorySnapshot,
@@ -41,7 +48,12 @@ interface Settings {
   lastErrorAt: string | null;
   lastExternalCopyAt: string | null;
   lastExternalCopyFile: string | null;
-  lastExternalCopyStatus: 'UNKNOWN' | 'COPIED' | 'FAILED';
+  lastExternalCopyStatus: 'UNKNOWN' | 'PENDING' | 'COPIED' | 'FAILED';
+  pendingExternalCopyFile: string | null;
+  pendingExternalTemporaryFile: string | null;
+  pendingExternalAttempts: number;
+  nextExternalRetryAt: string | null;
+  pendingExternalSourceTrigger: 'MANUAL' | 'AUTOMATIC' | null;
   lastRestoreAt: string | null;
   lastAutomaticBackupAt: string | null;
   lastAutomaticAttemptAt: string | null;
@@ -55,6 +67,11 @@ interface Settings {
 export class BackupError extends Error {}
 
 export type BackupCreationTrigger = 'MANUAL' | 'AUTOMATIC' | 'RESTORE_SAFETY';
+export type ExternalRetryResult = 'NONE' | 'NOT_DUE' | 'BUSY' | 'SUCCESS' | 'PENDING' | 'FAILED';
+
+const EXTERNAL_MAX_ATTEMPTS = 3;
+const EXTERNAL_RETRY_DELAYS_MS = [60_000, 5 * 60_000] as const;
+const EXTERNAL_TEMPORARY_NAME = /^\.occhiali-backup-\d{17}\.ocbackup\.[a-f0-9]{16}\.partial$/;
 
 async function removeSqliteArtifacts(path: string): Promise<void> {
   await rm(path, { force: true });
@@ -187,6 +204,7 @@ export class BackupService {
     private readonly settingsPath: string,
     private readonly appVersion: string,
     private readonly now: () => Date = () => new Date(),
+    private readonly externalCopier: ExternalBackupCopier = new ExternalBackupCopier(),
   ) {
     const defaultDirectory = join(dirname(settingsPath), 'backups');
     this.settings = this.load(defaultDirectory);
@@ -218,6 +236,8 @@ export class BackupService {
       lastBackupAgeHours,
       lastErrorAt: this.settings.lastErrorAt,
       lastExternalCopyAt: this.settings.lastExternalCopyAt,
+      nextExternalRetryAt: this.settings.nextExternalRetryAt,
+      externalRetryAttempts: this.settings.pendingExternalAttempts,
       lastRestoreAt: this.settings.lastRestoreAt,
       lastAutomaticBackupAt: this.settings.lastAutomaticBackupAt,
       lastAutomaticAttemptAt: this.settings.lastAutomaticAttemptAt,
@@ -349,12 +369,31 @@ export class BackupService {
     return new Promise((resolve) => this.idleWaiters.add(resolve));
   }
 
-  public setExportDirectory(path: string | null): BackupStatus {
-    const next = path ? resolve(path) : null;
+  public async setExportDirectory(path: string | null): Promise<BackupStatus> {
+    if (this.isCriticalOperation())
+      throw new BackupError('Hay otra operación de respaldo o restauración en curso.');
+    let next: string | null;
+    try {
+      next = path ? validateExternalDirectorySync(path) : null;
+    } catch (error: unknown) {
+      if (error instanceof ExternalBackupCopyError) throw new BackupError(error.message);
+      throw error;
+    }
     if (next !== this.settings.exportDirectory) {
+      if (
+        this.settings.exportDirectory &&
+        this.settings.pendingExternalCopyFile &&
+        this.settings.pendingExternalTemporaryFile
+      )
+        await this.externalCopier.cleanupPersistedTemporary(
+          this.settings.exportDirectory,
+          this.settings.pendingExternalCopyFile,
+          this.settings.pendingExternalTemporaryFile,
+        );
       this.settings.lastExternalCopyAt = null;
       this.settings.lastExternalCopyFile = null;
       this.settings.lastExternalCopyStatus = 'UNKNOWN';
+      this.clearPendingExternalCopy();
     }
     this.settings.exportDirectory = next;
     this.save();
@@ -424,16 +463,35 @@ export class BackupService {
       await rename(partial, finalPath);
       let exportedToSyncFolder = false;
       let exportError = false;
+      let externalCopyPending = false;
       if (this.settings.exportDirectory) {
-        const exportPartial = join(this.settings.exportDirectory, `${fileName}.partial`);
         try {
-          if (!existsSync(this.settings.exportDirectory)) throw new Error('unavailable');
-          await copyFile(finalPath, exportPartial);
-          await rename(exportPartial, join(this.settings.exportDirectory, fileName));
+          const temporaryName = this.externalCopier.temporaryName(fileName);
+          this.settings.pendingExternalCopyFile = fileName;
+          this.settings.pendingExternalTemporaryFile = temporaryName;
+          this.settings.pendingExternalAttempts = 1;
+          this.settings.pendingExternalSourceTrigger = historyTrigger;
+          this.settings.nextExternalRetryAt = null;
+          this.settings.lastExternalCopyStatus = 'PENDING';
+          this.save();
+          await this.externalCopier.transfer(
+            finalPath,
+            this.settings.exportDirectory,
+            fileName,
+            temporaryName,
+          );
           exportedToSyncFolder = true;
+          this.markExternalCopySucceeded(fileName, metadata.createdAt);
+          this.clearPendingExternalCopy();
         } catch {
           exportError = true;
-          await rm(exportPartial, { force: true }).catch(() => undefined);
+          externalCopyPending = true;
+          this.settings.lastExternalCopyAt = null;
+          this.settings.lastExternalCopyFile = fileName;
+          this.settings.lastExternalCopyStatus = 'PENDING';
+          this.settings.nextExternalRetryAt = new Date(
+            this.now().getTime() + EXTERNAL_RETRY_DELAYS_MS[0],
+          ).toISOString();
         }
       }
       const sizeBytes = (await stat(finalPath)).size;
@@ -441,28 +499,25 @@ export class BackupService {
       this.settings.lastBackupFile = fileName;
       this.settings.lastBackupSizeBytes = sizeBytes;
       this.settings.lastErrorAt = exportError ? metadata.createdAt : null;
-      if (this.settings.exportDirectory) {
-        this.settings.lastExternalCopyAt = metadata.createdAt;
-        this.settings.lastExternalCopyFile = fileName;
-        this.settings.lastExternalCopyStatus = exportError ? 'FAILED' : 'COPIED';
-      }
       if (trigger === 'AUTOMATIC') {
         this.settings.lastAutomaticBackupAt = metadata.createdAt;
         this.settings.lastAutomaticErrorAt = exportError ? metadata.createdAt : null;
       }
       this.save();
-      await this.applyRetention();
+      await this.applyRetentionSafely();
       this.recordHistory({
         occurredAt: metadata.createdAt,
         operation: 'CREATE',
         trigger: historyTrigger,
         result: exportError ? 'PARTIAL' : 'SUCCESS',
         localState: 'VALID',
-        externalState: this.historyExternalState(exportError, exportedToSyncFolder),
+        externalState: externalCopyPending
+          ? 'PENDING'
+          : this.historyExternalState(exportError, exportedToSyncFolder),
         fileName,
         sizeBytes,
         ...(exportError
-          ? { error: 'El respaldo local es válido, pero falló la copia externa.' }
+          ? { error: 'El respaldo local es válido; la copia externa quedó pendiente de reintento.' }
           : {}),
       });
       if (this.settings.exportDirectory) {
@@ -470,12 +525,14 @@ export class BackupService {
           occurredAt: metadata.createdAt,
           operation: 'EXPORT',
           trigger: historyTrigger,
-          result: exportError ? 'FAILURE' : 'SUCCESS',
+          result: exportError ? 'PARTIAL' : 'SUCCESS',
           localState: 'VALID',
-          externalState: exportError ? 'FAILED' : 'COPIED',
+          externalState: exportError ? 'PENDING' : 'COPIED',
           fileName,
           sizeBytes,
-          ...(exportError ? { error: 'No se pudo copiar el respaldo al destino externo.' } : {}),
+          ...(exportError
+            ? { error: 'La copia externa no se completó y se reintentará de forma acotada.' }
+            : {}),
         });
       }
       return {
@@ -483,6 +540,7 @@ export class BackupService {
         createdAt: metadata.createdAt,
         exportedToSyncFolder,
         exportError,
+        externalCopyPending,
         remoteSyncVerified: false,
       };
     } catch (error: unknown) {
@@ -512,9 +570,105 @@ export class BackupService {
     }
   }
 
+  public async retryPendingExternalCopy(): Promise<ExternalRetryResult> {
+    const fileName = safeBackupFileName(this.settings.pendingExternalCopyFile);
+    const directory = this.settings.exportDirectory;
+    if (
+      this.settings.lastExternalCopyStatus !== 'PENDING' ||
+      !fileName ||
+      !directory ||
+      this.settings.pendingExternalAttempts >= EXTERNAL_MAX_ATTEMPTS
+    )
+      return 'NONE';
+    const due = validDate(this.settings.nextExternalRetryAt);
+    if (!due || due > this.now()) return 'NOT_DUE';
+    if (this.isCriticalOperation()) return 'BUSY';
+
+    this.busy = true;
+    const occurredAt = this.now().toISOString();
+    const sourcePath = join(this.settings.localDirectory, fileName);
+    const previousTemporary = this.safeExternalTemporaryName(
+      this.settings.pendingExternalTemporaryFile,
+    );
+    const temporaryName = this.externalCopier.temporaryName(fileName);
+    this.settings.pendingExternalTemporaryFile = temporaryName;
+    this.settings.pendingExternalAttempts += 1;
+    this.settings.nextExternalRetryAt = null;
+    this.save();
+    try {
+      await this.externalCopier.cleanupPersistedTemporary(directory, fileName, previousTemporary);
+      await this.externalCopier.transfer(sourcePath, directory, fileName, temporaryName);
+      const sizeBytes = (await stat(sourcePath)).size;
+      this.markExternalCopySucceeded(fileName, occurredAt);
+      if (this.settings.pendingExternalSourceTrigger === 'AUTOMATIC')
+        this.settings.lastAutomaticErrorAt = null;
+      this.settings.lastErrorAt = null;
+      this.clearPendingExternalCopy();
+      this.save();
+      this.recordHistory({
+        occurredAt,
+        operation: 'EXPORT',
+        trigger: 'RETRY',
+        result: 'SUCCESS',
+        localState: 'VALID',
+        externalState: 'COPIED',
+        fileName,
+        sizeBytes,
+      });
+      return 'SUCCESS';
+    } catch {
+      const localExists = existsSync(sourcePath);
+      const exhausted = this.settings.pendingExternalAttempts >= EXTERNAL_MAX_ATTEMPTS;
+      this.settings.pendingExternalTemporaryFile = null;
+      this.settings.lastExternalCopyStatus = exhausted ? 'FAILED' : 'PENDING';
+      this.settings.lastErrorAt = occurredAt;
+      if (this.settings.pendingExternalSourceTrigger === 'AUTOMATIC')
+        this.settings.lastAutomaticErrorAt = occurredAt;
+      this.settings.nextExternalRetryAt = exhausted
+        ? null
+        : new Date(
+            this.now().getTime() +
+              (EXTERNAL_RETRY_DELAYS_MS[
+                Math.min(
+                  this.settings.pendingExternalAttempts - 1,
+                  EXTERNAL_RETRY_DELAYS_MS.length - 1,
+                )
+              ] ?? 5 * 60_000),
+          ).toISOString();
+      this.save();
+      this.recordHistory({
+        occurredAt,
+        operation: 'EXPORT',
+        trigger: 'RETRY',
+        result: exhausted ? 'FAILURE' : 'PARTIAL',
+        localState: localExists ? 'VALID' : 'MISSING',
+        externalState: exhausted ? 'FAILED' : 'PENDING',
+        fileName,
+        error: localExists
+          ? exhausted
+            ? 'La copia externa agotó sus reintentos; el respaldo local sigue disponible.'
+            : 'La copia externa sigue pendiente; se programó otro reintento.'
+          : 'El respaldo local pendiente ya no está disponible; no se realizará otra copia.',
+      });
+      if (!localExists) {
+        this.settings.lastExternalCopyStatus = 'FAILED';
+        this.settings.nextExternalRetryAt = null;
+        this.save();
+        return 'FAILED';
+      }
+      return exhausted ? 'FAILED' : 'PENDING';
+    } finally {
+      this.busy = false;
+      this.notifyIdle();
+    }
+  }
+
   public async verifySelected(recoveryPassword: unknown): Promise<BackupMetadata> {
     validateRecoveryPassword(recoveryPassword);
     if (!this.selectedRestorePath) throw new BackupError('Seleccioná un archivo de respaldo.');
+    if (this.isCriticalOperation())
+      throw new BackupError('Hay otra operación de respaldo o restauración en curso.');
+    this.busy = true;
     const selectedPath = this.selectedRestorePath;
     const fileName = historyFileReference(selectedPath);
     let prepared: PreparedRestore;
@@ -530,6 +684,8 @@ export class BackupService {
         fileName,
         error: sanitizedError(error),
       });
+      this.busy = false;
+      this.notifyIdle();
       throw error;
     }
     try {
@@ -546,6 +702,8 @@ export class BackupService {
       return prepared.metadata;
     } finally {
       await prepared.cleanup();
+      this.busy = false;
+      this.notifyIdle();
     }
   }
 
@@ -678,13 +836,48 @@ export class BackupService {
     }
   }
 
-  private async applyRetention(): Promise<void> {
-    const files = (await readdir(this.settings.localDirectory))
-      .filter((name) => /^occhiali-backup-.*\.ocbackup$/.test(name))
-      .sort()
-      .reverse();
-    for (const name of files.slice(Math.max(1, this.settings.retentionCount)))
-      await rm(join(this.settings.localDirectory, name), { force: true });
+  private async applyRetentionSafely(): Promise<void> {
+    const protectedNames = new Set<string>();
+    for (const value of [
+      this.settings.lastBackupFile,
+      this.settings.pendingExternalCopyFile,
+      this.selectedRestoreFileName(),
+    ]) {
+      const safe = safeBackupFileName(value);
+      if (safe) protectedNames.add(safe);
+    }
+    const result = await applySafeLocalRetention(
+      this.settings.localDirectory,
+      this.settings.retentionCount,
+      protectedNames,
+    ).catch(() => ({ deleted: [], skippedUnsafe: 1, warning: true }));
+    if (result.warning)
+      this.recordHistory({
+        occurredAt: this.now().toISOString(),
+        operation: 'RETENTION',
+        result: 'PARTIAL',
+        localState: 'VALID',
+        externalState: 'NOT_APPLICABLE',
+        error: 'La retención omitió archivos que no pudo validar de forma segura.',
+      });
+  }
+
+  private markExternalCopySucceeded(fileName: string, occurredAt: string): void {
+    this.settings.lastExternalCopyAt = occurredAt;
+    this.settings.lastExternalCopyFile = fileName;
+    this.settings.lastExternalCopyStatus = 'COPIED';
+  }
+
+  private clearPendingExternalCopy(): void {
+    this.settings.pendingExternalCopyFile = null;
+    this.settings.pendingExternalTemporaryFile = null;
+    this.settings.pendingExternalAttempts = 0;
+    this.settings.nextExternalRetryAt = null;
+    this.settings.pendingExternalSourceTrigger = null;
+  }
+
+  private safeExternalTemporaryName(value: string | null): string | null {
+    return value && basename(value) === value && EXTERNAL_TEMPORARY_NAME.test(value) ? value : null;
   }
   private load(defaultDirectory: string): Settings {
     const now = this.now().toISOString();
@@ -699,6 +892,11 @@ export class BackupService {
       lastExternalCopyAt: null,
       lastExternalCopyFile: null,
       lastExternalCopyStatus: 'UNKNOWN',
+      pendingExternalCopyFile: null,
+      pendingExternalTemporaryFile: null,
+      pendingExternalAttempts: 0,
+      nextExternalRetryAt: null,
+      pendingExternalSourceTrigger: null,
       lastRestoreAt: null,
       lastAutomaticBackupAt: null,
       lastAutomaticAttemptAt: null,
@@ -711,7 +909,7 @@ export class BackupService {
     if (!existsSync(this.settingsPath)) return defaults;
     try {
       const stored = JSON.parse(readFileSync(this.settingsPath, 'utf8')) as Partial<Settings>;
-      return {
+      const merged: Settings = {
         ...defaults,
         ...stored,
         automationConfigurationVersion: 1,
@@ -719,6 +917,29 @@ export class BackupService {
           stored.automationConfigurationVersion === 1 && stored.automaticEnabled === true,
         localDirectory: defaultDirectory,
       };
+      merged.lastBackupFile = safeBackupFileName(merged.lastBackupFile);
+      merged.lastExternalCopyFile = safeBackupFileName(merged.lastExternalCopyFile);
+      merged.pendingExternalCopyFile = safeBackupFileName(merged.pendingExternalCopyFile);
+      merged.pendingExternalTemporaryFile = this.safeExternalTemporaryName(
+        merged.pendingExternalTemporaryFile,
+      );
+      merged.pendingExternalAttempts = Number.isInteger(merged.pendingExternalAttempts)
+        ? Math.max(0, Math.min(EXTERNAL_MAX_ATTEMPTS, merged.pendingExternalAttempts))
+        : 0;
+      merged.nextExternalRetryAt = validDate(merged.nextExternalRetryAt)?.toISOString() ?? null;
+      if (
+        merged.lastExternalCopyStatus !== 'PENDING' ||
+        !merged.pendingExternalCopyFile ||
+        !merged.exportDirectory ||
+        merged.pendingExternalAttempts < 1
+      ) {
+        merged.pendingExternalCopyFile = null;
+        merged.pendingExternalTemporaryFile = null;
+        merged.pendingExternalAttempts = 0;
+        merged.nextExternalRetryAt = null;
+        merged.pendingExternalSourceTrigger = null;
+      }
+      return merged;
     } catch {
       return { ...defaults, lastErrorAt: now };
     }
@@ -732,10 +953,11 @@ export class BackupService {
 
   private externalCopyStatus(): BackupStatus['externalCopyStatus'] {
     if (!this.settings.exportDirectory) return 'NOT_CONFIGURED';
+    if (this.settings.lastExternalCopyStatus === 'PENDING') return 'PENDING';
     if (this.settings.lastExternalCopyStatus === 'FAILED') return 'FAILED';
     if (this.settings.lastExternalCopyStatus !== 'COPIED') return 'UNKNOWN';
     const fileName = safeBackupFileName(this.settings.lastExternalCopyFile);
-    return fileName && existsSync(join(this.settings.exportDirectory, fileName))
+    return fileName && isSafeExternalBackupFileSync(this.settings.exportDirectory, fileName)
       ? 'COPIED'
       : 'MISSING';
   }

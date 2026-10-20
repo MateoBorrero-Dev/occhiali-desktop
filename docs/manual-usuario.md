@@ -160,5 +160,14 @@ ejecutan respaldos. El estado y el historial indican si la copia local fue corre
 si falló el destino externo; depositar un archivo en una carpeta sincronizada no confirma que haya
 subido a la nube.
 
+Si la carpeta externa desaparece o deja de estar accesible, el respaldo local continúa válido y la
+interfaz muestra **Copia externa pendiente**. Occhiali reintenta de forma acotada el mismo archivo,
+sin crear otra copia local. **Copia externa correcta y verificada localmente** significa que tamaño
+y contenido coinciden en esa carpeta; no confirma que un servicio de nube haya terminado de subirla.
+
+La cantidad a conservar se aplica sólo a respaldos locales propios y reconocidos. Occhiali no borra
+archivos ajenos ni copias del destino externo y, ante una duda de seguridad, omite la eliminación y
+muestra el resultado en el historial.
+
 Podés reemplazar o eliminar la credencial protegida. Al eliminarla, Occhiali vuelve al modo asistido.
 La contraseña de acceso a la aplicación y la contraseña de recuperación de respaldos son distintas.

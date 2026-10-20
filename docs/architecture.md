@@ -178,6 +178,13 @@ Comparte el bloqueo de operaciones críticas con creación y restauración; `bef
 operación activa finalice antes de cerrar SQLite. El diseño completo está en
 [backup-automation.md](backup-automation.md).
 
+`ExternalBackupCopier` valida destinos directos, publica temporales exclusivos sólo después de
+comparar tamaño y SHA-256 y nunca recrea carpetas desaparecidas. Los pendientes persisten sin
+credenciales y el scheduler reintenta el mismo archivo con límite estricto. `backup-retention`
+aplica una política conservadora únicamente a archivos locales propios, regulares y reconocidos; no
+sigue enlaces y omite cualquier eliminación dudosa. Véase
+[backup-resilience.md](backup-resilience.md).
+
 ## Distribución Windows
 
 electron-builder empaqueta `out/main`, `out/preload` y `out/renderer` en `app.asar`. Main mantiene

@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -301,13 +301,16 @@ describe('scheduler de respaldos automáticos', () => {
 
   it('conserva el éxito local y hace visible un fallo externo automático', async () => {
     const value = await fixture();
-    value.backups.setExportDirectory(join(value.root, 'destino-ausente'));
+    const unavailable = join(value.root, 'destino-ausente');
+    mkdirSync(unavailable);
+    await value.backups.setExportDirectory(unavailable);
+    rmSync(unavailable, { recursive: true });
     value.setNow(new Date(2026, 0, 10, 9, 1, 0));
 
     expect(await value.scheduler.checkNow('INTERVAL')).toBe('CREATED');
     expect(value.backups.status()).toMatchObject({
       lastBackupExists: true,
-      externalCopyStatus: 'FAILED',
+      externalCopyStatus: 'PENDING',
       automaticState: 'ERROR',
     });
     const rawHistory = readFileSync(join(value.root, 'backup-history.json'), 'utf8');
@@ -315,7 +318,7 @@ describe('scheduler de respaldos automáticos', () => {
     expect(value.backups.history().events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ trigger: 'AUTOMATIC', result: 'PARTIAL' }),
-        expect.objectContaining({ trigger: 'AUTOMATIC', operation: 'EXPORT', result: 'FAILURE' }),
+        expect.objectContaining({ trigger: 'AUTOMATIC', operation: 'EXPORT', result: 'PARTIAL' }),
       ]),
     );
   });

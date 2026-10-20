@@ -37,8 +37,9 @@ sincronizado a disco y renombrado en el mismo directorio. Si está dañado, se p
 cuarentena, se conserva en su ubicación y se bloquean nuevas escrituras para no sobrescribirlo. Un
 fallo al escribir el historial no invalida un respaldo ni revierte una restauración confirmada.
 
-Cada evento puede registrar creación, verificación, copia externa o restauración; resultado correcto,
-parcial o fallido; estado local y externo; nombre administrado, tamaño y mensaje sanitizado. Nunca
+Cada evento puede registrar creación, verificación, copia externa, retención o restauración;
+resultado correcto, parcial o fallido; estado local y externo —incluido pendiente—; nombre
+administrado, tamaño y mensaje sanitizado. Nunca
 incluye contraseñas, claves, datos de clientes ni rutas elegidas por la usuaria. Los nombres externos
 no administrados se reemplazan por la referencia `respaldo-seleccionado.ocbackup`.
 
@@ -49,7 +50,7 @@ El layout consulta el estado después de autenticar y muestra una advertencia gl
 - pasaron al menos 24 horas sin un respaldo válido;
 - pasaron al menos 72 horas, con prioridad crítica;
 - el último archivo local desapareció;
-- falló o desapareció la copia externa.
+- la copia externa está pendiente, falló o desapareció.
 
 La alerta enlaza directamente con `Configuración → Respaldos`. Mientras la interfaz está abierta,
 el estado se vuelve a consultar cada cinco minutos para que los umbrales aparezcan sin reiniciar la

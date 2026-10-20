@@ -47,6 +47,7 @@ const operationLabels: Record<BackupHistoryEvent['operation'], string> = {
   VERIFY: 'Verificación',
   EXPORT: 'Copia externa',
   RESTORE: 'Restauración',
+  RETENTION: 'Retención',
 };
 
 const resultLabels: Record<BackupHistoryEvent['result'], string> = {
@@ -253,12 +254,14 @@ export function SettingsPage(): React.JSX.Element {
                   {backup.externalCopyStatus === 'NOT_CONFIGURED'
                     ? 'No configurado'
                     : backup.externalCopyStatus === 'COPIED'
-                      ? 'Última copia depositada'
-                      : backup.externalCopyStatus === 'FAILED'
-                        ? 'Última copia fallida'
-                        : backup.externalCopyStatus === 'MISSING'
-                          ? 'Copia no encontrada'
-                          : 'Pendiente de primera copia'}
+                      ? 'Última copia verificada localmente en el destino'
+                      : backup.externalCopyStatus === 'PENDING'
+                        ? `Copia externa pendiente (intento ${backup.externalRetryAttempts} de 3)`
+                        : backup.externalCopyStatus === 'FAILED'
+                          ? 'Última copia fallida'
+                          : backup.externalCopyStatus === 'MISSING'
+                            ? 'Copia no encontrada'
+                            : 'Pendiente de primera copia'}
                 </dd>
                 <dd className="mt-1 text-slate-600">Sincronización remota no verificada</dd>
               </div>
@@ -316,6 +319,15 @@ export function SettingsPage(): React.JSX.Element {
                 : 'Falló la última copia externa y el respaldo local ya no está disponible. Creá una nueva copia.'}
             </p>
           )}
+          {backup?.externalCopyStatus === 'PENDING' && (
+            <p
+              role="status"
+              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
+            >
+              El respaldo local es válido. La copia externa está pendiente y Occhiali la reintentará
+              sin crear otro respaldo local.
+            </p>
+          )}
           {backup && !backup.lastBackupAt && (
             <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
               Todavía no existe una copia válida. Creá una y guardá la contraseña de recuperación
@@ -339,11 +351,13 @@ export function SettingsPage(): React.JSX.Element {
                 void run(async () => {
                   const created = unwrap(await api.create(recoveryPassword));
                   await refreshBackupData();
-                  return created.exportError
-                    ? 'Respaldo local cifrado y verificado. No se pudo copiar a la carpeta sincronizada.'
-                    : created.exportedToSyncFolder
-                      ? 'Respaldo local creado y depositado en la carpeta sincronizada. La sincronización remota no fue verificada.'
-                      : 'Respaldo local cifrado y verificado.';
+                  return created.externalCopyPending
+                    ? 'Respaldo local cifrado y verificado. La copia externa quedó pendiente de reintento.'
+                    : created.exportError
+                      ? 'Respaldo local cifrado y verificado. No se pudo copiar a la carpeta externa.'
+                      : created.exportedToSyncFolder
+                        ? 'Respaldo local creado y depositado en la carpeta sincronizada. La sincronización remota no fue verificada.'
+                        : 'Respaldo local cifrado y verificado.';
                 })
               }
             >
@@ -582,7 +596,11 @@ export function SettingsPage(): React.JSX.Element {
                       <td className="border-b border-slate-100 px-3 py-3 font-semibold">
                         {operationLabels[event.operation]}
                         <span className="mt-1 block text-xs font-normal text-slate-500">
-                          {event.trigger === 'AUTOMATIC' ? 'Automática' : 'Manual'}
+                          {event.trigger === 'AUTOMATIC'
+                            ? 'Automática'
+                            : event.trigger === 'RETRY'
+                              ? 'Reintento'
+                              : 'Manual'}
                         </span>
                       </td>
                       <td className="border-b border-slate-100 px-3 py-3">

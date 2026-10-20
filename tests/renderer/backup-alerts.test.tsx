@@ -17,6 +17,8 @@ const baseStatus: BackupStatus = {
   lastBackupAgeHours: null,
   lastErrorAt: null,
   lastExternalCopyAt: null,
+  nextExternalRetryAt: null,
+  externalRetryAttempts: 0,
   lastRestoreAt: null,
   lastAutomaticBackupAt: null,
   lastAutomaticAttemptAt: null,
@@ -83,6 +85,23 @@ describe('alertas globales de respaldos', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('más de 72 horas');
     expect(alert).toHaveTextContent('copia al destino externo falló');
+  });
+
+  it('distingue una copia externa pendiente de un respaldo local fallido', async () => {
+    renderAlert({
+      ...baseStatus,
+      exportDirectory: 'C:\\QA\\externo',
+      lastBackupAt: '2026-10-20T04:00:00.000Z',
+      lastBackupFile: 'occhiali-backup-20261020040000000.ocbackup',
+      lastBackupExists: true,
+      externalCopyStatus: 'PENDING',
+      externalRetryAttempts: 1,
+      nextExternalRetryAt: '2026-10-20T04:01:00.000Z',
+    });
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'copia externa está pendiente de reintento; el respaldo local es válido',
+    );
   });
 
   it('advierte inmediatamente cuando el último archivo local desapareció', async () => {

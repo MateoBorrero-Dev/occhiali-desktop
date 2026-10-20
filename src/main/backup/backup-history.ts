@@ -29,12 +29,13 @@ interface HistoryFile {
 
 export type BackupHistoryInput = Omit<BackupHistoryEvent, 'id'>;
 
-const operations: BackupHistoryOperation[] = ['CREATE', 'VERIFY', 'EXPORT', 'RESTORE'];
+const operations: BackupHistoryOperation[] = ['CREATE', 'VERIFY', 'EXPORT', 'RESTORE', 'RETENTION'];
 const results: BackupHistoryResult[] = ['STARTED', 'SUCCESS', 'PARTIAL', 'FAILURE'];
-const triggers: BackupHistoryTrigger[] = ['MANUAL', 'AUTOMATIC'];
+const triggers: BackupHistoryTrigger[] = ['MANUAL', 'AUTOMATIC', 'RETRY'];
 const localStates: BackupLocalState[] = ['VALID', 'MISSING', 'FAILED', 'NOT_APPLICABLE'];
 const externalStates: BackupExternalState[] = [
   'NOT_CONFIGURED',
+  'PENDING',
   'COPIED',
   'FAILED',
   'MISSING',

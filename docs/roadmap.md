@@ -125,3 +125,12 @@ Scheduler activo sólo mientras Occhiali permanece abierto, credencial protegida
 `safeStorage`, recuperación de ventanas pendientes, reanudación después de suspensión, exclusión
 mutua con restauraciones e historial diferenciado. No incorpora servicios externos ni retención
 avanzada de copias externas.
+
+## 1.1.0 — Bloque 3: copias externas y retención segura
+
+**Estado:** implementación y validación automatizada completadas; QA manual de Windows pendiente.
+
+Publicación externa mediante temporal exclusivo con comprobación de tamaño y SHA-256, reintentos
+persistentes y acotados sobre el mismo respaldo local, estados diferenciados e historial real. La
+retención local sólo elimina respaldos propios reconocidos, omite enlaces y archivos ambiguos,
+protege copias en uso y nunca aplica borrado automático al destino externo.
