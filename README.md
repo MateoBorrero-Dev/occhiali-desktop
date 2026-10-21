@@ -112,6 +112,10 @@ automatizada aprueba 260 pruebas y la actualización real 0.9.0 → 1.0.0 fue co
 aislada de Windows `OcchialiQA`, conservando datos, credenciales, PDF, persistencia y restauración de
 un backup anterior. El commit, tag, push y publicación continúan siendo pasos manuales separados.
 
+**Versión 1.1.0:** cuatro bloques de mejoras de respaldos completados: observabilidad, automatización
+con DPAPI, transferencias y retención conservadora y recuperación ante desastres. El candidato se
+genera en un destino aislado y conserva identidad, perfil y migraciones de 1.0.0.
+
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
 [Instalador Windows](docs/windows-installer.md).
@@ -149,4 +153,5 @@ Encontrá más información en:
 - [Manual de usuario](docs/manual-usuario.md)
 - [Entrega y soporte](docs/entrega-y-soporte.md)
 - [Preparación de versión 1.0.0](docs/release-1.0.0.md)
+- [Preparación de versión 1.1.0](docs/release-1.1.0.md)
 - [Roadmap](docs/roadmap.md)

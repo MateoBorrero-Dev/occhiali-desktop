@@ -6,7 +6,11 @@ const { tmpdir } = require('node:os');
 const { join, resolve } = require('node:path');
 
 const projectRoot = resolve(__dirname, '..');
-const releaseDirectory = join(projectRoot, 'release');
+const packageJson = require(join(projectRoot, 'package.json'));
+const candidateMode = process.argv.slice(2).includes('--candidate');
+const releaseDirectory = candidateMode
+  ? join(projectRoot, 'release', 'candidates', packageJson.version)
+  : join(projectRoot, 'release');
 const unpackedDirectory = join(releaseDirectory, 'win-unpacked');
 const executablePath = join(unpackedDirectory, 'Occhiali.exe');
 const resourcesDirectory = join(unpackedDirectory, 'resources');
@@ -21,7 +25,6 @@ const nativePath = join(
   'prebuilds',
   'win32-x64.node',
 );
-const packageJson = require(join(projectRoot, 'package.json'));
 const installerPath = join(releaseDirectory, `Occhiali-Setup-${packageJson.version}-x64.exe`);
 
 function requireFile(path, label) {

@@ -44,7 +44,7 @@ describe('configuración de distribución de Windows', () => {
   it('mantiene identidad, versión candidata e instalador NSIS x64 estables', () => {
     expect(packageConfiguration).toMatchObject({
       name: 'optica-desktop',
-      version: '1.0.0',
+      version: '1.1.0',
       productName: 'Occhiali',
       main: './out/main/index.js',
       dependencies: { 'better-sqlite3': '13.0.3' },
@@ -79,6 +79,10 @@ describe('configuración de distribución de Windows', () => {
     expect(packageConfiguration.scripts['package:win']).toContain(
       'patch-electron-builder-collector.cjs',
     );
+    expect(packageConfiguration.scripts['package:candidate']).toContain(
+      'release/candidates/${version}',
+    );
+    expect(packageConfiguration.scripts['verify:candidate']).toContain('--candidate');
     expect(collectorPatchSource).toContain("const EXPECTED_APP_BUILDER_LIB_VERSION = '26.16.1';");
     expect(collectorPatchSource).toContain('packageMetadata.version !==');
     expect(packageConfiguration.build.files).toEqual(

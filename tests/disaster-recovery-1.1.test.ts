@@ -164,7 +164,7 @@ describe('recuperación ante desastres 1.1', () => {
       expect(credentials.state()).toBe('UNAVAILABLE');
       expect(existsSync(join(newProfile, 'backup-credential.json'))).toBe(false);
 
-      const backups = new BackupService(join(newProfile, 'backup-settings.json'), '1.0.0');
+      const backups = new BackupService(join(newProfile, 'backup-settings.json'), '1.1.0');
       backups.setSelectedRestorePath(fixture);
       await expect(backups.verifySelected(RECOVERY_PASSWORD)).resolves.toMatchObject({
         appVersion: version,
@@ -216,7 +216,7 @@ describe('recuperación ante desastres 1.1', () => {
     const emptyCurrent = ApplicationDatabase.open(activePath);
     emptyCurrent.clients.create({ firstName: 'Base', lastName: 'Nueva temporal' });
     emptyCurrent.close();
-    const backups = new BackupService(join(newProfile, 'backup-settings.json'), '1.0.0');
+    const backups = new BackupService(join(newProfile, 'backup-settings.json'), '1.1.0');
     backups.setSelectedRestorePath(fixture);
     const prepared = await backups.prepareRestore(RECOVERY_PASSWORD);
     const coordinator = new RestoreCoordinator(activePath);
@@ -268,7 +268,7 @@ describe('recuperación ante desastres 1.1', () => {
     const active = ApplicationDatabase.open(activePath);
     const protectedClient = active.clients.create({ firstName: 'No', lastName: 'Sobrescribir' });
     active.close();
-    const backups = new BackupService(join(newProfile, 'backup-settings.json'), '1.0.0');
+    const backups = new BackupService(join(newProfile, 'backup-settings.json'), '1.1.0');
     backups.setSelectedRestorePath(selected);
 
     await expect(backups.prepareRestore('Recuperacion-Incorrecta-2026')).rejects.toThrow(

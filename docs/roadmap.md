@@ -143,3 +143,11 @@ Compatibilidad demostrada con fixtures cifrados controlados de 0.9.0 y 1.0.0, re
 perfil nuevo sin DPAPI, cobertura integral de datos comerciales, rechazo conservador de archivos
 incorrectos o truncados y exclusión mutua con scheduler y reintentos. La interfaz advierte la fecha
 del respaldo y la pérdida de cambios posteriores antes de confirmar.
+
+## 1.1.0 — Preparación de release
+
+**Estado:** versionado y candidato técnico en preparación; instalación, actualización y rollback
+manual en `OcchialiQA` pendientes.
+
+Se conserva la identidad de 1.0.0, las migraciones 001–006 y `%APPDATA%\optica-desktop`. El
+candidato se genera bajo `release/candidates/1.1.0` para no reemplazar artefactos históricos.

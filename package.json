@@ -1,6 +1,6 @@
 {
   "name": "optica-desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "productName": "Occhiali",
   "private": true,
   "description": "Sistema de gestión de escritorio para una óptica pequeña.",
@@ -20,9 +20,11 @@
     "build": "npm run typecheck && electron-vite build",
     "package": "npm run package:win",
     "package:win": "node scripts/patch-electron-builder-collector.cjs && npm run build && electron-builder --win nsis --x64",
+    "package:candidate": "node scripts/patch-electron-builder-collector.cjs && npm run build && electron-builder --win nsis --x64 --config.directories.output=release/candidates/${version}",
     "package:win:dir": "node scripts/patch-electron-builder-collector.cjs && npm run build && electron-builder --win dir --x64",
     "verify": "npm run verify:package",
-    "verify:package": "node scripts/verify-packaged-app.cjs"
+    "verify:package": "node scripts/verify-packaged-app.cjs",
+    "verify:candidate": "node scripts/verify-packaged-app.cjs --candidate"
   },
   "engines": {
     "node": ">=22.12.0"

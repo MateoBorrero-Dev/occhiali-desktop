@@ -2,7 +2,7 @@
 
 ## Alcance y requisitos
 
-Occhiali 1.0.0 es una candidata offline para Windows 10 u 11 x64. La usuaria final solo
+Occhiali 1.1.0 es una candidata offline para Windows 10 u 11 x64. La usuaria final solo
 necesita ejecutar el instalador; no necesita Node.js, npm, Git, PowerShell ni herramientas de
 desarrollo. No hay versión portable, activación, telemetría, servidor ni actualizaciones
 automáticas.
@@ -11,21 +11,25 @@ automáticas.
 
 Desde un checkout confiable con las dependencias fijadas:
 
-```bash
+```powershell
 npm ci --ignore-scripts
-npm run package
-npm run verify
+npm run package:candidate
+npm run verify:candidate
 ```
 
 `--ignore-scripts` evita que npm intente una compilación local innecesaria de `better-sqlite3` y
 reduce la ejecución de código durante la instalación. La distribución fijada ya contiene el
 prebuild Windows x64; las verificaciones posteriores prueban que Electron puede cargarlo realmente.
 
-electron-builder 26.16.1 genera:
+electron-builder 26.16.1 genera el candidato aislado en `release/candidates/1.1.0`:
 
-- `release/Occhiali-Setup-1.0.0-x64.exe`: instalador NSIS asistido.
-- `release/win-unpacked/Occhiali.exe`: aplicación desempaquetada para inspección.
-- `release/Occhiali-Setup-1.0.0-x64.exe.blockmap`: mapa auxiliar; no se usa para autoactualizar.
+- `Occhiali-Setup-1.1.0-x64.exe`: instalador NSIS asistido.
+- `win-unpacked/Occhiali.exe`: aplicación desempaquetada para inspección.
+- `Occhiali-Setup-1.1.0-x64.exe.blockmap`: mapa auxiliar; no se usa para autoactualizar.
+
+El destino separado impide que electron-builder reemplace instaladores históricos o sus metadatos.
+El comando `npm run package` conserva el destino tradicional y se reserva para una promoción final
+explícita, no para candidatos.
 
 La versión se identifica con `appId` estable `com.occhiali.desktop`, `productName` y ejecutable
 `Occhiali`. NSIS instala por usuario, no solicita elevación, permite elegir carpeta, crea accesos en
@@ -125,9 +129,12 @@ visual automatizado en las resoluciones 820×600, 1180×760, 1366×768 y 1920×1
 por ese controlador. La actualización real entre 0.9.0 y 1.0.0, el login, la persistencia, la
 exportación PDF y la restauración de un backup anterior fueron validados manualmente en `OcchialiQA`.
 
+La preparación, compatibilidad y procedimiento de actualización y rollback de 1.1.0 están en
+[release-1.1.0.md](release-1.1.0.md).
+
 ## Checklist de entrega
 
-- Ejecutar todas las validaciones y `npm run verify`.
+- Ejecutar todas las validaciones y `npm run verify:candidate`.
 - Revisar versión, `appId`, SHA-256, firma e icono.
 - Inspeccionar ASAR y el binario nativo x64.
 - Probar instalación limpia con un perfil aislado.
