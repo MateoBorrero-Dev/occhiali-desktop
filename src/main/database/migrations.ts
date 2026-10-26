@@ -253,6 +253,17 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    id: '007_optical_job_commercial_details',
+    up: (database) => {
+      database.exec(`
+        ALTER TABLE optical_jobs ADD COLUMN lens TEXT;
+        ALTER TABLE optical_jobs ADD COLUMN brand TEXT;
+        ALTER TABLE delivery_receipts ADD COLUMN lens TEXT;
+        ALTER TABLE delivery_receipts ADD COLUMN brand TEXT;
+      `);
+    },
+  },
 ];
 
 interface AppliedMigrationRow {

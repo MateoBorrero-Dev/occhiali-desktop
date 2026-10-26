@@ -18,6 +18,8 @@ const RECEIPT: DeliveryReceipt = {
   clientPhone: null,
   jobNumber: 'F-1',
   product: 'Anteojos',
+  lens: null,
+  brand: null,
   frameCondition: null,
   frameMaterial: null,
   frameModel: null,

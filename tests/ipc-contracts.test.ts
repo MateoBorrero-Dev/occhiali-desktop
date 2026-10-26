@@ -85,6 +85,8 @@ describe('handlers IPC de fichas de trabajo', () => {
       clientId: owner.id,
       jobNumber: 'IPC-01',
       product: 'Lentes de contacto',
+      lens: 'Orgánico IPC',
+      brand: 'Marca IPC',
       productColor: 'Transparente',
       supplier: 'Proveedor IPC',
       treatmentNames: ['Acabado libre IPC'],
@@ -94,6 +96,8 @@ describe('handlers IPC de fichas de trabajo', () => {
       data: {
         jobNumber: 'IPC-01',
         product: 'Lentes de contacto',
+        lens: 'Orgánico IPC',
+        brand: 'Marca IPC',
         productColor: 'Transparente',
         supplier: 'Proveedor IPC',
         treatments: [{ name: 'Acabado libre IPC' }],
@@ -112,9 +116,20 @@ describe('handlers IPC de fichas de trabajo', () => {
       ok: false,
       error: { code: 'VALIDATION' },
     });
-    expect(handlers.update(created.data.id, { product: 'Producto actualizado' })).toMatchObject({
+    expect(
+      handlers.update(created.data.id, {
+        product: 'Producto actualizado',
+        lens: 'Mineral IPC',
+        brand: 'Marca actualizada IPC',
+      }),
+    ).toMatchObject({
       ok: true,
-      data: { id: created.data.id, product: 'Producto actualizado' },
+      data: {
+        id: created.data.id,
+        product: 'Producto actualizado',
+        lens: 'Mineral IPC',
+        brand: 'Marca actualizada IPC',
+      },
     });
   });
 

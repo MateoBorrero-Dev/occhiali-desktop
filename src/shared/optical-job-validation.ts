@@ -16,6 +16,8 @@ export class OpticalJobValidationError extends Error {
 export const OPTICAL_JOB_FIELD_LIMITS = Object.freeze({
   jobNumber: 50,
   product: 200,
+  lens: 200,
+  brand: 200,
   frameModel: 200,
   productColor: 100,
   supplier: 200,
@@ -30,6 +32,8 @@ const CREATE_KEYS = [
   'prescriptionId',
   'jobNumber',
   'product',
+  'lens',
+  'brand',
   'frameCondition',
   'frameMaterial',
   'frameModel',
@@ -90,7 +94,15 @@ function optionalId(value: unknown, field: string): number | null {
 
 function optionalText(
   value: unknown,
-  field: 'jobNumber' | 'product' | 'frameModel' | 'productColor' | 'supplier' | 'observations',
+  field:
+    | 'jobNumber'
+    | 'product'
+    | 'lens'
+    | 'brand'
+    | 'frameModel'
+    | 'productColor'
+    | 'supplier'
+    | 'observations',
   label: string,
 ): string | null {
   if (value === null || value === undefined) return null;
@@ -183,6 +195,8 @@ function parseCore(record: Record<string, unknown>): UpdateOpticalJobInput {
     prescriptionId: optionalId(record.prescriptionId, 'prescriptionId'),
     jobNumber: optionalText(record.jobNumber, 'jobNumber', 'El número de ficha'),
     product: optionalText(record.product, 'product', 'El producto'),
+    lens: optionalText(record.lens, 'lens', 'El cristal'),
+    brand: optionalText(record.brand, 'brand', 'La marca'),
     frameCondition: enumeration<'NEW' | 'USED'>(
       record.frameCondition,
       'frameCondition',

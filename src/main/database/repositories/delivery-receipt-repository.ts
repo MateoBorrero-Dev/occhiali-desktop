@@ -29,6 +29,8 @@ interface ReceiptRow {
   client_phone: string | null;
   job_number: string | null;
   product: string | null;
+  lens: string | null;
+  brand: string | null;
   frame_condition: FrameCondition | null;
   frame_material: FrameMaterial | null;
   frame_model: string | null;
@@ -64,6 +66,8 @@ interface SnapshotRow {
   client_phone: string | null;
   job_number: string | null;
   product: string | null;
+  lens: string | null;
+  brand: string | null;
   frame_condition: FrameCondition | null;
   frame_material: FrameMaterial | null;
   frame_model: string | null;
@@ -131,7 +135,7 @@ export class DeliveryReceiptRepository {
              j.id AS optical_job_id, c.first_name AS client_first_name,
              c.last_name AS client_last_name, c.document_number AS client_document_number,
              c.phone AS client_phone, j.job_number, j.product, j.frame_condition,
-             j.frame_material, j.frame_model, j.product_color, j.supplier, j.color_type,
+             j.lens, j.brand, j.frame_material, j.frame_model, j.product_color, j.supplier, j.color_type,
              j.observations AS product_observations
            FROM optical_jobs j
            JOIN clients c ON c.id = j.client_id
@@ -158,14 +162,14 @@ export class DeliveryReceiptRepository {
         .prepare(
           `INSERT INTO delivery_receipts (
              receipt_number, optical_job_id, delivered_at, client_first_name, client_last_name,
-             client_document_number, client_phone, job_number, product, frame_condition,
+             client_document_number, client_phone, job_number, product, lens, brand, frame_condition,
              frame_material, frame_model, product_color, supplier, color_type,
              product_observations, treatment_names_json, recipient_type, recipient_full_name,
              recipient_document_number, recipient_relationship, authorization_reference,
              authorization_confirmed, delivered_by, delivery_notes, delivery_confirmed
            ) VALUES (
              @receiptNumber, @opticalJobId, @deliveredAt, @client_first_name, @client_last_name,
-             @client_document_number, @client_phone, @job_number, @product, @frame_condition,
+             @client_document_number, @client_phone, @job_number, @product, @lens, @brand, @frame_condition,
              @frame_material, @frame_model, @product_color, @supplier, @color_type,
              @product_observations, @treatmentNamesJson, @recipientType, @recipientFullName,
              @recipientDocumentNumber, @recipientRelationship, @authorizationReference,
@@ -244,6 +248,8 @@ export class DeliveryReceiptRepository {
       clientPhone: row.client_phone,
       jobNumber: row.job_number,
       product: row.product,
+      lens: row.lens,
+      brand: row.brand,
       frameCondition: row.frame_condition,
       frameMaterial: row.frame_material,
       frameModel: row.frame_model,

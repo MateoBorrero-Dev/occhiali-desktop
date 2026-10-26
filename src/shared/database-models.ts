@@ -180,6 +180,8 @@ export interface OpticalJob {
   prescriptionId: number | null;
   jobNumber: string | null;
   product: string | null;
+  lens: string | null;
+  brand: string | null;
   frameCondition: FrameCondition | null;
   frameMaterial: FrameMaterial | null;
   frameModel: string | null;
@@ -197,6 +199,8 @@ export interface CreateOpticalJobInput {
   prescriptionId?: number | null;
   jobNumber?: string | null;
   product?: string | null;
+  lens?: string | null;
+  brand?: string | null;
   frameCondition?: FrameCondition | null;
   frameMaterial?: FrameMaterial | null;
   frameModel?: string | null;
@@ -212,6 +216,8 @@ export interface UpdateOpticalJobInput {
   prescriptionId?: number | null;
   jobNumber?: string | null;
   product?: string | null;
+  lens?: string | null;
+  brand?: string | null;
   frameCondition?: FrameCondition | null;
   frameMaterial?: FrameMaterial | null;
   frameModel?: string | null;
@@ -299,6 +305,8 @@ export interface DeliveryReceipt {
   clientPhone: string | null;
   jobNumber: string | null;
   product: string | null;
+  lens: string | null;
+  brand: string | null;
   frameCondition: FrameCondition | null;
   frameMaterial: FrameMaterial | null;
   frameModel: string | null;

@@ -42,6 +42,8 @@ const JOB: OpticalJob = {
   prescriptionId: 3,
   jobNumber: '000152',
   product: 'Anteojos recetados',
+  lens: null,
+  brand: null,
   frameCondition: 'NEW',
   frameMaterial: 'METAL',
   frameModel: 'Modelo ficticio',

@@ -28,6 +28,8 @@ interface OpticalJobRow {
   prescription_id: number | null;
   job_number: string | null;
   product: string | null;
+  lens: string | null;
+  brand: string | null;
   frame_condition: FrameCondition | null;
   frame_material: FrameMaterial | null;
   frame_model: string | null;
@@ -120,6 +122,8 @@ function comparable(job: OpticalJob): string {
     prescriptionId: job.prescriptionId,
     jobNumber: job.jobNumber,
     product: job.product,
+    lens: job.lens,
+    brand: job.brand,
     frameCondition: job.frameCondition,
     frameMaterial: job.frameMaterial,
     frameModel: job.frameModel,
@@ -136,6 +140,8 @@ function comparableInput(input: UpdateOpticalJobInput, treatmentIds: readonly st
     prescriptionId: input.prescriptionId ?? null,
     jobNumber: input.jobNumber ?? null,
     product: input.product ?? null,
+    lens: input.lens ?? null,
+    brand: input.brand ?? null,
     frameCondition: input.frameCondition ?? null,
     frameMaterial: input.frameMaterial ?? null,
     frameModel: input.frameModel ?? null,
@@ -170,10 +176,10 @@ export class OpticalJobRepository {
       const result = this.database
         .prepare(
           `INSERT INTO optical_jobs (
-            client_id, prescription_id, job_number, product, frame_condition,
+            client_id, prescription_id, job_number, product, lens, brand, frame_condition,
             frame_material, frame_model, product_color, supplier, color_type, observations
           ) VALUES (
-            @clientId, @prescriptionId, @jobNumber, @product, @frameCondition,
+            @clientId, @prescriptionId, @jobNumber, @product, @lens, @brand, @frameCondition,
             @frameMaterial, @frameModel, @productColor, @supplier, @colorType, @observations
           )`,
         )
@@ -252,6 +258,8 @@ export class OpticalJobRepository {
             prescription_id = @prescriptionId,
             job_number = @jobNumber,
             product = @product,
+            lens = @lens,
+            brand = @brand,
             frame_condition = @frameCondition,
             frame_material = @frameMaterial,
             frame_model = @frameModel,
@@ -331,6 +339,8 @@ export class OpticalJobRepository {
       prescriptionId: row.prescription_id,
       jobNumber: row.job_number,
       product: row.product,
+      lens: row.lens,
+      brand: row.brand,
       frameCondition: row.frame_condition,
       frameMaterial: row.frame_material,
       frameModel: row.frame_model,
