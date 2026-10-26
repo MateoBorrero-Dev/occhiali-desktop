@@ -7,15 +7,20 @@ import {
   parsePrescriptionsByClientRequest,
   PrescriptionValidationError,
 } from '../../shared/prescription-validation';
+import { parseCreatePrescriptionBundleInput } from '../../shared/prescription-job-validation';
 import {
   ArchivedClientPrescriptionError,
   PrescriptionClientNotFoundError,
   PrescriptionNotFoundError,
 } from '../database/repositories/prescription-repository';
+import { DuplicateOpticalJobNumberError } from '../database/repositories/optical-job-repository';
+import { TreatmentNotFoundError } from '../database/repositories/treatment-repository';
+import { OpticalJobValidationError } from '../../shared/optical-job-validation';
 import { assertArgumentCount, IPC_CHANNELS } from '../../shared/ipc-contracts';
 import type { PrescriptionIpcError, PrescriptionIpcResult } from '../../shared/ipc-contracts';
 import type {
   Prescription,
+  CreatePrescriptionBundleResult,
   PrescriptionListPage,
   PrescriptionRevision,
 } from '../../shared/database-models';
@@ -25,6 +30,7 @@ export interface PrescriptionIpcHandlers {
   listByClient: (...args: unknown[]) => PrescriptionIpcResult<PrescriptionListPage>;
   get: (...args: unknown[]) => PrescriptionIpcResult<Prescription>;
   create: (...args: unknown[]) => PrescriptionIpcResult<Prescription>;
+  createIntegrated: (...args: unknown[]) => PrescriptionIpcResult<CreatePrescriptionBundleResult>;
   correct: (...args: unknown[]) => PrescriptionIpcResult<Prescription>;
   revisions: (...args: unknown[]) => PrescriptionIpcResult<PrescriptionRevision[]>;
 }
@@ -46,6 +52,13 @@ function prescriptionError(error: unknown): PrescriptionIpcError {
       fields: Object.fromEntries(error.issues.map((issue) => [issue.field, issue.message])),
     };
   }
+  if (error instanceof OpticalJobValidationError) {
+    return {
+      code: 'VALIDATION',
+      message: 'Revisá los datos ingresados.',
+      fields: Object.fromEntries(error.issues.map((issue) => [issue.field, issue.message])),
+    };
+  }
   if (error instanceof TypeError) {
     return { code: 'VALIDATION', message: 'La solicitud no es válida.' };
   }
@@ -57,6 +70,12 @@ function prescriptionError(error: unknown): PrescriptionIpcError {
   }
   if (error instanceof ArchivedClientPrescriptionError) {
     return { code: 'ARCHIVED_CLIENT', message: error.message };
+  }
+  if (error instanceof DuplicateOpticalJobNumberError) {
+    return { code: 'DUPLICATE_JOB_NUMBER', message: error.message };
+  }
+  if (error instanceof TreatmentNotFoundError) {
+    return { code: 'TREATMENT_NOT_FOUND', message: error.message };
   }
   if (isPersistenceConflict(error)) {
     return {
@@ -103,6 +122,11 @@ export function createPrescriptionIpcHandlers(
       perform(() => {
         assertArgumentCount(IPC_CHANNELS.prescriptionsCreate, args, 1);
         return database.prescriptions.createWithValues(parseCreatePrescriptionInput(args[0]));
+      }),
+    createIntegrated: (...args) =>
+      perform(() => {
+        assertArgumentCount(IPC_CHANNELS.prescriptionsCreateIntegrated, args, 1);
+        return database.prescriptionJobs.create(parseCreatePrescriptionBundleInput(args[0]));
       }),
     correct: (...args) =>
       perform(() => {

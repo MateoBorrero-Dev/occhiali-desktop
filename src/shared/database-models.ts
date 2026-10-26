@@ -212,6 +212,21 @@ export interface CreateOpticalJobInput {
   treatmentNames?: string[];
 }
 
+export type CreateIntegratedOpticalJobInput = Omit<
+  CreateOpticalJobInput,
+  'clientId' | 'prescriptionId'
+>;
+
+export interface CreatePrescriptionBundleInput {
+  prescription: CreatePrescriptionInput;
+  opticalJob: CreateIntegratedOpticalJobInput | null;
+}
+
+export interface CreatePrescriptionBundleResult {
+  prescription: Prescription;
+  opticalJob: OpticalJob | null;
+}
+
 export interface UpdateOpticalJobInput {
   prescriptionId?: number | null;
   jobNumber?: string | null;

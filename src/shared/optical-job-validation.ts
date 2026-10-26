@@ -1,4 +1,5 @@
 import type {
+  CreateIntegratedOpticalJobInput,
   CreateOpticalJobInput,
   OpticalJobListRequest,
   OpticalJobsByClientRequest,
@@ -27,9 +28,7 @@ export const OPTICAL_JOB_FIELD_LIMITS = Object.freeze({
   treatmentName: 200,
 });
 
-const CREATE_KEYS = [
-  'clientId',
-  'prescriptionId',
+const DETAIL_KEYS = [
   'jobNumber',
   'product',
   'lens',
@@ -44,7 +43,8 @@ const CREATE_KEYS = [
   'treatmentIds',
   'treatmentNames',
 ] as const;
-const UPDATE_KEYS = CREATE_KEYS.filter((key) => key !== 'clientId');
+const CREATE_KEYS = ['clientId', 'prescriptionId', ...DETAIL_KEYS] as const;
+const UPDATE_KEYS = ['prescriptionId', ...DETAIL_KEYS] as const;
 const LIST_KEYS = ['query', 'limit', 'offset'] as const;
 const BY_CLIENT_KEYS = ['clientId', 'limit', 'offset'] as const;
 const BY_PRESCRIPTION_KEYS = ['prescriptionId', 'limit', 'offset'] as const;
@@ -190,9 +190,8 @@ function treatmentNames(value: unknown): string[] {
   return parsed;
 }
 
-function parseCore(record: Record<string, unknown>): UpdateOpticalJobInput {
+function parseDetails(record: Record<string, unknown>): CreateIntegratedOpticalJobInput {
   return {
-    prescriptionId: optionalId(record.prescriptionId, 'prescriptionId'),
     jobNumber: optionalText(record.jobNumber, 'jobNumber', 'El número de ficha'),
     product: optionalText(record.product, 'product', 'El producto'),
     lens: optionalText(record.lens, 'lens', 'El cristal'),
@@ -224,10 +223,25 @@ function parseCore(record: Record<string, unknown>): UpdateOpticalJobInput {
   };
 }
 
+function parseCore(record: Record<string, unknown>): UpdateOpticalJobInput {
+  return {
+    prescriptionId: optionalId(record.prescriptionId, 'prescriptionId'),
+    ...parseDetails(record),
+  };
+}
+
 export function parseCreateOpticalJobInput(value: unknown): CreateOpticalJobInput {
   const record = asRecord(value);
   assertOnlyKeys(record, CREATE_KEYS);
   return { clientId: parseOpticalJobClientId(record.clientId), ...parseCore(record) };
+}
+
+export function parseCreateIntegratedOpticalJobInput(
+  value: unknown,
+): CreateIntegratedOpticalJobInput {
+  const record = asRecord(value);
+  assertOnlyKeys(record, DETAIL_KEYS);
+  return parseDetails(record);
 }
 
 export function parseUpdateOpticalJobInput(value: unknown): UpdateOpticalJobInput {

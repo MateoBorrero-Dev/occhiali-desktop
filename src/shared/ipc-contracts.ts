@@ -5,6 +5,8 @@ import type {
   CreateClientInput,
   CorrectPrescriptionInput,
   CreatePrescriptionInput,
+  CreatePrescriptionBundleInput,
+  CreatePrescriptionBundleResult,
   CreateOpticalJobInput,
   OpticalJob,
   OpticalJobListPage,
@@ -45,6 +47,7 @@ export const IPC_CHANNELS = {
   prescriptionsListByClient: 'prescriptions:list-by-client',
   prescriptionsGet: 'prescriptions:get',
   prescriptionsCreate: 'prescriptions:create',
+  prescriptionsCreateIntegrated: 'prescriptions:create-integrated',
   prescriptionsCorrect: 'prescriptions:correct',
   prescriptionsRevisions: 'prescriptions:revisions',
   opticalJobsList: 'optical-jobs:list',
@@ -107,7 +110,14 @@ export interface ClientApi {
 }
 
 export type PrescriptionIpcErrorCode =
-  'VALIDATION' | 'NOT_FOUND' | 'CLIENT_NOT_FOUND' | 'ARCHIVED_CLIENT' | 'CONFLICT' | 'PERSISTENCE';
+  | 'VALIDATION'
+  | 'NOT_FOUND'
+  | 'CLIENT_NOT_FOUND'
+  | 'ARCHIVED_CLIENT'
+  | 'DUPLICATE_JOB_NUMBER'
+  | 'TREATMENT_NOT_FOUND'
+  | 'CONFLICT'
+  | 'PERSISTENCE';
 
 export interface PrescriptionIpcError {
   code: PrescriptionIpcErrorCode;
@@ -125,6 +135,9 @@ export interface PrescriptionApi {
   ) => Promise<PrescriptionIpcResult<PrescriptionListPage>>;
   get: (id: number) => Promise<PrescriptionIpcResult<Prescription>>;
   create: (input: CreatePrescriptionInput) => Promise<PrescriptionIpcResult<Prescription>>;
+  createIntegrated: (
+    input: CreatePrescriptionBundleInput,
+  ) => Promise<PrescriptionIpcResult<CreatePrescriptionBundleResult>>;
   correct: (
     id: number,
     input: CorrectPrescriptionInput,

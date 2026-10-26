@@ -63,6 +63,9 @@ export function registerIpcHandlers(
   ipcMain.handle(IPC_CHANNELS.prescriptionsCreate, (_event, ...args: unknown[]) =>
     authorized(() => prescriptions.create(...args)),
   );
+  ipcMain.handle(IPC_CHANNELS.prescriptionsCreateIntegrated, (_event, ...args: unknown[]) =>
+    authorized(() => prescriptions.createIntegrated(...args)),
+  );
   ipcMain.handle(IPC_CHANNELS.prescriptionsCorrect, (_event, ...args: unknown[]) =>
     authorized(() => prescriptions.correct(...args)),
   );

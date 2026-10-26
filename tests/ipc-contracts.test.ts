@@ -21,6 +21,7 @@ describe('contratos IPC', () => {
       prescriptionsListByClient: 'prescriptions:list-by-client',
       prescriptionsGet: 'prescriptions:get',
       prescriptionsCreate: 'prescriptions:create',
+      prescriptionsCreateIntegrated: 'prescriptions:create-integrated',
       prescriptionsCorrect: 'prescriptions:correct',
       prescriptionsRevisions: 'prescriptions:revisions',
       opticalJobsList: 'optical-jobs:list',
@@ -295,6 +296,87 @@ describe('handlers IPC de recetas', () => {
       ok: true,
       data: { total: 1 },
     });
+  });
+
+  it('crea receta y trabajo mediante un canal integrado explícito', () => {
+    const client = context.database.clients.create(TEST_CLIENT);
+    const handlers = createPrescriptionIpcHandlers(context.database);
+    const created = handlers.createIntegrated({
+      prescription: {
+        clientId: client.id,
+        prescriptionDate: '2026-10-26',
+        values: [
+          { distance: 'FAR', eye: 'OD', sphere: '-1.00' },
+          { distance: 'NEAR', eye: 'OI', sphere: '1.50' },
+        ],
+      },
+      opticalJob: {
+        jobNumber: 'IPC-INT-001',
+        product: 'Anteojos integrados',
+        lens: 'Orgánico IPC',
+        brand: 'Marca IPC',
+        treatmentIds: ['edge-polish'],
+      },
+    });
+
+    expect(created).toMatchObject({
+      ok: true,
+      data: {
+        prescription: { clientId: client.id },
+        opticalJob: {
+          clientId: client.id,
+          jobNumber: 'IPC-INT-001',
+          lens: 'Orgánico IPC',
+          brand: 'Marca IPC',
+        },
+      },
+    });
+    if (!created.ok || !created.data.opticalJob) {
+      throw new Error('No se pudo preparar el alta integrada IPC.');
+    }
+    expect(created.data.opticalJob.prescriptionId).toBe(created.data.prescription.id);
+  });
+
+  it('valida la solicitud integrada y traduce conflictos sin persistencia parcial', () => {
+    const client = context.database.clients.create(TEST_CLIENT);
+    const handlers = createPrescriptionIpcHandlers(context.database);
+    const prescription = {
+      clientId: client.id,
+      prescriptionDate: '2026-10-26',
+      values: [{ distance: 'FAR' as const, eye: 'OD' as const, sphere: '-1.00' }],
+    };
+    context.database.opticalJobs.createWithTreatments({
+      clientId: client.id,
+      jobNumber: 'IPC-DUP-001',
+    });
+
+    expect(
+      handlers.createIntegrated({
+        prescription,
+        opticalJob: { jobNumber: 'IPC-DUP-001' },
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'DUPLICATE_JOB_NUMBER' } });
+    expect(
+      handlers.createIntegrated({
+        prescription,
+        opticalJob: { treatmentIds: ['inexistente'] },
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'TREATMENT_NOT_FOUND' } });
+    expect(
+      handlers.createIntegrated({
+        prescription,
+        opticalJob: { clientId: 999 },
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'VALIDATION' } });
+    expect(handlers.createIntegrated({ prescription })).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+    expect(handlers.createIntegrated({}, 'extra')).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+    expect(context.database.prescriptions.listByClient(client.id)).toEqual([]);
   });
 
   it('rechaza payloads y argumentos inválidos antes de persistir', () => {

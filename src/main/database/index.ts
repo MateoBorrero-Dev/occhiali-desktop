@@ -8,6 +8,7 @@ import { PrescriptionValueRepository } from './repositories/prescription-value-r
 import { TreatmentRepository } from './repositories/treatment-repository';
 import { QueryRepository } from './repositories/query-repository';
 import { DeliveryReceiptRepository } from './repositories/delivery-receipt-repository';
+import { PrescriptionJobService } from './services/prescription-job-service';
 import { registerSearchFunction } from './search';
 
 interface MigrationRow {
@@ -22,6 +23,7 @@ export class ApplicationDatabase {
   public readonly opticalJobs: OpticalJobRepository;
   public readonly queries: QueryRepository;
   public readonly deliveryReceipts: DeliveryReceiptRepository;
+  public readonly prescriptionJobs: PrescriptionJobService;
 
   private constructor(private readonly database: Database.Database) {
     registerSearchFunction(database);
@@ -30,6 +32,11 @@ export class ApplicationDatabase {
     this.prescriptions = new PrescriptionRepository(database, this.prescriptionValues);
     this.treatments = new TreatmentRepository(database);
     this.opticalJobs = new OpticalJobRepository(database, this.treatments);
+    this.prescriptionJobs = new PrescriptionJobService(
+      database,
+      this.prescriptions,
+      this.opticalJobs,
+    );
     this.queries = new QueryRepository(database);
     this.deliveryReceipts = new DeliveryReceiptRepository(database);
   }

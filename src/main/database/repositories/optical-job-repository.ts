@@ -159,36 +159,25 @@ export class OpticalJobRepository {
     private readonly treatments: TreatmentRepository,
   ) {}
 
-  public createWithTreatments(input: CreateOpticalJobInput): OpticalJob {
+  public validateCreate(input: CreateOpticalJobInput): CreateOpticalJobInput {
     const normalized = parseCreateOpticalJobInput(input);
-    return this.database.transaction(() => {
-      this.requireActiveClient(normalized.clientId);
-      this.assertPrescriptionBelongsToClient(
-        normalized.prescriptionId ?? null,
-        normalized.clientId,
-      );
-      this.assertJobNumberAvailable(normalized.jobNumber ?? null);
-      const treatmentIds = this.treatments.resolveSelection(
-        normalized.treatmentIds ?? [],
-        normalized.treatmentNames ?? [],
-      );
+    this.requireActiveClient(normalized.clientId);
+    this.assertPrescriptionBelongsToClient(normalized.prescriptionId ?? null, normalized.clientId);
+    this.assertJobNumberAvailable(normalized.jobNumber ?? null);
+    this.treatments.assertIdsExist(normalized.treatmentIds ?? []);
+    return normalized;
+  }
 
-      const result = this.database
-        .prepare(
-          `INSERT INTO optical_jobs (
-            client_id, prescription_id, job_number, product, lens, brand, frame_condition,
-            frame_material, frame_model, product_color, supplier, color_type, observations
-          ) VALUES (
-            @clientId, @prescriptionId, @jobNumber, @product, @lens, @brand, @frameCondition,
-            @frameMaterial, @frameModel, @productColor, @supplier, @colorType, @observations
-          )`,
-        )
-        .run(normalized);
+  public createWithTreatments(input: CreateOpticalJobInput): OpticalJob {
+    const normalized = this.validateCreate(input);
+    return this.database.transaction(() => this.insertWithTreatments(normalized))();
+  }
 
-      const opticalJobId = insertedId(result);
-      this.treatments.replaceForJob(opticalJobId, treatmentIds);
-      return this.requireById(opticalJobId);
-    })();
+  public createWithTreatmentsInTransaction(input: CreateOpticalJobInput): OpticalJob {
+    if (!this.database.inTransaction) {
+      throw new Error('La creación integrada requiere una transacción SQLite activa.');
+    }
+    return this.insertWithTreatments(this.validateCreate(input));
   }
 
   public getById(id: number): OpticalJob | null {
@@ -299,6 +288,28 @@ export class OpticalJobRepository {
       limit: parameters.limit as number,
       offset: parameters.offset as number,
     };
+  }
+
+  private insertWithTreatments(normalized: CreateOpticalJobInput): OpticalJob {
+    const treatmentIds = this.treatments.resolveSelection(
+      normalized.treatmentIds ?? [],
+      normalized.treatmentNames ?? [],
+    );
+    const result = this.database
+      .prepare(
+        `INSERT INTO optical_jobs (
+          client_id, prescription_id, job_number, product, lens, brand, frame_condition,
+          frame_material, frame_model, product_color, supplier, color_type, observations
+        ) VALUES (
+          @clientId, @prescriptionId, @jobNumber, @product, @lens, @brand, @frameCondition,
+          @frameMaterial, @frameModel, @productColor, @supplier, @colorType, @observations
+        )`,
+      )
+      .run(normalized);
+
+    const opticalJobId = insertedId(result);
+    this.treatments.replaceForJob(opticalJobId, treatmentIds);
+    return this.requireById(opticalJobId);
   }
 
   private assertJobNumberAvailable(jobNumber: string | null, excludeId?: number): void {

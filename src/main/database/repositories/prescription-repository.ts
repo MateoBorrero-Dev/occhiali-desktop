@@ -157,28 +157,22 @@ export class PrescriptionRepository {
     private readonly values: PrescriptionValueRepository,
   ) {}
 
-  public createWithValues(input: CreatePrescriptionInput): Prescription {
+  public validateCreate(input: CreatePrescriptionInput): CreatePrescriptionInput {
     const normalized = parseCreatePrescriptionInput(input);
-    return this.database.transaction(() => {
-      this.requireActiveClient(normalized.clientId);
-      const result = this.database
-        .prepare(
-          `INSERT INTO prescriptions (
-            client_id, prescription_date, prescriber_name, addition_od, addition_oi, notes
-          ) VALUES (
-            @clientId, @prescriptionDate, @prescriberName, @additionOd, @additionOi, @notes
-          )`,
-        )
-        .run({
-          ...normalized,
-          additionOd: toScaledHundredths(normalized.additionOd),
-          additionOi: toScaledHundredths(normalized.additionOi),
-        });
+    this.requireActiveClient(normalized.clientId);
+    return normalized;
+  }
 
-      const prescriptionId = insertedId(result);
-      for (const value of normalized.values ?? []) this.values.create(prescriptionId, value);
-      return this.requireById(prescriptionId);
-    })();
+  public createWithValues(input: CreatePrescriptionInput): Prescription {
+    const normalized = this.validateCreate(input);
+    return this.database.transaction(() => this.insertWithValues(normalized))();
+  }
+
+  public createWithValuesInTransaction(input: CreatePrescriptionInput): Prescription {
+    if (!this.database.inTransaction) {
+      throw new Error('La creación integrada requiere una transacción SQLite activa.');
+    }
+    return this.insertWithValues(this.validateCreate(input));
   }
 
   public getById(id: number): Prescription | null {
@@ -374,6 +368,26 @@ export class PrescriptionRepository {
       limit: parameters.limit as number,
       offset: parameters.offset as number,
     };
+  }
+
+  private insertWithValues(normalized: CreatePrescriptionInput): Prescription {
+    const result = this.database
+      .prepare(
+        `INSERT INTO prescriptions (
+          client_id, prescription_date, prescriber_name, addition_od, addition_oi, notes
+        ) VALUES (
+          @clientId, @prescriptionDate, @prescriberName, @additionOd, @additionOi, @notes
+        )`,
+      )
+      .run({
+        ...normalized,
+        additionOd: toScaledHundredths(normalized.additionOd),
+        additionOi: toScaledHundredths(normalized.additionOi),
+      });
+
+    const prescriptionId = insertedId(result);
+    for (const value of normalized.values ?? []) this.values.create(prescriptionId, value);
+    return this.requireById(prescriptionId);
   }
 
   private mapPrescription(row: PrescriptionRow): Prescription {

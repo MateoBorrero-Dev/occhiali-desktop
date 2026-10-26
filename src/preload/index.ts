@@ -29,6 +29,8 @@ const prescriptionMethods: PrescriptionApi = {
   listByClient: (request) => ipcRenderer.invoke(IPC_CHANNELS.prescriptionsListByClient, request),
   get: (id) => ipcRenderer.invoke(IPC_CHANNELS.prescriptionsGet, id),
   create: (input) => ipcRenderer.invoke(IPC_CHANNELS.prescriptionsCreate, input),
+  createIntegrated: (input) =>
+    ipcRenderer.invoke(IPC_CHANNELS.prescriptionsCreateIntegrated, input),
   correct: (id, input) => ipcRenderer.invoke(IPC_CHANNELS.prescriptionsCorrect, id, input),
   revisions: (id) => ipcRenderer.invoke(IPC_CHANNELS.prescriptionsRevisions, id),
 };
