@@ -16,6 +16,7 @@ import {
   PrescriptionRequestError,
   unwrapPrescriptionResult,
 } from '../lib/prescription-api';
+import { recipesAndJobsPath } from '../app/routes';
 
 type DetailState =
   | { status: 'loading' }
@@ -80,7 +81,7 @@ export function PrescriptionDetailPage(): React.JSX.Element {
           title="Receta no encontrada"
           description="El registro solicitado no existe."
           action={
-            <Link to="/recetas" className={buttonStyles()}>
+            <Link to={recipesAndJobsPath('recetas')} className={buttonStyles()}>
               Volver a recetas
             </Link>
           }
@@ -116,8 +117,14 @@ export function PrescriptionDetailPage(): React.JSX.Element {
         description={`${client.firstName} ${client.lastName} · Registro #${prescription.id}`}
         action={
           <div className="flex flex-wrap justify-end gap-2">
-            <Link to={`/clientes/${client.id}`} className={buttonStyles({ variant: 'secondary' })}>
+            <Link
+              to={recipesAndJobsPath('recetas')}
+              className={buttonStyles({ variant: 'secondary' })}
+            >
               <ArrowLeft size={17} aria-hidden="true" />
+              Volver
+            </Link>
+            <Link to={`/clientes/${client.id}`} className={buttonStyles({ variant: 'secondary' })}>
               Historial del cliente
             </Link>
             <Link to={`/recetas/${prescription.id}/corregir`} className={buttonStyles()}>

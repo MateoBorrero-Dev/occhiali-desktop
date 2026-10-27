@@ -25,6 +25,7 @@ import {
   unwrapOpticalJobResult,
 } from '../lib/optical-job-api';
 import { deliveryStatusLabel, unwrapDeliveryReceiptResult } from '../lib/delivery-receipt-api';
+import { recipesAndJobsPath } from '../app/routes';
 
 type State =
   | { status: 'loading' }
@@ -89,7 +90,7 @@ export function OpticalJobDetailPage(): React.JSX.Element {
           title="Ficha no encontrada"
           description="El registro solicitado no existe."
           action={
-            <Link to="/trabajos" className={buttonStyles()}>
+            <Link to={recipesAndJobsPath('trabajos')} className={buttonStyles()}>
               Volver a trabajos
             </Link>
           }
@@ -125,7 +126,10 @@ export function OpticalJobDetailPage(): React.JSX.Element {
         description={`${client.firstName} ${client.lastName} · ${job.product ?? 'Producto sin especificar'}`}
         action={
           <div className="flex flex-wrap justify-end gap-2">
-            <Link to="/trabajos" className={buttonStyles({ variant: 'secondary' })}>
+            <Link
+              to={recipesAndJobsPath('trabajos')}
+              className={buttonStyles({ variant: 'secondary' })}
+            >
               <ArrowLeft size={17} />
               Volver
             </Link>

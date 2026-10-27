@@ -12,6 +12,7 @@ import { PrescriptionForm } from '../components/prescriptions/PrescriptionForm';
 import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapPrescriptionResult } from '../lib/prescription-api';
+import { recipesAndJobsPath } from '../app/routes';
 
 export function PrescriptionCorrectionPage(): React.JSX.Element {
   const { id } = useParams();
@@ -51,7 +52,7 @@ export function PrescriptionCorrectionPage(): React.JSX.Element {
           title="No se pudo abrir la receta"
           description="El registro no existe o no está disponible."
           action={
-            <Link to="/recetas" className={buttonStyles()}>
+            <Link to={recipesAndJobsPath('recetas')} className={buttonStyles()}>
               Volver a recetas
             </Link>
           }

@@ -315,6 +315,10 @@ describe('módulo de fichas de trabajo', () => {
     installApi();
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Ficha 000152' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute(
+      'href',
+      '#/recetas-trabajos?tab=trabajos',
+    );
     expect(screen.getByText('Orgánico 1.60')).toBeInTheDocument();
     expect(screen.getByText('Marca ficticia')).toBeInTheDocument();
     expect(screen.getByText('Carey')).toBeInTheDocument();

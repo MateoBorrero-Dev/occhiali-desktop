@@ -13,6 +13,7 @@ import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapClientResult } from '../lib/client-api';
 import { unwrapOpticalJobResult } from '../lib/optical-job-api';
+import { recipesAndJobsPath } from '../app/routes';
 
 export function OpticalJobCreatePage(): React.JSX.Element {
   const { id } = useParams();
@@ -99,7 +100,7 @@ export function OpticalJobCreatePage(): React.JSX.Element {
         }
         action={
           <Link
-            to={client ? `/clientes/${client.id}` : '/trabajos'}
+            to={client ? `/clientes/${client.id}` : recipesAndJobsPath('trabajos')}
             className={buttonStyles({ variant: 'secondary' })}
           >
             <ArrowLeft size={17} />
@@ -112,7 +113,7 @@ export function OpticalJobCreatePage(): React.JSX.Element {
         submitLabel="Guardar ficha"
         onSubmit={submit}
         onCancel={() => {
-          void navigate(client ? `/clientes/${client.id}` : '/trabajos');
+          void navigate(client ? `/clientes/${client.id}` : recipesAndJobsPath('trabajos'));
         }}
       />
     </div>

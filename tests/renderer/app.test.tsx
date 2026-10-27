@@ -111,7 +111,13 @@ describe('interfaz principal', () => {
       expect.stringContaining('occhiali-anteojos-blanco-transparente'),
     );
     const navigation = screen.getByRole('navigation', { name: 'Navegación principal' });
-    expect(within(navigation).getAllByRole('link')).toHaveLength(5);
+    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
+    expect(within(navigation).getByRole('link', { name: 'Recetas y trabajos' })).toHaveAttribute(
+      'href',
+      '#/recetas-trabajos',
+    );
+    expect(within(navigation).queryByRole('link', { name: 'Recetas' })).not.toBeInTheDocument();
+    expect(within(navigation).queryByRole('link', { name: 'Trabajos' })).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 1, name: 'Resumen de Occhiali' }),
     ).toBeInTheDocument();
@@ -168,11 +174,14 @@ describe('interfaz principal', () => {
       'page',
     );
 
-    await user.click(within(navigation).getByRole('link', { name: 'Recetas' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Recetas' })).toBeInTheDocument();
+    await user.click(within(navigation).getByRole('link', { name: 'Recetas y trabajos' }));
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Recetas y trabajos' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Recetas' })).toHaveAttribute('aria-selected', 'true');
 
-    await user.click(within(navigation).getByRole('link', { name: 'Trabajos' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Trabajos' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: 'Trabajos' }));
+    expect(screen.getByRole('tab', { name: 'Trabajos' })).toHaveAttribute('aria-selected', 'true');
 
     await user.click(within(navigation).getByRole('link', { name: 'Configuración' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Configuración' })).toBeInTheDocument();
@@ -183,7 +192,10 @@ describe('interfaz principal', () => {
     render(<App />);
 
     await user.click(await screen.findByRole('link', { name: /Recetas registradas/i }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Recetas' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Recetas y trabajos' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Recetas' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('presenta estados vacíos reales de clientes y trabajos', async () => {
@@ -198,7 +210,8 @@ describe('interfaz principal', () => {
       }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'Trabajos' }));
+    await user.click(screen.getByRole('link', { name: 'Recetas y trabajos' }));
+    await user.click(screen.getByRole('tab', { name: 'Trabajos' }));
     expect(
       await screen.findByRole('heading', {
         level: 2,
@@ -206,6 +219,50 @@ describe('interfaz principal', () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it('cambia de pestaña con teclado y conserva los filtros de cada listado', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('link', { name: 'Recetas y trabajos' }));
+    const recipesTab = screen.getByRole('tab', { name: 'Recetas' });
+    recipesTab.focus();
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar por cliente' }), 'Laura');
+    recipesTab.focus();
+    await user.keyboard('{ArrowRight}');
+
+    const jobsTab = screen.getByRole('tab', { name: 'Trabajos' });
+    expect(jobsTab).toHaveFocus();
+    expect(jobsTab).toHaveAttribute('aria-selected', 'true');
+    expect(window.location.hash).toContain('tab=trabajos');
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar fichas' }), '000152');
+
+    jobsTab.focus();
+    await user.keyboard('{Home}');
+    expect(recipesTab).toHaveFocus();
+    expect(recipesTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('searchbox', { name: 'Buscar por cliente' })).toHaveValue('Laura');
+
+    await user.click(jobsTab);
+    expect(screen.getByRole('searchbox', { name: 'Buscar fichas' })).toHaveValue('000152');
+  });
+
+  it.each([
+    ['#/recetas', 'Recetas', 'tab=recetas'],
+    ['#/trabajos', 'Trabajos', 'tab=trabajos'],
+  ])(
+    'redirige el listado histórico %s sin agregar una pantalla intermedia',
+    async (hash, tab, query) => {
+      window.location.hash = hash;
+      render(<App />);
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Recetas y trabajos' }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: tab })).toHaveAttribute('aria-selected', 'true');
+      expect(window.location.hash).toContain(query);
+    },
+  );
 
   it('renderiza una página no encontrada y permite volver al inicio', async () => {
     window.location.hash = '#/ruta-inexistente';

@@ -14,6 +14,7 @@ import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapClientResult } from '../lib/client-api';
 import { unwrapOpticalJobResult } from '../lib/optical-job-api';
+import { recipesAndJobsPath } from '../app/routes';
 
 type State =
   | { status: 'loading' }
@@ -57,7 +58,7 @@ export function OpticalJobEditPage(): React.JSX.Element {
           title="No se pudo abrir la ficha"
           description="El registro no existe o no está disponible."
           action={
-            <Link to="/trabajos" className={buttonStyles()}>
+            <Link to={recipesAndJobsPath('trabajos')} className={buttonStyles()}>
               Volver a trabajos
             </Link>
           }

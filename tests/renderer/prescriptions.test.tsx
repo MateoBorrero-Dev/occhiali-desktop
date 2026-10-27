@@ -595,6 +595,10 @@ describe('módulo de recetas', () => {
     expect(
       await screen.findByRole('heading', { name: 'Receta del 04/03/2026' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Volver' })).toHaveAttribute(
+      'href',
+      '#/recetas-trabajos?tab=recetas',
+    );
     expect(screen.getByText('+1,25')).toBeInTheDocument();
     expect(screen.getByText('-0,50')).toBeInTheDocument();
     expect(screen.getByText('+1,50')).toBeInTheDocument();

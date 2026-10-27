@@ -24,7 +24,7 @@ const PAGE_SIZE = 25;
 type ListState =
   { status: 'loading' } | { status: 'error' } | { status: 'ready'; page: OpticalJobListPage };
 
-export function WorkPage(): React.JSX.Element {
+export function WorkPage({ embedded = false }: { embedded?: boolean }): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [offset, setOffset] = useState(0);
   const [reloadToken, setReloadToken] = useState(0);
@@ -53,6 +53,7 @@ export function WorkPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Gestión comercial"
         title="Trabajos"
+        headingLevel={embedded ? 2 : 1}
         description="Fichas de productos, armazones, tratamientos y acabados de lentes."
         action={
           <Link to="/trabajos/nuevo" className={buttonStyles()}>

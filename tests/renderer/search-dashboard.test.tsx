@@ -119,6 +119,14 @@ describe('dashboard y búsqueda integrada', () => {
       'href',
       '#/trabajos/nuevo',
     );
+    expect(screen.getByRole('link', { name: /Recetas registradas/ })).toHaveAttribute(
+      'href',
+      '#/recetas-trabajos?tab=recetas',
+    );
+    expect(screen.getByRole('link', { name: /Fichas ópticas/ })).toHaveAttribute(
+      'href',
+      '#/recetas-trabajos?tab=trabajos',
+    );
   });
 
   it('muestra ceros reales cuando la base está vacía', async () => {

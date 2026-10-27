@@ -16,6 +16,7 @@ import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapQueryResult } from '../lib/query-api';
 import type { LucideIcon } from 'lucide-react';
+import { recipesAndJobsPath } from '../app/routes';
 
 type DashboardState =
   { status: 'loading' } | { status: 'error' } | { status: 'ready'; summary: DashboardSummary };
@@ -67,13 +68,13 @@ export function HomePage(): React.JSX.Element {
             label: 'Recetas registradas',
             value: state.summary.totalPrescriptions,
             icon: FileText,
-            path: '/recetas',
+            path: recipesAndJobsPath('recetas'),
           },
           {
             label: 'Fichas ópticas',
             value: state.summary.totalOpticalJobs,
             icon: BriefcaseBusiness,
-            path: '/trabajos',
+            path: recipesAndJobsPath('trabajos'),
           },
         ]
       : [];

@@ -28,7 +28,7 @@ const PAGE_SIZE = 25;
 type ListState =
   { status: 'loading' } | { status: 'error' } | { status: 'ready'; page: PrescriptionListPage };
 
-export function PrescriptionsPage(): React.JSX.Element {
+export function PrescriptionsPage({ embedded = false }: { embedded?: boolean }): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -70,6 +70,7 @@ export function PrescriptionsPage(): React.JSX.Element {
       <PageHeader
         eyebrow="Historial óptico"
         title="Recetas"
+        headingLevel={embedded ? 2 : 1}
         description="Consultá prescripciones, graduaciones y correcciones preservadas en SQLite."
         action={
           <Link to="/recetas/nueva" className={buttonStyles()}>

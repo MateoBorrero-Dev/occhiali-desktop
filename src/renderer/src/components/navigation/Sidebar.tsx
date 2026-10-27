@@ -1,7 +1,8 @@
-import { BriefcaseBusiness, FileText, House, Settings, Users } from 'lucide-react';
+import { Files, House, Settings, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
+import { RECIPES_AND_JOBS_PATH } from '../../app/routes';
 import occhialiGlassesWhite from '../../../../../resources/branding/occhiali-anteojos-blanco-transparente.png';
 
 interface NavigationItem {
@@ -9,6 +10,7 @@ interface NavigationItem {
   path: string;
   icon: LucideIcon;
   end?: boolean;
+  activePrefixes?: readonly string[];
 }
 
 type SystemStatus = { state: 'loading' } | { state: 'ready'; version: string } | { state: 'error' };
@@ -16,8 +18,12 @@ type SystemStatus = { state: 'loading' } | { state: 'ready'; version: string } |
 const navigationItems: readonly NavigationItem[] = [
   { label: 'Inicio', path: '/', icon: House, end: true },
   { label: 'Clientes', path: '/clientes', icon: Users },
-  { label: 'Recetas', path: '/recetas', icon: FileText },
-  { label: 'Trabajos', path: '/trabajos', icon: BriefcaseBusiness },
+  {
+    label: 'Recetas y trabajos',
+    path: RECIPES_AND_JOBS_PATH,
+    icon: Files,
+    activePrefixes: ['/recetas', '/trabajos'],
+  },
   { label: 'Configuración', path: '/configuracion', icon: Settings },
 ];
 
@@ -30,6 +36,7 @@ function navigationClassName(isActive: boolean): string {
 }
 
 export function Sidebar(): React.JSX.Element {
+  const location = useLocation();
   const [systemStatus, setSystemStatus] = useState<SystemStatus>({ state: 'loading' });
 
   useEffect(() => {
@@ -82,7 +89,18 @@ export function Sidebar(): React.JSX.Element {
               <NavLink
                 to={item.path}
                 end={item.end}
-                className={({ isActive }) => navigationClassName(isActive)}
+                className={({ isActive }) =>
+                  navigationClassName(
+                    isActive ||
+                      Boolean(
+                        item.activePrefixes?.some(
+                          (prefix) =>
+                            location.pathname === prefix ||
+                            location.pathname.startsWith(`${prefix}/`),
+                        ),
+                      ),
+                  )
+                }
               >
                 <item.icon size={22} strokeWidth={1.9} aria-hidden="true" />
                 <span className="sr-only lg:not-sr-only">{item.label}</span>

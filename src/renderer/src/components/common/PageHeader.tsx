@@ -5,6 +5,7 @@ interface PageHeaderProps {
   description?: string;
   eyebrow?: string;
   action?: ReactNode;
+  headingLevel?: 1 | 2;
 }
 
 export function PageHeader({
@@ -12,7 +13,10 @@ export function PageHeader({
   description,
   eyebrow,
   action,
+  headingLevel = 1,
 }: PageHeaderProps): React.JSX.Element {
+  const Heading = headingLevel === 2 ? 'h2' : 'h1';
+
   return (
     <header className="flex min-w-0 flex-col items-start justify-between gap-4 sm:flex-row sm:gap-6">
       <div className="min-w-0">
@@ -21,9 +25,9 @@ export function PageHeader({
             {eyebrow}
           </p>
         )}
-        <h1 className="text-2xl font-bold tracking-tight text-slate-950 lg:text-[1.75rem]">
+        <Heading className="text-2xl font-bold tracking-tight text-slate-950 lg:text-[1.75rem]">
           {title}
-        </h1>
+        </Heading>
         {description && (
           <p className="mt-2 max-w-3xl text-base leading-7 text-slate-600">{description}</p>
         )}

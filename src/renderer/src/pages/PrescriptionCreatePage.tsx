@@ -9,6 +9,7 @@ import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapClientResult } from '../lib/client-api';
 import { unwrapPrescriptionResult } from '../lib/prescription-api';
+import { recipesAndJobsPath } from '../app/routes';
 
 export function PrescriptionCreatePage(): React.JSX.Element {
   const { id } = useParams();
@@ -108,7 +109,7 @@ export function PrescriptionCreatePage(): React.JSX.Element {
         }
         action={
           <Link
-            to={client ? `/clientes/${client.id}` : '/recetas'}
+            to={client ? `/clientes/${client.id}` : recipesAndJobsPath('recetas')}
             className={buttonStyles({ variant: 'secondary' })}
           >
             <ArrowLeft size={17} aria-hidden="true" />
@@ -120,7 +121,7 @@ export function PrescriptionCreatePage(): React.JSX.Element {
         fixedClient={client}
         onSubmit={submit}
         onCancel={() => {
-          void navigate(client ? `/clientes/${client.id}` : '/recetas');
+          void navigate(client ? `/clientes/${client.id}` : recipesAndJobsPath('recetas'));
         }}
       />
     </div>
