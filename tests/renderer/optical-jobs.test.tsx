@@ -42,8 +42,8 @@ const JOB: OpticalJob = {
   prescriptionId: 3,
   jobNumber: '000152',
   product: 'Anteojos recetados',
-  lens: null,
-  brand: null,
+  lens: 'Orgánico 1.60',
+  brand: 'Marca ficticia',
   frameCondition: 'NEW',
   frameMaterial: 'METAL',
   frameModel: 'Modelo ficticio',
@@ -315,6 +315,8 @@ describe('módulo de fichas de trabajo', () => {
     installApi();
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'Ficha 000152' })).toBeInTheDocument();
+    expect(screen.getByText('Orgánico 1.60')).toBeInTheDocument();
+    expect(screen.getByText('Marca ficticia')).toBeInTheDocument();
     expect(screen.getByText('Carey')).toBeInTheDocument();
     expect(screen.getByText('Proveedor ficticio')).toBeInTheDocument();
     expect(screen.getByText('Color degradé')).toBeInTheDocument();
@@ -337,7 +339,12 @@ describe('módulo de fichas de trabajo', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
     expect(api.opticalJobs.update).toHaveBeenCalledWith(
       9,
-      expect.objectContaining({ frameModel: 'Modelo actualizado' }),
+      expect.objectContaining({
+        lens: 'Orgánico 1.60',
+        brand: 'Marca ficticia',
+        frameModel: 'Modelo actualizado',
+        treatmentNames: ['Antirrayas Stark'],
+      }),
     );
   });
 

@@ -27,7 +27,7 @@ export function formatJobTimestamp(value: string): string {
 
 export function frameConditionLabel(value: FrameCondition | null): string {
   if (value === 'NEW') return 'Nuevo';
-  if (value === 'USED') return 'Usado';
+  if (value === 'USED') return 'Propio';
   return 'Sin especificar';
 }
 

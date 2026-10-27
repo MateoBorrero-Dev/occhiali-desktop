@@ -34,6 +34,8 @@ interface FormValues {
   prescriptionId: string;
   jobNumber: string;
   product: string;
+  lens: string;
+  brand: string;
   frameCondition: string;
   frameMaterial: string;
   frameModel: string;
@@ -55,6 +57,8 @@ function initialValues(client?: Client, job?: OpticalJob): FormValues {
     prescriptionId: job?.prescriptionId?.toString() ?? '',
     jobNumber: job?.jobNumber ?? '',
     product: job?.product ?? '',
+    lens: job?.lens ?? '',
+    brand: job?.brand ?? '',
     frameCondition: job?.frameCondition ?? '',
     frameMaterial: job?.frameMaterial ?? '',
     frameModel: job?.frameModel ?? '',
@@ -203,6 +207,8 @@ export function OpticalJobForm({
         prescriptionId: values.prescriptionId ? Number(values.prescriptionId) : null,
         jobNumber: values.jobNumber,
         product: values.product,
+        lens: values.lens,
+        brand: values.brand,
         frameCondition: values.frameCondition || null,
         frameMaterial: values.frameMaterial || null,
         frameModel: values.frameModel,
@@ -361,6 +367,28 @@ export function OpticalJobForm({
               <FieldError message={errors.jobNumber} />
             </label>
             <label className="text-sm font-semibold text-slate-800">
+              Cristal <span className="font-normal text-slate-500">(opcional)</span>
+              <input
+                className={inputClassName}
+                value={values.lens}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.lens}
+                onChange={(event) => update('lens', event.target.value)}
+                aria-invalid={Boolean(errors.lens)}
+              />
+              <FieldError message={errors.lens} />
+            </label>
+            <label className="text-sm font-semibold text-slate-800">
+              Marca <span className="font-normal text-slate-500">(opcional)</span>
+              <input
+                className={inputClassName}
+                value={values.brand}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.brand}
+                onChange={(event) => update('brand', event.target.value)}
+                aria-invalid={Boolean(errors.brand)}
+              />
+              <FieldError message={errors.brand} />
+            </label>
+            <label className="text-sm font-semibold text-slate-800">
               Color del producto <span className="font-normal text-slate-500">(opcional)</span>
               <input
                 className={inputClassName}
@@ -440,7 +468,7 @@ export function OpticalJobForm({
               >
                 <option value="">Sin especificar</option>
                 <option value="NEW">Nuevo</option>
-                <option value="USED">Usado</option>
+                <option value="USED">Propio</option>
               </select>
             </label>
             <label className="text-sm font-semibold text-slate-800">

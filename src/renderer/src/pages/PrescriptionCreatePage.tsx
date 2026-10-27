@@ -1,12 +1,8 @@
 import { ArrowLeft, Archive, UserRoundX } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import type {
-  Client,
-  CreatePrescriptionInput,
-  CorrectPrescriptionInput,
-} from '../../../shared/database-models';
-import { PrescriptionForm } from '../components/prescriptions/PrescriptionForm';
+import type { Client, CreatePrescriptionBundleInput } from '../../../shared/database-models';
+import { IntegratedPrescriptionForm } from '../components/prescriptions/IntegratedPrescriptionForm';
 import { EmptyState } from '../components/common/EmptyState';
 import { PageHeader } from '../components/common/PageHeader';
 import { buttonStyles } from '../components/ui/buttonStyles';
@@ -43,14 +39,23 @@ export function PrescriptionCreatePage(): React.JSX.Element {
     };
   }, [fixedId]);
 
-  const submit = async (input: CreatePrescriptionInput | CorrectPrescriptionInput) => {
+  const submit = async (input: CreatePrescriptionBundleInput) => {
     const created = unwrapPrescriptionResult(
-      await window.optica.prescriptions.create(input as CreatePrescriptionInput),
+      await window.optica.prescriptions.createIntegrated(input),
     );
-    void navigate(`/recetas/${created.id}`, {
-      replace: true,
-      state: { message: 'Receta registrada correctamente.' },
-    });
+    void navigate(
+      created.opticalJob
+        ? `/trabajos/${created.opticalJob.id}`
+        : `/recetas/${created.prescription.id}`,
+      {
+        replace: true,
+        state: {
+          message: created.opticalJob
+            ? 'Receta y ficha registradas correctamente.'
+            : 'Receta registrada correctamente.',
+        },
+      },
+    );
     return created;
   };
 
@@ -95,11 +100,11 @@ export function PrescriptionCreatePage(): React.JSX.Element {
     <div>
       <PageHeader
         eyebrow="Historial óptico"
-        title="Nueva receta"
+        title="Nueva receta y trabajo"
         description={
           client
             ? `La receta quedará asociada exclusivamente a ${client.firstName} ${client.lastName}.`
-            : 'Seleccioná un cliente y registrá los valores informados por su profesional.'
+            : 'Registrá la receta y, si corresponde, completá el trabajo óptico en la misma pantalla.'
         }
         action={
           <Link
@@ -111,9 +116,8 @@ export function PrescriptionCreatePage(): React.JSX.Element {
           </Link>
         }
       />
-      <PrescriptionForm
+      <IntegratedPrescriptionForm
         fixedClient={client}
-        submitLabel="Guardar receta"
         onSubmit={submit}
         onCancel={() => {
           void navigate(client ? `/clientes/${client.id}` : '/recetas');

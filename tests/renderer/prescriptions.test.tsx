@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 
 import '@testing-library/jest-dom/vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/renderer/src/app/App';
 import type {
   Client,
+  CreatePrescriptionBundleInput,
+  CreatePrescriptionBundleResult,
+  OpticalJob,
   Prescription,
   PrescriptionListPage,
   PrescriptionRevision,
@@ -52,6 +55,26 @@ const PRESCRIPTION: Prescription = {
       height: null,
     },
   ],
+};
+
+const OPTICAL_JOB: OpticalJob = {
+  id: 21,
+  clientId: CLIENT.id,
+  prescriptionId: PRESCRIPTION.id,
+  jobNumber: 'INT-021',
+  product: 'Anteojos recetados',
+  lens: 'Orgánico 1.60',
+  brand: 'Marca ficticia',
+  frameCondition: 'USED',
+  frameMaterial: 'METAL',
+  frameModel: 'Modelo integrado',
+  productColor: 'Azul',
+  supplier: 'Proveedor ficticio',
+  colorType: 'GRADIENT',
+  observations: 'Trabajo ficticio.',
+  createdAt: '2026-03-04T12:00:00.000Z',
+  updatedAt: '2026-03-04T12:00:00.000Z',
+  treatments: [],
 };
 
 const SUMMARY = {
@@ -102,6 +125,14 @@ function installApi(pageItems = [SUMMARY]) {
     listByClient: vi.fn(() => Promise.resolve(prescriptionSuccess({ ...page, limit: 10 }))),
     get: vi.fn(() => Promise.resolve(prescriptionSuccess(PRESCRIPTION))),
     create: vi.fn(() => Promise.resolve(prescriptionSuccess(PRESCRIPTION))),
+    createIntegrated: vi.fn((input: CreatePrescriptionBundleInput) =>
+      Promise.resolve(
+        prescriptionSuccess<CreatePrescriptionBundleResult>({
+          prescription: PRESCRIPTION,
+          opticalJob: input.opticalJob ? OPTICAL_JOB : null,
+        }),
+      ),
+    ),
     correct: vi.fn(() => Promise.resolve(prescriptionSuccess(PRESCRIPTION))),
     revisions: vi.fn(() => Promise.resolve(prescriptionSuccess([] as PrescriptionRevision[]))),
   };
@@ -116,9 +147,24 @@ function installApi(pageItems = [SUMMARY]) {
       void args;
       return Promise.resolve({ ok: true as const, data: EMPTY_OPTICAL_JOB_PAGE });
     }),
-    get: vi.fn(),
+    get: vi.fn(() => Promise.resolve({ ok: true as const, data: OPTICAL_JOB })),
     create: vi.fn(),
     update: vi.fn(),
+  };
+  const treatments = {
+    list: vi.fn(() =>
+      Promise.resolve({
+        ok: true as const,
+        data: [
+          {
+            id: 'edge-polish',
+            name: 'Pulido de bordes',
+            isActive: true,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    ),
   };
   Object.defineProperty(window, 'optica', {
     configurable: true,
@@ -127,12 +173,19 @@ function installApi(pageItems = [SUMMARY]) {
       clients,
       prescriptions,
       opticalJobs,
-      treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
+      treatments,
+      deliveryReceipts: {
+        get: vi.fn(),
+        getByJob: vi.fn(() => Promise.resolve({ ok: true as const, data: null })),
+        create: vi.fn(),
+        addEvent: vi.fn(),
+        exportPdf: vi.fn(),
+      },
       dashboard: { getSummary: vi.fn() },
       search: { global: vi.fn() },
     },
   });
-  return { clients, prescriptions, opticalJobs };
+  return { clients, prescriptions, opticalJobs, treatments };
 }
 
 describe('módulo de recetas', () => {
@@ -190,19 +243,20 @@ describe('módulo de recetas', () => {
     const user = userEvent.setup();
     render(<App />);
     const sphere = await screen.findByLabelText('ESF lejos OD');
-    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar solo receta' }));
     expect(
       screen.getByText('Ingresá al menos un dato óptico antes de guardar.'),
     ).toBeInTheDocument();
-    expect(api.prescriptions.create).not.toHaveBeenCalled();
+    expect(api.prescriptions.createIntegrated).not.toHaveBeenCalled();
     await user.type(sphere, '-1,25');
-    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
-    expect(api.prescriptions.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        clientId: 7,
-        values: [expect.objectContaining({ sphere: '-1.25' })],
-      }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Guardar solo receta' }));
+    expect(api.prescriptions.createIntegrated).toHaveBeenCalledOnce();
+    const submitted = api.prescriptions.createIntegrated.mock.calls[0]![0];
+    expect(submitted.opticalJob).toBeNull();
+    expect(submitted.prescription.clientId).toBe(7);
+    const submittedValues = submitted.prescription.values ?? [];
+    expect(submittedValues).toHaveLength(1);
+    expect(submittedValues[0]?.sphere).toBe('-1.25');
   });
 
   it('selecciona cliente en el alta general y admite valores opcionales', async () => {
@@ -213,27 +267,222 @@ describe('módulo de recetas', () => {
     await user.type(screen.getByLabelText('Buscar cliente para la receta'), 'Laura');
     await user.click(await screen.findByRole('button', { name: /Ficticia, Laura/ }));
     await user.type(screen.getByLabelText('CIL cerca OI'), '0,00');
-    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
-    expect(api.prescriptions.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        clientId: 7,
-        prescriberName: null,
-        notes: null,
-        values: [expect.objectContaining({ distance: 'NEAR', eye: 'OI', cylinder: '0.00' })],
-      }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Guardar solo receta' }));
+    expect(api.prescriptions.createIntegrated).toHaveBeenCalledOnce();
+    const submitted = api.prescriptions.createIntegrated.mock.calls[0]![0];
+    expect(submitted.opticalJob).toBeNull();
+    expect(submitted.prescription.clientId).toBe(7);
+    expect(submitted.prescription.prescriberName).toBeNull();
+    expect(submitted.prescription.notes).toBeNull();
+    const submittedValues = submitted.prescription.values ?? [];
+    expect(submittedValues).toHaveLength(1);
+    expect(submittedValues[0]).toMatchObject({
+      distance: 'NEAR',
+      eye: 'OI',
+      cylinder: '0.00',
+    });
   });
 
-  it('permite guardar solo ADD en un ojo y conserva cero como valor informado', async () => {
+  it('renderiza el formulario integrado completo con veinte casilleros ópticos vacíos', async () => {
+    window.location.hash = '#/clientes/7/recetas/nueva';
+    const api = installApi();
+    render(<App />);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Nueva receta y trabajo' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Profesional \(opcional\)/)).toBeInTheDocument();
+    expect(screen.queryByText('Profesional prescriptor')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Lejos' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cerca' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Cristal/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Marca/)).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Propio' })).toHaveValue('USED');
+    for (const product of ['Anteojos de receta', 'Lentes de sol', 'Lentes de contacto', 'Otro']) {
+      expect(screen.getByRole('radio', { name: product })).toBeInTheDocument();
+    }
+    expect(screen.queryByLabelText(/Nombre del producto/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Tratamientos (opcional)')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Tratamientos' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pulido de bordes')).not.toBeInTheDocument();
+    expect(api.treatments.list).not.toHaveBeenCalled();
+
+    const fields = ['ESF', 'CIL', 'EJE', 'DIP', 'ALT'].flatMap((field) =>
+      ['lejos', 'cerca'].flatMap((distance) =>
+        ['OD', 'OI'].map((eye) => screen.getByLabelText(`${field} ${distance} ${eye}`)),
+      ),
+    );
+    expect(fields).toHaveLength(20);
+    for (const field of fields) {
+      expect(field).toHaveValue('');
+      expect(field).not.toHaveAttribute('placeholder');
+      expect(field).toHaveClass('min-h-12');
+    }
+  });
+
+  it('guarda receta y trabajo con cristal, marca y tratamientos libres normalizados', async () => {
     window.location.hash = '#/clientes/7/recetas/nueva';
     const api = installApi();
     const user = userEvent.setup();
     render(<App />);
-    await user.type(await screen.findByLabelText('ADD OI'), '0,00');
-    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
-    expect(api.prescriptions.create).toHaveBeenCalledWith(
-      expect.objectContaining({ additionOd: null, additionOi: '0.00', values: [] }),
+
+    await user.type(await screen.findByLabelText('ESF lejos OD'), '-1,25');
+    await user.type(screen.getByLabelText(/Número de ficha/), 'INT-021');
+    await user.click(screen.getByRole('radio', { name: 'Anteojos de receta' }));
+    await user.type(screen.getByLabelText(/Cristal/), 'Orgánico 1.60');
+    await user.type(screen.getByLabelText(/Marca/), 'Marca ficticia');
+    await user.type(screen.getByLabelText(/Modelo/), 'Modelo integrado');
+    await user.type(screen.getByLabelText(/Color \(opcional\)/), 'Azul');
+    await user.selectOptions(screen.getByLabelText('Condición'), 'USED');
+    fireEvent.change(screen.getByLabelText('Tratamientos (opcional)'), {
+      target: {
+        value: ' Pulido de bordes, Filtro ficticio\npulido DE BORDES\n\nAntirreflejo  premium ',
+      },
+    });
+    await user.type(screen.getByLabelText(/Observaciones de receta/), 'Nota receta');
+    await user.type(screen.getByLabelText(/Observaciones del trabajo/), 'Nota trabajo');
+    await user.click(screen.getByRole('button', { name: 'Guardar receta y trabajo' }));
+
+    expect(api.prescriptions.createIntegrated).toHaveBeenCalledOnce();
+    const submitted = api.prescriptions.createIntegrated.mock.calls[0]![0];
+    expect(submitted.prescription).toMatchObject({
+      clientId: 7,
+      additionOd: null,
+      additionOi: null,
+      notes: 'Nota receta',
+    });
+    const submittedValues = submitted.prescription.values ?? [];
+    expect(submittedValues).toHaveLength(1);
+    expect(submittedValues[0]).toMatchObject({
+      distance: 'FAR',
+      eye: 'OD',
+      sphere: '-1.25',
+    });
+    expect(submitted.opticalJob).toMatchObject({
+      jobNumber: 'INT-021',
+      product: 'Anteojos de receta',
+      lens: 'Orgánico 1.60',
+      brand: 'Marca ficticia',
+      frameModel: 'Modelo integrado',
+      productColor: 'Azul',
+      frameCondition: 'USED',
+      treatmentIds: [],
+      treatmentNames: ['Pulido de bordes', 'Filtro ficticio', 'Antirreflejo premium'],
+      observations: 'Nota trabajo',
+    });
+  });
+
+  it('permite guardar un producto libre mediante la opción Otro', async () => {
+    window.location.hash = '#/clientes/7/recetas/nueva';
+    const api = installApi();
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(await screen.findByLabelText('ESF lejos OD'), '1,00');
+    await user.click(screen.getByRole('radio', { name: 'Otro' }));
+    const customProduct = screen.getByLabelText(/Nombre del producto/);
+    expect(customProduct).toHaveFocus();
+    await user.type(customProduct, 'Producto óptico personalizado');
+    await user.click(screen.getByRole('button', { name: 'Guardar receta y trabajo' }));
+
+    expect(api.prescriptions.createIntegrated).toHaveBeenCalledOnce();
+    expect(api.prescriptions.createIntegrated.mock.calls[0]![0].opticalJob?.product).toBe(
+      'Producto óptico personalizado',
     );
+  });
+
+  it('muestra número duplicado y errores de persistencia sin perder lo ingresado', async () => {
+    window.location.hash = '#/clientes/7/recetas/nueva';
+    const api = installApi();
+    api.prescriptions.createIntegrated.mockResolvedValueOnce({
+      ok: false as const,
+      error: {
+        code: 'DUPLICATE_JOB_NUMBER' as const,
+        message: 'Ya existe una ficha registrada con ese número.',
+      },
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    const sphere = await screen.findByLabelText('ESF lejos OD');
+    const jobNumber = screen.getByLabelText(/Número de ficha/);
+    await user.type(sphere, '-2,00');
+    await user.type(jobNumber, 'DUP-1');
+    await user.click(screen.getByRole('button', { name: 'Guardar receta y trabajo' }));
+    expect(
+      await screen.findByText('Ya existe una ficha registrada con ese número.'),
+    ).toBeInTheDocument();
+    expect(sphere).toHaveValue('-2,00');
+    expect(jobNumber).toHaveValue('DUP-1');
+
+    api.prescriptions.createIntegrated.mockResolvedValueOnce({
+      ok: false as const,
+      error: { code: 'PERSISTENCE' as const, message: 'No se pudo completar la operación.' },
+    });
+    await user.clear(jobNumber);
+    await user.type(jobNumber, 'NUEVA-1');
+    await user.click(screen.getByRole('button', { name: 'Guardar receta y trabajo' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo completar la operación.',
+    );
+    expect(sphere).toHaveValue('-2,00');
+  });
+
+  it('mantiene orden de teclado y scroll interno en las resoluciones objetivo', async () => {
+    window.location.hash = '#/clientes/7/recetas/nueva';
+    installApi();
+    const user = userEvent.setup();
+    render(<App />);
+    const sphere = await screen.findByLabelText('ESF lejos OD');
+    sphere.focus();
+    await user.tab();
+    expect(screen.getByLabelText('CIL lejos OD')).toHaveFocus();
+
+    const firstProduct = screen.getByRole('radio', { name: 'Anteojos de receta' });
+    firstProduct.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: 'Lentes de sol' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Lentes de sol' })).toHaveFocus();
+
+    const form = screen.getByTestId('integrated-prescription-form');
+    expect(form).toHaveClass('min-w-0', 'text-base');
+    for (const label of ['Tabla de graduación de lejos', 'Tabla de graduación de cerca']) {
+      expect(screen.getByLabelText(label)).toHaveClass('overflow-x-auto');
+    }
+    for (const [width, height] of [
+      [820, 600],
+      [1180, 760],
+      [1366, 768],
+      [1920, 1080],
+    ]) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+      window.dispatchEvent(new Event('resize'));
+      expect(form).toBeInTheDocument();
+    }
+  });
+
+  it('oculta ADD en el alta nueva y conserva cero como graduación informada', async () => {
+    window.location.hash = '#/clientes/7/recetas/nueva';
+    const api = installApi();
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.queryByLabelText('ADD OD')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('ADD OI')).not.toBeInTheDocument();
+    await user.type(await screen.findByLabelText('ESF cerca OI'), '0,00');
+    await user.click(screen.getByRole('button', { name: 'Guardar solo receta' }));
+    expect(api.prescriptions.createIntegrated).toHaveBeenCalledOnce();
+    const submitted = api.prescriptions.createIntegrated.mock.calls[0]![0];
+    expect(submitted.opticalJob).toBeNull();
+    expect(submitted.prescription.additionOd).toBeNull();
+    expect(submitted.prescription.additionOi).toBeNull();
+    const submittedValues = submitted.prescription.values ?? [];
+    expect(submittedValues).toHaveLength(1);
+    expect(submittedValues[0]).toMatchObject({
+      distance: 'NEAR',
+      eye: 'OI',
+      sphere: '0.00',
+    });
   });
 
   it('encuentra clientes fuera de los primeros 100 mediante búsqueda acotada', async () => {
@@ -257,18 +506,17 @@ describe('módulo de recetas', () => {
     );
     await user.click(await screen.findByRole('button', { name: /Zeta, Zoila/ }));
     await user.type(screen.getByLabelText('ESF lejos OD'), '1,00');
-    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar solo receta' }));
 
-    expect(api.prescriptions.create).toHaveBeenCalledWith(
-      expect.objectContaining({ clientId: 1000 }),
-    );
+    expect(api.prescriptions.createIntegrated).toHaveBeenCalledOnce();
+    expect(api.prescriptions.createIntegrated.mock.calls[0]![0].prescription.clientId).toBe(1000);
   });
 
   it('previene el doble envío mientras guarda', async () => {
     window.location.hash = '#/clientes/7/recetas/nueva';
     const api = installApi();
-    let resolveCreate!: (value: PrescriptionIpcResult<Prescription>) => void;
-    api.prescriptions.create.mockImplementation(
+    let resolveCreate!: (value: PrescriptionIpcResult<CreatePrescriptionBundleResult>) => void;
+    api.prescriptions.createIntegrated.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveCreate = resolve;
@@ -277,11 +525,16 @@ describe('módulo de recetas', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.type(await screen.findByLabelText('ESF lejos OD'), '1,25');
-    await user.click(screen.getByRole('button', { name: 'Guardar receta' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar solo receta' }));
     expect(screen.getByRole('button', { name: 'Guardando…' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Guardando…' }));
-    expect(api.prescriptions.create).toHaveBeenCalledOnce();
-    resolveCreate(prescriptionSuccess(PRESCRIPTION));
+    expect(api.prescriptions.createIntegrated).toHaveBeenCalledOnce();
+    resolveCreate(
+      prescriptionSuccess({
+        prescription: PRESCRIPTION,
+        opticalJob: null,
+      }),
+    );
   });
 
   it('muestra detalle con cero, signos, campos ausentes y correcciones', async () => {
@@ -380,6 +633,6 @@ describe('módulo de recetas', () => {
     expect(
       await screen.findByRole('heading', { name: 'El cliente está archivado' }),
     ).toBeInTheDocument();
-    expect(api.prescriptions.create).not.toHaveBeenCalled();
+    expect(api.prescriptions.createIntegrated).not.toHaveBeenCalled();
   });
 });
