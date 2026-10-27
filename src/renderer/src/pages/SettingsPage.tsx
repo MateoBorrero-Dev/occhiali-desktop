@@ -147,7 +147,10 @@ export function SettingsPage(): React.JSX.Element {
             La sesión se valida en Main. Esta contraseña bloquea la interfaz, pero no cifra la base
             activa; usá BitLocker o cifrado de dispositivo para proteger el disco.
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div
+            className="mt-5 flex flex-col items-start gap-4"
+            data-testid="access-security-controls"
+          >
             <Button
               variant="secondary"
               onClick={() =>
@@ -161,23 +164,31 @@ export function SettingsPage(): React.JSX.Element {
               <Lock size={16} /> Bloquear ahora
             </Button>
             {access && (
-              <label className="flex items-center gap-2 text-sm font-semibold">
-                Bloquear tras
-                <input
-                  aria-label="Minutos de inactividad"
-                  type="number"
-                  min={1}
-                  max={240}
-                  value={access.inactivityMinutes}
-                  onChange={(event) =>
-                    setAccess({ ...access, inactivityMinutes: Number(event.target.value) })
-                  }
-                  className="min-h-10 w-20 rounded-lg border border-slate-300 px-2"
-                />
-                minutos
+              <div
+                className="flex w-full flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+                data-testid="inactivity-controls"
+              >
+                <label className="flex min-w-52 flex-1 flex-col gap-2 text-base font-semibold">
+                  Bloquear tras
+                  <span className="flex items-center gap-3 font-normal text-slate-700">
+                    <input
+                      aria-label="Minutos de inactividad"
+                      type="number"
+                      min={1}
+                      max={240}
+                      value={access.inactivityMinutes}
+                      onChange={(event) =>
+                        setAccess({ ...access, inactivityMinutes: Number(event.target.value) })
+                      }
+                      className="min-h-12 w-24 rounded-xl border border-slate-300 bg-white px-3 text-base font-semibold outline-none focus:border-teal-700 focus:ring-3 focus:ring-teal-100"
+                    />
+                    minutos
+                  </span>
+                </label>
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="w-full sm:w-auto"
                   onClick={() =>
                     void run(async () => {
                       setAccess(
@@ -191,7 +202,7 @@ export function SettingsPage(): React.JSX.Element {
                 >
                   Guardar
                 </Button>
-              </label>
+              </div>
             )}
           </div>
         </Card>

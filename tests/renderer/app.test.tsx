@@ -117,6 +117,30 @@ describe('interfaz principal', () => {
     ).toBeInTheDocument();
   });
 
+  it('aplica la escala accesible y evita un ancho mínimo global fijo', () => {
+    const { container } = render(<App />);
+
+    const layout = container.firstElementChild;
+    expect(layout).toHaveClass('min-w-0');
+    expect(layout).not.toHaveClass('min-w-[820px]');
+
+    const sidebar = document.querySelector('aside');
+    expect(sidebar).toHaveClass('w-20', 'lg:w-64');
+
+    const navigation = screen.getByRole('navigation', { name: 'Navegación principal' });
+    for (const link of within(navigation).getAllByRole('link')) {
+      expect(link).toHaveClass('min-h-12', 'text-base');
+    }
+
+    expect(screen.getByRole('searchbox', { name: 'Buscar en Occhiali' })).toHaveClass(
+      'min-h-12',
+      'text-base',
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Resumen de Occhiali' })).toHaveClass(
+      'text-2xl',
+    );
+  });
+
   it('muestra el estado local y la versión obtenida por el preload', async () => {
     render(<App />);
 
@@ -208,8 +232,18 @@ describe('Button', () => {
 
     await user.tab();
     expect(screen.getByRole('button', { name: 'Guardar' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toHaveClass('min-h-12', 'text-base');
     await user.keyboard('{Enter}');
     expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('mantiene al menos 44 px en los botones compactos', () => {
+    render(<Button size="sm">Acción compacta</Button>);
+
+    expect(screen.getByRole('button', { name: 'Acción compacta' })).toHaveClass(
+      'min-h-11',
+      'text-base',
+    );
   });
 
   it('respeta el estado deshabilitado', async () => {

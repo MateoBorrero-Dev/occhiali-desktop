@@ -38,11 +38,11 @@ export function ArchiveClientDialog({
         <h2 id="archive-title" className="mt-4 text-lg font-bold text-slate-950">
           Archivar cliente
         </h2>
-        <p id="archive-description" className="mt-2 text-sm leading-6 text-slate-600">
+        <p id="archive-description" className="mt-2 text-base leading-7 text-slate-600">
           Vas a archivar a <strong className="text-slate-800">{clientName}</strong>. Sus datos y su
           historial se conservarán, y podrás reactivarlo cuando sea necesario.
         </p>
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
           <Button variant="secondary" onClick={onCancel} disabled={busy}>
             Cancelar
           </Button>

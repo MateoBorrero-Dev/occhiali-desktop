@@ -89,19 +89,19 @@ export function GlobalSearch(): React.JSX.Element {
           setState(nextQuery.trim().length < 2 ? { status: 'idle' } : { status: 'loading' });
           setOpen(true);
         }}
-        className="min-h-10 w-full rounded-lg border border-slate-300 bg-white pr-24 pl-10 text-sm shadow-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+        className="min-h-12 w-full rounded-xl border border-slate-300 bg-white pr-24 pl-11 text-base shadow-sm outline-none focus:border-teal-700 focus:ring-3 focus:ring-teal-100"
       />
       {query ? (
         <button
           type="button"
           onClick={clear}
-          className="absolute top-1/2 right-2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-teal-700"
+          className="absolute top-1/2 right-1.5 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-3 focus-visible:outline-teal-700"
           aria-label="Limpiar búsqueda global"
         >
           <X size={16} aria-hidden="true" />
         </button>
       ) : (
-        <kbd className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[0.65rem] font-bold text-slate-500">
+        <kbd className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-bold text-slate-600">
           Ctrl K
         </kbd>
       )}

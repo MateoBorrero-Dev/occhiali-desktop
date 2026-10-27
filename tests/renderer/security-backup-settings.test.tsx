@@ -165,6 +165,21 @@ describe('protección de acceso en React', () => {
 });
 
 describe('configuración de respaldos en React', () => {
+  it('distribuye los controles de seguridad sin comprimirlos', async () => {
+    installApis(true);
+    render(<SettingsPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Seguridad de acceso' })).toBeInTheDocument();
+    expect(screen.getByTestId('access-security-controls')).toHaveClass(
+      'flex-col',
+      'items-start',
+      'gap-4',
+    );
+    expect(screen.getByTestId('inactivity-controls')).toHaveClass('flex-wrap', 'w-full');
+    expect(screen.getByLabelText('Minutos de inactividad')).toHaveClass('min-h-12', 'text-base');
+    expect(screen.getByRole('button', { name: 'Guardar' })).toHaveClass('w-full', 'sm:w-auto');
+  });
+
   it('no informa que la automatización está al día antes de la primera copia', async () => {
     const { backup } = installApis(true);
     backup.status.mockResolvedValue({

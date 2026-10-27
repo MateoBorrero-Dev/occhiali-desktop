@@ -49,7 +49,7 @@ interface FormValues {
 type FormErrors = Record<string, string | undefined>;
 
 const inputClassName =
-  'mt-1.5 min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100 aria-[invalid=true]:border-red-500';
+  'mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base text-slate-950 shadow-sm outline-none transition focus:border-teal-700 focus:ring-3 focus:ring-teal-100 aria-[invalid=true]:border-red-600';
 
 function initialValues(client?: Client, job?: OpticalJob): FormValues {
   return {

@@ -57,14 +57,14 @@ export function BackupAlertBanner(): React.JSX.Element | null {
   return (
     <div
       role={critical ? 'alert' : 'status'}
-      className={`border-b px-6 py-3 lg:px-8 ${
+      className={`border-b px-4 py-3 sm:px-6 lg:px-8 ${
         critical
           ? 'border-red-200 bg-red-50 text-red-900'
           : 'border-amber-200 bg-amber-50 text-amber-950'
       }`}
     >
-      <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-2 text-sm font-semibold">
-        <AlertTriangle aria-hidden="true" size={18} className="shrink-0" />
+      <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-2 text-base font-semibold">
+        <AlertTriangle aria-hidden="true" size={21} className="shrink-0" />
         <span className="min-w-0 flex-1">{messages.join(' ')}</span>
         <Link
           to="/configuracion?seccion=respaldos"

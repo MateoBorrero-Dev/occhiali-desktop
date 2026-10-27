@@ -63,7 +63,7 @@ export function SecurityGate(): React.JSX.Element {
   if (!api) return <App />;
   if (!status)
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm font-semibold text-slate-600">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-base font-semibold text-slate-600">
         Comprobando protección…
       </div>
     );
@@ -90,8 +90,8 @@ export function SecurityGate(): React.JSX.Element {
     }
   };
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <Card className="w-full max-w-md p-7">
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4 sm:p-6">
+      <Card className="w-full max-w-md p-5 sm:p-7">
         <div className="flex items-start justify-between gap-5">
           <img
             src={occhialiLogoDark}
@@ -109,13 +109,13 @@ export function SecurityGate(): React.JSX.Element {
         <h1 className="mt-4 text-2xl font-bold">
           {status.configured ? 'Desbloquear Occhiali' : 'Proteger Occhiali'}
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <p className="mt-2 text-base leading-7 text-slate-600">
           {status.configured
             ? 'Ingresá tu contraseña para acceder a los datos locales.'
             : 'Creá una contraseña local de al menos 10 caracteres. No cifra por sí sola el archivo SQLite.'}
         </p>
         <form className="mt-6 space-y-4" onSubmit={(event) => void submit(event)}>
-          <label className="block text-sm font-semibold">
+          <label className="block text-base font-semibold">
             Contraseña
             <input
               autoFocus
@@ -124,22 +124,22 @@ export function SecurityGate(): React.JSX.Element {
               maxLength={128}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 px-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+              className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-base outline-none focus:border-teal-700 focus:ring-3 focus:ring-teal-100"
             />
           </label>
           {!status.configured && (
-            <label className="block text-sm font-semibold">
+            <label className="block text-base font-semibold">
               Repetir contraseña
               <input
                 type="password"
                 value={confirm}
                 onChange={(event) => setConfirm(event.target.value)}
-                className="mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 px-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"
+                className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-base outline-none focus:border-teal-700 focus:ring-3 focus:ring-teal-100"
               />
             </label>
           )}
           {error && (
-            <p role="alert" className="text-sm font-semibold text-red-800">
+            <p role="alert" className="text-base font-semibold text-red-800">
               {error}
             </p>
           )}

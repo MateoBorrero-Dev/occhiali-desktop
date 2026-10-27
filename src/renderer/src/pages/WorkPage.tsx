@@ -85,7 +85,7 @@ export function WorkPage(): React.JSX.Element {
               <button
                 type="button"
                 onClick={clearSearch}
-                className="absolute top-1/2 right-2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-teal-700"
+                className="absolute top-1/2 right-1 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-3 focus-visible:outline-teal-700"
                 aria-label="Limpiar búsqueda"
               >
                 <X size={16} aria-hidden="true" />

@@ -1,5 +1,12 @@
 @import 'tailwindcss';
 
+@theme {
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.5rem;
+}
+
 @layer base {
   :root {
     font-family:
@@ -16,13 +23,17 @@
     background: #f1f5f9;
   }
 
+  html {
+    font-size: 16px;
+  }
+
   * {
     box-sizing: border-box;
   }
 
   body {
     margin: 0;
-    min-width: 820px;
+    min-width: 0;
     min-height: 100vh;
     overflow: hidden;
     background: #f1f5f9;
@@ -39,6 +50,11 @@
     font: inherit;
   }
 
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 3px solid #0f766e;
+    outline-offset: 2px;
+  }
+
   ::selection {
     color: #134e4a;
     background: #ccfbf1;
@@ -48,6 +64,14 @@
     scrollbar-color: #94a3b8 transparent;
     scrollbar-width: thin;
   }
+}
+
+/* Los controles heredados de 32–40 px alcanzan el objetivo accesible de 44 px
+   sin reducir los que ya utilizan min-h-11 o min-h-12. */
+.min-h-8,
+.min-h-9,
+.min-h-10 {
+  min-height: 2.75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

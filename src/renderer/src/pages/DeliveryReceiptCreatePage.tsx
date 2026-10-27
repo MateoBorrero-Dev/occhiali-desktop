@@ -33,7 +33,7 @@ function localDateTime(): string {
 }
 
 const inputClass =
-  'mt-1.5 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 aria-[invalid=true]:border-red-500';
+  'mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base outline-none focus:border-teal-700 focus:ring-3 focus:ring-teal-100 aria-[invalid=true]:border-red-600';
 
 export function DeliveryReceiptCreatePage(): React.JSX.Element {
   const jobId = Number(useParams().id);
