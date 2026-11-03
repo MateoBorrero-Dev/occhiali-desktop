@@ -1,4 +1,4 @@
-import { Files, House, Settings, Users } from 'lucide-react';
+import { Files, House, PackageCheck, Settings, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
@@ -24,6 +24,7 @@ const navigationItems: readonly NavigationItem[] = [
     icon: Files,
     activePrefixes: ['/recetas', '/trabajos'],
   },
+  { label: 'Retiros', path: '/retiros', icon: PackageCheck },
   { label: 'Configuración', path: '/configuracion', icon: Settings },
 ];
 

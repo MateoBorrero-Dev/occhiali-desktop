@@ -31,6 +31,7 @@ describe('contratos IPC', () => {
       opticalJobsCreate: 'optical-jobs:create',
       opticalJobsUpdate: 'optical-jobs:update',
       treatmentsList: 'treatments:list',
+      deliveryReceiptsList: 'delivery-receipts:list',
       deliveryReceiptsGet: 'delivery-receipts:get',
       deliveryReceiptsGetByJob: 'delivery-receipts:get-by-job',
       deliveryReceiptsCreate: 'delivery-receipts:create',

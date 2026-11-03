@@ -1,6 +1,7 @@
 import type {
   CreateDeliveryReceiptEventInput,
   CreateDeliveryReceiptInput,
+  DeliveryReceiptListRequest,
   DeliveryRecipientType,
   DeliveryReceiptEventType,
 } from './database-models';
@@ -20,6 +21,7 @@ export const DELIVERY_RECEIPT_LIMITS = Object.freeze({
   deliveredBy: 200,
   notes: 2_000,
   reason: 1_000,
+  query: 200,
 });
 
 const CREATE_KEYS = [
@@ -36,6 +38,7 @@ const CREATE_KEYS = [
   'deliveryConfirmed',
 ] as const;
 const EVENT_KEYS = ['receiptId', 'type', 'reason'] as const;
+const LIST_KEYS = ['query', 'status', 'dateFrom', 'dateTo', 'limit', 'offset'] as const;
 
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -58,6 +61,70 @@ export function parseDeliveryReceiptId(value: unknown, field = 'receiptId'): num
       { field, message: 'El identificador no es válido.' },
     ]);
   return value;
+}
+
+function calendarDate(value: unknown, field: string, label: string): string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))
+    throw new DeliveryReceiptValidationError([{ field, message: `${label} no es válida.` }]);
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value)
+    throw new DeliveryReceiptValidationError([{ field, message: `${label} no es válida.` }]);
+  return value;
+}
+
+export function parseDeliveryReceiptListRequest(
+  value: unknown,
+): Required<DeliveryReceiptListRequest> {
+  const input = value === undefined ? {} : record(value);
+  onlyKeys(input, LIST_KEYS);
+
+  const queryValue = input.query ?? '';
+  if (typeof queryValue !== 'string')
+    throw new DeliveryReceiptValidationError([
+      { field: 'query', message: 'La búsqueda no es válida.' },
+    ]);
+  const query = queryValue.trim().replace(/\s+/g, ' ');
+  if (query.length > DELIVERY_RECEIPT_LIMITS.query)
+    throw new DeliveryReceiptValidationError([
+      { field: 'query', message: 'La búsqueda es demasiado larga.' },
+    ]);
+
+  const statusValue = input.status ?? null;
+  if (
+    statusValue !== null &&
+    statusValue !== 'CONFIRMED' &&
+    statusValue !== 'CORRECTED' &&
+    statusValue !== 'ANNULLED'
+  )
+    throw new DeliveryReceiptValidationError([
+      { field: 'status', message: 'El estado no es válido.' },
+    ]);
+
+  const dateFrom =
+    input.dateFrom == null || input.dateFrom === ''
+      ? null
+      : calendarDate(input.dateFrom, 'dateFrom', 'La fecha desde');
+  const dateTo =
+    input.dateTo == null || input.dateTo === ''
+      ? null
+      : calendarDate(input.dateTo, 'dateTo', 'La fecha hasta');
+  if (dateFrom && dateTo && dateFrom > dateTo)
+    throw new DeliveryReceiptValidationError([
+      { field: 'dateTo', message: 'La fecha hasta debe ser igual o posterior a la fecha desde.' },
+    ]);
+
+  const limit = input.limit ?? 25;
+  const offset = input.offset ?? 0;
+  if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1 || limit > 100)
+    throw new DeliveryReceiptValidationError([
+      { field: 'form', message: 'El tamaño de página no es válido.' },
+    ]);
+  if (typeof offset !== 'number' || !Number.isInteger(offset) || offset < 0)
+    throw new DeliveryReceiptValidationError([
+      { field: 'form', message: 'La página solicitada no es válida.' },
+    ]);
+
+  return { query, status: statusValue, dateFrom, dateTo, limit, offset };
 }
 
 function requiredText(value: unknown, field: string, label: string, limit: number): string {

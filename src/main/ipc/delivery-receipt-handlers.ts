@@ -11,12 +11,18 @@ import {
   parseCreateDeliveryReceiptInput,
   parseDeliveryReceiptEventInput,
   parseDeliveryReceiptId,
+  parseDeliveryReceiptListRequest,
 } from '../../shared/delivery-receipt-validation';
 import { assertArgumentCount, IPC_CHANNELS } from '../../shared/ipc-contracts';
 import type { DeliveryReceiptIpcError, DeliveryReceiptIpcResult } from '../../shared/ipc-contracts';
-import type { DeliveryReceipt, DeliveryReceiptExportResult } from '../../shared/database-models';
+import type {
+  DeliveryReceipt,
+  DeliveryReceiptExportResult,
+  DeliveryReceiptListPage,
+} from '../../shared/database-models';
 
 export interface DeliveryReceiptIpcHandlers {
+  list: (...args: unknown[]) => DeliveryReceiptIpcResult<DeliveryReceiptListPage>;
   get: (...args: unknown[]) => DeliveryReceiptIpcResult<DeliveryReceipt>;
   getByJob: (...args: unknown[]) => DeliveryReceiptIpcResult<DeliveryReceipt | null>;
   create: (...args: unknown[]) => DeliveryReceiptIpcResult<DeliveryReceipt>;
@@ -69,6 +75,11 @@ export function createDeliveryReceiptIpcHandlers(
   pdf: DeliveryReceiptPdfExporter,
 ): DeliveryReceiptIpcHandlers {
   return {
+    list: (...args) =>
+      perform(() => {
+        assertArgumentCount(IPC_CHANNELS.deliveryReceiptsList, args, 1);
+        return database.deliveryReceipts.list(parseDeliveryReceiptListRequest(args[0]));
+      }),
     get: (...args) =>
       perform(() => {
         assertArgumentCount(IPC_CHANNELS.deliveryReceiptsGet, args, 1);

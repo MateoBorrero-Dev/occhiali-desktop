@@ -109,4 +109,32 @@ describe('IPC de comprobantes de retiro', () => {
       error: { code: 'VALIDATION' },
     });
   });
+
+  it('expone el listado paginado y valida filtros sin aceptar campos adicionales', () => {
+    const { job, handlers } = setup();
+    const created = handlers.create({
+      opticalJobId: job.id,
+      deliveredAt: '2026-10-17T17:00:00.000Z',
+      recipientType: 'OWNER',
+      recipientFullName: 'Cliente Prueba',
+      deliveredBy: 'Responsable',
+      deliveryConfirmed: true,
+    });
+    if (!created.ok) throw new Error('No se creó el comprobante de prueba.');
+
+    expect(
+      handlers.list({ query: 'RET-000001', status: 'CONFIRMED', limit: 10, offset: 0 }),
+    ).toMatchObject({
+      ok: true,
+      data: { total: 1, items: [{ id: created.data.id, jobNumber: null }] },
+    });
+    expect(handlers.list({ status: 'BORRADO' })).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+    expect(handlers.list({}, 'extra')).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+  });
 });

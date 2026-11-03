@@ -100,6 +100,9 @@ export function registerIpcHandlers(
     database,
     new ElectronDeliveryReceiptPdfExporter(),
   );
+  ipcMain.handle(IPC_CHANNELS.deliveryReceiptsList, (_event, ...args: unknown[]) =>
+    authorized(() => deliveryReceipts.list(...args)),
+  );
   ipcMain.handle(IPC_CHANNELS.deliveryReceiptsGet, (_event, ...args: unknown[]) =>
     authorized(() => deliveryReceipts.get(...args)),
   );

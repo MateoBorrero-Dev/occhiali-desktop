@@ -70,6 +70,19 @@ function mockAppInfo(
         update: vi.fn(),
       },
       treatments: { list: vi.fn(() => Promise.resolve({ ok: true as const, data: [] })) },
+      deliveryReceipts: {
+        list: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 25, offset: 0 },
+          }),
+        ),
+        get: vi.fn(),
+        getByJob: vi.fn(),
+        create: vi.fn(),
+        addEvent: vi.fn(),
+        exportPdf: vi.fn(),
+      },
       dashboard: {
         getSummary: vi.fn(() =>
           Promise.resolve({
@@ -111,13 +124,21 @@ describe('interfaz principal', () => {
       expect.stringContaining('occhiali-anteojos-blanco-transparente'),
     );
     const navigation = screen.getByRole('navigation', { name: 'Navegación principal' });
-    expect(within(navigation).getAllByRole('link')).toHaveLength(4);
+    expect(within(navigation).getAllByRole('link')).toHaveLength(5);
     expect(within(navigation).getByRole('link', { name: 'Recetas y trabajos' })).toHaveAttribute(
       'href',
       '#/recetas-trabajos',
     );
     expect(within(navigation).queryByRole('link', { name: 'Recetas' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Trabajos' })).not.toBeInTheDocument();
+    const links = within(navigation).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Inicio',
+      'Clientes',
+      'Recetas y trabajos',
+      'Retiros',
+      'Configuración',
+    ]);
     expect(
       screen.getByRole('heading', { level: 1, name: 'Resumen de Occhiali' }),
     ).toBeInTheDocument();
@@ -182,6 +203,13 @@ describe('interfaz principal', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Trabajos' }));
     expect(screen.getByRole('tab', { name: 'Trabajos' })).toHaveAttribute('aria-selected', 'true');
+
+    await user.click(within(navigation).getByRole('link', { name: 'Retiros' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Retiros' })).toBeInTheDocument();
+    expect(within(navigation).getByRole('link', { name: 'Retiros' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
 
     await user.click(within(navigation).getByRole('link', { name: 'Configuración' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Configuración' })).toBeInTheDocument();

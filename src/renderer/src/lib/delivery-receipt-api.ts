@@ -3,6 +3,7 @@ import type {
   DeliveryReceiptIpcResult,
 } from '../../../shared/ipc-contracts';
 import type { DeliveryReceiptStatus, DeliveryRecipientType } from '../../../shared/database-models';
+import { DELIVERY_RECEIPT_TIME_ZONE } from '../../../shared/delivery-receipt-time';
 
 export class DeliveryReceiptRequestError extends Error {
   public constructor(public readonly detail: DeliveryReceiptIpcError) {
@@ -19,6 +20,8 @@ export function unwrapDeliveryReceiptResult<T>(result: DeliveryReceiptIpcResult<
 const timestampFormatter = new Intl.DateTimeFormat('es-AR', {
   dateStyle: 'short',
   timeStyle: 'short',
+  timeZone: DELIVERY_RECEIPT_TIME_ZONE,
+  hourCycle: 'h23',
 });
 
 export function formatDeliveryTimestamp(value: string): string {

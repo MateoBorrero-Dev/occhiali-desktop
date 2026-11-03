@@ -3,6 +3,9 @@ import type {
   CreateDeliveryReceiptEventInput,
   CreateDeliveryReceiptInput,
   DeliveryReceipt,
+  DeliveryReceiptListPage,
+  DeliveryReceiptListRequest,
+  DeliveryReceiptSummary,
   DeliveryReceiptEvent,
   DeliveryReceiptEventType,
   DeliveryReceiptStatus,
@@ -14,7 +17,10 @@ import type {
 import {
   parseCreateDeliveryReceiptInput,
   parseDeliveryReceiptEventInput,
+  parseDeliveryReceiptListRequest,
 } from '../../../shared/delivery-receipt-validation';
+import { deliveryDateBoundaryIso } from '../../../shared/delivery-receipt-time';
+import { escapedLike } from '../search';
 
 interface ReceiptRow {
   id: number;
@@ -56,6 +62,22 @@ interface EventRow {
   event_type: DeliveryReceiptEventType;
   reason: string;
   created_at: string;
+}
+
+interface ReceiptSummaryRow {
+  id: number;
+  receipt_number: string;
+  optical_job_id: number;
+  delivered_at: string;
+  registered_at: string;
+  status: DeliveryReceiptStatus;
+  client_first_name: string;
+  client_last_name: string;
+  job_number: string | null;
+}
+
+interface CountRow {
+  total: number;
 }
 
 interface SnapshotRow {
@@ -200,6 +222,50 @@ export class DeliveryReceiptRepository {
     return row ? this.map(row) : null;
   }
 
+  public list(request: DeliveryReceiptListRequest = {}): DeliveryReceiptListPage {
+    const options = parseDeliveryReceiptListRequest(request);
+    const filters: string[] = [];
+    if (options.query) {
+      filters.push(`fold_text(
+        r.receipt_number || ' ' || CAST(r.id AS TEXT) || ' ' ||
+        coalesce(r.job_number, '') || ' ' ||
+        r.client_first_name || ' ' || r.client_last_name || ' ' ||
+        r.client_last_name || ' ' || r.client_first_name
+      ) LIKE @query ESCAPE '\\'`);
+    }
+    if (options.status) filters.push('r.status = @status');
+    if (options.dateFrom) filters.push('r.delivered_at >= @deliveredFrom');
+    if (options.dateTo) filters.push('r.delivered_at < @deliveredBefore');
+    const where = filters.length > 0 ? filters.join(' AND ') : '1 = 1';
+    const parameters = {
+      query: escapedLike(options.query),
+      status: options.status,
+      deliveredFrom: options.dateFrom ? deliveryDateBoundaryIso(options.dateFrom, 0) : null,
+      deliveredBefore: options.dateTo ? deliveryDateBoundaryIso(options.dateTo, 1) : null,
+      limit: options.limit,
+      offset: options.offset,
+    };
+    const rows = this.database
+      .prepare(
+        `SELECT r.id, r.receipt_number, r.optical_job_id, r.delivered_at, r.registered_at,
+                r.status, r.client_first_name, r.client_last_name, r.job_number
+         FROM delivery_receipts r
+         WHERE ${where}
+         ORDER BY r.registered_at DESC, r.id DESC
+         LIMIT @limit OFFSET @offset`,
+      )
+      .all(parameters) as ReceiptSummaryRow[];
+    const count = this.database
+      .prepare(`SELECT count(*) AS total FROM delivery_receipts r WHERE ${where}`)
+      .get(parameters) as CountRow;
+    return {
+      items: rows.map((row) => this.mapSummary(row)),
+      total: count.total,
+      limit: options.limit,
+      offset: options.offset,
+    };
+  }
+
   public addEvent(input: CreateDeliveryReceiptEventInput): DeliveryReceipt {
     const normalized = parseDeliveryReceiptEventInput(input);
     return this.database.transaction(() => {
@@ -268,6 +334,20 @@ export class DeliveryReceiptRepository {
       deliveryNotes: row.delivery_notes,
       deliveryConfirmed: true,
       events: this.events(row.id),
+    };
+  }
+
+  private mapSummary(row: ReceiptSummaryRow): DeliveryReceiptSummary {
+    return {
+      id: row.id,
+      receiptNumber: row.receipt_number,
+      opticalJobId: row.optical_job_id,
+      deliveredAt: row.delivered_at,
+      registeredAt: row.registered_at,
+      status: row.status,
+      clientFirstName: row.client_first_name,
+      clientLastName: row.client_last_name,
+      jobNumber: row.job_number,
     };
   }
 

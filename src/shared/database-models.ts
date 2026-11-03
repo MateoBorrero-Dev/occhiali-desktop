@@ -342,6 +342,34 @@ export interface DeliveryReceipt {
   events: DeliveryReceiptEvent[];
 }
 
+export interface DeliveryReceiptSummary {
+  id: number;
+  receiptNumber: string;
+  opticalJobId: number;
+  deliveredAt: IsoTimestamp;
+  registeredAt: IsoTimestamp;
+  status: DeliveryReceiptStatus;
+  clientFirstName: string;
+  clientLastName: string;
+  jobNumber: string | null;
+}
+
+export interface DeliveryReceiptListRequest {
+  query?: string;
+  status?: DeliveryReceiptStatus | null;
+  dateFrom?: CalendarDate | null;
+  dateTo?: CalendarDate | null;
+  limit?: number;
+  offset?: number;
+}
+
+export interface DeliveryReceiptListPage {
+  items: DeliveryReceiptSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface CreateDeliveryReceiptInput {
   opticalJobId: number;
   deliveredAt: IsoTimestamp;

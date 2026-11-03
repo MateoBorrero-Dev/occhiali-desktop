@@ -15,6 +15,7 @@ import { OpticalJobDetailPage } from '../pages/OpticalJobDetailPage';
 import { OpticalJobEditPage } from '../pages/OpticalJobEditPage';
 import { DeliveryReceiptCreatePage } from '../pages/DeliveryReceiptCreatePage';
 import { DeliveryReceiptDetailPage } from '../pages/DeliveryReceiptDetailPage';
+import { DeliveryReceiptsPage } from '../pages/DeliveryReceiptsPage';
 import { RecipesAndJobsPage } from '../pages/RecipesAndJobsPage';
 import { recipesAndJobsPath } from './routes';
 
@@ -43,6 +44,7 @@ export function App(): React.JSX.Element {
           <Route path="trabajos/:id" element={<OpticalJobDetailPage />} />
           <Route path="trabajos/:id/editar" element={<OpticalJobEditPage />} />
           <Route path="trabajos/:id/retiro/nuevo" element={<DeliveryReceiptCreatePage />} />
+          <Route path="retiros" element={<DeliveryReceiptsPage />} />
           <Route path="retiros/:id" element={<DeliveryReceiptDetailPage />} />
           <Route path="configuracion" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

@@ -56,6 +56,7 @@ const treatmentMethods: TreatmentApi = {
 const treatments = Object.freeze(treatmentMethods);
 
 const deliveryReceiptMethods: DeliveryReceiptApi = {
+  list: (request = {}) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsList, request),
   get: (id) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsGet, id),
   getByJob: (jobId) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsGetByJob, jobId),
   create: (input) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsCreate, input),

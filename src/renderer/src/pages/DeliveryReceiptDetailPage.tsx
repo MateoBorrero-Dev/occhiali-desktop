@@ -36,6 +36,11 @@ function Field({
 export function DeliveryReceiptDetailPage(): React.JSX.Element {
   const receiptId = Number(useParams().id);
   const location = useLocation();
+  const requestedReturnTo = new URLSearchParams(location.search).get('returnTo');
+  const returnTo =
+    requestedReturnTo && /^\/retiros(?:\?.*)?$/.test(requestedReturnTo)
+      ? requestedReturnTo
+      : '/retiros';
   const [receipt, setReceipt] = useState<DeliveryReceipt | null>(null);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -144,11 +149,14 @@ export function DeliveryReceiptDetailPage(): React.JSX.Element {
         description={`Ficha ${receipt.jobNumber ?? `#${receipt.opticalJobId}`} · ${deliveryStatusLabel(receipt.status)}`}
         action={
           <div className="flex flex-wrap gap-2">
+            <Link to={returnTo} className={buttonStyles({ variant: 'secondary' })}>
+              <ArrowLeft size={17} aria-hidden="true" />
+              Volver a retiros
+            </Link>
             <Link
               to={`/trabajos/${receipt.opticalJobId}`}
               className={buttonStyles({ variant: 'secondary' })}
             >
-              <ArrowLeft size={17} />
               Ver ficha
             </Link>
             <Button onClick={() => void exportPdf()} disabled={exporting}>

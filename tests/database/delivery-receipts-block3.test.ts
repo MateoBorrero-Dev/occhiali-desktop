@@ -171,6 +171,85 @@ describe('Bloque 3: comprobantes de retiro', () => {
     ).toThrow('Confirmá');
     expect(context.database.foreignKeyViolations()).toEqual([]);
   });
+
+  it('lista con paginación y orden estable del registro más reciente al más antiguo', () => {
+    const first = fixture();
+    const firstReceipt = context.database.deliveryReceipts.create(ownerInput(first.job.id));
+    const secondClient = context.database.clients.create({
+      ...TEST_CLIENT,
+      firstName: 'Ana',
+      lastName: 'Última',
+      documentNumber: '30999888',
+    });
+    const secondJob = context.database.opticalJobs.createWithTreatments({
+      clientId: secondClient.id,
+      jobNumber: 'F-002',
+    });
+    const secondReceipt = context.database.deliveryReceipts.create({
+      ...ownerInput(secondJob.id),
+      deliveredAt: '2026-10-18T16:30:00.000Z',
+      recipientFullName: 'Ana Última',
+    });
+
+    const firstPage = context.database.deliveryReceipts.list({ limit: 1, offset: 0 });
+    const secondPage = context.database.deliveryReceipts.list({ limit: 1, offset: 1 });
+    expect(firstPage).toMatchObject({ total: 2, limit: 1, offset: 0 });
+    expect(firstPage.items.map((item) => item.id)).toEqual([secondReceipt.id]);
+    expect(secondPage.items.map((item) => item.id)).toEqual([firstReceipt.id]);
+  });
+
+  it('busca por cliente, comprobante, identificador y número de ficha', () => {
+    const { job } = fixture();
+    const receipt = context.database.deliveryReceipts.create(ownerInput(job.id));
+    for (const query of ['Jose Perez', receipt.receiptNumber, String(receipt.id), 'F-001']) {
+      expect(context.database.deliveryReceipts.list({ query }).items).toHaveLength(1);
+    }
+    expect(context.database.deliveryReceipts.list({ query: 'inexistente' }).items).toEqual([]);
+  });
+
+  it('combina filtros de estado y fecha sin modificar comprobantes históricos', () => {
+    const { job } = fixture();
+    const receipt = context.database.deliveryReceipts.create(ownerInput(job.id));
+    context.database.deliveryReceipts.addEvent({
+      receiptId: receipt.id,
+      type: 'CORRECTION_NOTE',
+      reason: 'Aclaración para el filtro.',
+    });
+    const secondClient = context.database.clients.create({
+      ...TEST_CLIENT,
+      firstName: 'Retiro',
+      lastName: 'Anulado',
+      documentNumber: '30888777',
+    });
+    const secondJob = context.database.opticalJobs.createWithTreatments({
+      clientId: secondClient.id,
+      jobNumber: 'F-ANULADA',
+    });
+    const annulled = context.database.deliveryReceipts.create({
+      ...ownerInput(secondJob.id),
+      recipientFullName: 'Retiro Anulado',
+    });
+    context.database.deliveryReceipts.addEvent({
+      receiptId: annulled.id,
+      type: 'ANNULLED',
+      reason: 'Anulación para el filtro.',
+    });
+
+    expect(
+      context.database.deliveryReceipts.list({
+        status: 'CORRECTED',
+        dateFrom: '2026-10-17',
+        dateTo: '2026-10-17',
+      }).items,
+    ).toMatchObject([{ id: receipt.id, status: 'CORRECTED' }]);
+    expect(context.database.deliveryReceipts.list({ status: 'ANNULLED' }).items).toMatchObject([
+      { id: annulled.id, status: 'ANNULLED' },
+    ]);
+    expect(context.database.deliveryReceipts.getById(receipt.id)).toMatchObject({
+      receiptNumber: 'RET-000001',
+      events: [{ type: 'CORRECTION_NOTE' }],
+    });
+  });
 });
 
 describe('migración incremental 006 desde un esquema histórico', () => {

@@ -33,6 +33,8 @@ import type {
   CreateDeliveryReceiptInput,
   DeliveryReceipt,
   DeliveryReceiptExportResult,
+  DeliveryReceiptListPage,
+  DeliveryReceiptListRequest,
 } from './database-models';
 
 export const IPC_CHANNELS = {
@@ -57,6 +59,7 @@ export const IPC_CHANNELS = {
   opticalJobsCreate: 'optical-jobs:create',
   opticalJobsUpdate: 'optical-jobs:update',
   treatmentsList: 'treatments:list',
+  deliveryReceiptsList: 'delivery-receipts:list',
   deliveryReceiptsGet: 'delivery-receipts:get',
   deliveryReceiptsGetByJob: 'delivery-receipts:get-by-job',
   deliveryReceiptsCreate: 'delivery-receipts:create',
@@ -203,6 +206,9 @@ export type DeliveryReceiptIpcResult<T> =
   { ok: true; data: T } | { ok: false; error: DeliveryReceiptIpcError };
 
 export interface DeliveryReceiptApi {
+  list: (
+    request?: DeliveryReceiptListRequest,
+  ) => Promise<DeliveryReceiptIpcResult<DeliveryReceiptListPage>>;
   get: (id: number) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt>>;
   getByJob: (jobId: number) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt | null>>;
   create: (input: CreateDeliveryReceiptInput) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt>>;
