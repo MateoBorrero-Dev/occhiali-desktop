@@ -122,12 +122,10 @@ export function ClientOpticalJobHistory({ client }: { client: Client }): React.J
                       {formatJobTimestamp(item.createdAt)}
                     </td>
                     <td className="px-4 py-4 font-semibold">{item.jobNumber ?? 'Sin número'}</td>
-                    <td className="px-4 py-4 text-slate-700">
-                      {item.product ?? 'Sin especificar'}
-                    </td>
+                    <td className="px-4 py-4 text-slate-700">{item.product ?? '—'}</td>
                     <td className="px-5 py-4 text-right">
                       <Link
-                        to={`/trabajos/${item.id}`}
+                        to={`/fichas/trabajo/${item.id}`}
                         className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                       >
                         Ver detalle <ExternalLink size={15} aria-hidden="true" />

@@ -76,6 +76,7 @@ function installApi() {
       },
       opticalJobs: {
         list: vi.fn(() => Promise.resolve(ok({ items: [], total: 0, limit: 25, offset: 0 }))),
+        listFiles: vi.fn(() => Promise.resolve(ok({ items: [], total: 0, limit: 25, offset: 0 }))),
         listByClient: vi.fn(),
         listByPrescription: vi.fn(),
         get: vi.fn(),
@@ -111,22 +112,17 @@ describe('dashboard y búsqueda integrada', () => {
       'href',
       '#/clientes',
     );
-    expect(screen.getByRole('link', { name: /Nueva receta/ })).toHaveAttribute(
-      'href',
-      '#/recetas/nueva',
-    );
     expect(screen.getByRole('link', { name: /Nueva ficha óptica/ })).toHaveAttribute(
       'href',
-      '#/trabajos/nuevo',
+      '#/fichas/nueva',
     );
-    expect(screen.getByRole('link', { name: /Recetas registradas/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Graduaciones registradas/ })).toHaveAttribute(
       'href',
-      '#/recetas-trabajos?tab=recetas',
+      '#/fichas',
     );
-    expect(screen.getByRole('link', { name: /Fichas ópticas/ })).toHaveAttribute(
-      'href',
-      '#/recetas-trabajos?tab=trabajos',
-    );
+    expect(
+      within(screen.getByRole('main')).getByRole('link', { name: /Fichas ópticas/ }),
+    ).toHaveAttribute('href', '#/fichas');
   });
 
   it('muestra ceros reales cuando la base está vacía', async () => {
@@ -167,10 +163,13 @@ describe('dashboard y búsqueda integrada', () => {
       'href',
       '#/clientes/1',
     );
-    expect(screen.getByRole('link', { name: /Receta del/ })).toHaveAttribute('href', '#/recetas/2');
+    expect(screen.getByRole('link', { name: /Receta del/ })).toHaveAttribute(
+      'href',
+      '#/fichas/receta/2',
+    );
     expect(screen.getByRole('link', { name: /Ficha OC-3/ })).toHaveAttribute(
       'href',
-      '#/trabajos/3',
+      '#/fichas/trabajo/3',
     );
   });
 

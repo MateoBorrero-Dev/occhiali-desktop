@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import {
   parseCorrectPrescriptionInput,
   parseCreatePrescriptionInput,
+  parseIntegratedPrescriptionInput,
   parsePrescriptionListRequest,
   parsePrescriptionsByClientRequest,
 } from '../../../shared/prescription-validation';
@@ -66,6 +67,20 @@ interface PrescriptionRevisionValueRow {
   height: number | null;
 }
 
+interface LinkedJobProductRow {
+  product: string | null;
+}
+
+function isPrescriptionGlasses(product: string | null): boolean {
+  if (!product) return false;
+  const normalized = product
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('es');
+  return normalized === 'anteojos de receta' || normalized === 'anteojos recetados';
+}
+
 interface ClientStateRow {
   is_archived: number;
 }
@@ -76,6 +91,11 @@ interface CountRow {
 
 interface MaxRevisionRow {
   maximum: number;
+}
+
+export interface PrescriptionCorrectionResult {
+  prescription: Prescription;
+  changed: boolean;
 }
 
 export class PrescriptionNotFoundError extends Error {
@@ -96,6 +116,15 @@ export class ArchivedClientPrescriptionError extends Error {
   public constructor() {
     super('El cliente está archivado. Reactivalo para registrar una nueva receta.');
     this.name = 'ArchivedClientPrescriptionError';
+  }
+}
+
+export class LinkedPrescriptionCorrectionError extends Error {
+  public constructor() {
+    super(
+      'Esta graduación pertenece a una ficha óptica. Realizá la corrección desde la edición unificada de la ficha.',
+    );
+    this.name = 'LinkedPrescriptionCorrectionError';
   }
 }
 
@@ -163,6 +192,15 @@ export class PrescriptionRepository {
     return normalized;
   }
 
+  public validateIntegratedCreate(
+    input: CreatePrescriptionInput,
+    requireOpticalData: boolean,
+  ): CreatePrescriptionInput {
+    const normalized = parseIntegratedPrescriptionInput(input, requireOpticalData);
+    this.requireActiveClient(normalized.clientId);
+    return normalized;
+  }
+
   public createWithValues(input: CreatePrescriptionInput): Prescription {
     const normalized = this.validateCreate(input);
     return this.database.transaction(() => this.insertWithValues(normalized))();
@@ -173,6 +211,16 @@ export class PrescriptionRepository {
       throw new Error('La creación integrada requiere una transacción SQLite activa.');
     }
     return this.insertWithValues(this.validateCreate(input));
+  }
+
+  public createIntegratedWithValuesInTransaction(
+    input: CreatePrescriptionInput,
+    requireOpticalData: boolean,
+  ): Prescription {
+    if (!this.database.inTransaction) {
+      throw new Error('La creación integrada requiere una transacción SQLite activa.');
+    }
+    return this.insertWithValues(this.validateIntegratedCreate(input, requireOpticalData));
   }
 
   public getById(id: number): Prescription | null {
@@ -222,77 +270,85 @@ export class PrescriptionRepository {
   }
 
   public correct(id: number, input: CorrectPrescriptionInput): Prescription {
-    const normalized = parseCorrectPrescriptionInput(input);
-    return this.database.transaction(() => {
-      const current = this.requireById(id);
-      const currentValues = current.values.map((value) => ({
-        distance: value.distance,
-        eye: value.eye,
-        sphere: value.sphere,
-        cylinder: value.cylinder,
-        axis: value.axis,
-        dip: value.dip,
-        height: value.height,
-      }));
-      const hasChanges =
-        current.prescriptionDate !== normalized.prescriptionDate ||
-        current.prescriberName !== (normalized.prescriberName ?? null) ||
-        current.additionOd !== (normalized.additionOd ?? null) ||
-        current.additionOi !== (normalized.additionOi ?? null) ||
-        current.notes !== (normalized.notes ?? null) ||
-        comparableValues(currentValues) !== comparableValues(normalized.values);
-      if (!hasChanges) return current;
+    const linkedJob = this.database
+      .prepare('SELECT 1 FROM optical_jobs WHERE prescription_id = ? LIMIT 1')
+      .get(id);
+    if (linkedJob) throw new LinkedPrescriptionCorrectionError();
+    return this.database.transaction(() => this.correctInTransaction(id, input).prescription)();
+  }
 
-      const maximum = this.database
-        .prepare(
-          `SELECT coalesce(max(revision_number), 0) AS maximum
+  public validateCorrection(
+    id: number,
+    input: CorrectPrescriptionInput,
+    requireOpticalData?: boolean,
+  ): { current: Prescription; normalized: CorrectPrescriptionInput; changed: boolean } {
+    const current = this.requireById(id);
+    const required = requireOpticalData ?? this.requiresOpticalData(id, current);
+    const normalized = parseCorrectPrescriptionInput(input, required);
+    return { current, normalized, changed: this.correctionChanges(current, normalized) };
+  }
+
+  public correctInTransaction(
+    id: number,
+    input: CorrectPrescriptionInput,
+    requireOpticalData?: boolean,
+  ): PrescriptionCorrectionResult {
+    if (!this.database.inTransaction) {
+      throw new Error('La corrección integrada requiere una transacción SQLite activa.');
+    }
+    const { current, normalized, changed } = this.validateCorrection(id, input, requireOpticalData);
+    if (!changed) return { prescription: current, changed: false };
+
+    const maximum = this.database
+      .prepare(
+        `SELECT coalesce(max(revision_number), 0) AS maximum
            FROM prescription_revisions WHERE prescription_id = ?`,
-        )
-        .get(id) as MaxRevisionRow;
-      const revisionResult = this.database
-        .prepare(
-          `INSERT INTO prescription_revisions (
+      )
+      .get(id) as MaxRevisionRow;
+    const revisionResult = this.database
+      .prepare(
+        `INSERT INTO prescription_revisions (
             prescription_id, revision_number, reason, prescription_date, prescriber_name,
             addition_od, addition_oi, notes
           ) VALUES (
             @prescriptionId, @revisionNumber, @reason, @prescriptionDate, @prescriberName,
             @additionOd, @additionOi, @notes
           )`,
-        )
-        .run({
-          prescriptionId: id,
-          revisionNumber: maximum.maximum + 1,
-          reason: normalized.reason,
-          prescriptionDate: current.prescriptionDate,
-          prescriberName: current.prescriberName,
-          additionOd: toScaledHundredths(current.additionOd),
-          additionOi: toScaledHundredths(current.additionOi),
-          notes: current.notes,
-        });
-      const revisionId = insertedId(revisionResult);
-      const insertRevisionValue = this.database.prepare(
-        `INSERT INTO prescription_revision_values (
+      )
+      .run({
+        prescriptionId: id,
+        revisionNumber: maximum.maximum + 1,
+        reason: normalized.reason,
+        prescriptionDate: current.prescriptionDate,
+        prescriberName: current.prescriberName,
+        additionOd: toScaledHundredths(current.additionOd),
+        additionOi: toScaledHundredths(current.additionOi),
+        notes: current.notes,
+      });
+    const revisionId = insertedId(revisionResult);
+    const insertRevisionValue = this.database.prepare(
+      `INSERT INTO prescription_revision_values (
           revision_id, distance, eye, sphere, cylinder, axis, dip, height
         ) VALUES (
           @revisionId, @distance, @eye, @sphere, @cylinder, @axis, @dip, @height
         )`,
-      );
-      for (const value of current.values) {
-        insertRevisionValue.run({
-          revisionId,
-          distance: value.distance,
-          eye: value.eye,
-          sphere: toScaledHundredths(value.sphere),
-          cylinder: toScaledHundredths(value.cylinder),
-          axis: value.axis,
-          dip: toScaledHundredths(value.dip),
-          height: toScaledHundredths(value.height),
-        });
-      }
+    );
+    for (const value of current.values) {
+      insertRevisionValue.run({
+        revisionId,
+        distance: value.distance,
+        eye: value.eye,
+        sphere: toScaledHundredths(value.sphere),
+        cylinder: toScaledHundredths(value.cylinder),
+        axis: value.axis,
+        dip: toScaledHundredths(value.dip),
+        height: toScaledHundredths(value.height),
+      });
+    }
 
-      this.database
-        .prepare(
-          `UPDATE prescriptions SET
+    this.database
+      .prepare(
+        `UPDATE prescriptions SET
             prescription_date = @prescriptionDate,
             prescriber_name = @prescriberName,
             addition_od = @additionOd,
@@ -300,19 +356,18 @@ export class PrescriptionRepository {
             notes = @notes,
             updated_at = @updatedAt
            WHERE id = @id`,
-        )
-        .run({
-          id,
-          prescriptionDate: normalized.prescriptionDate,
-          prescriberName: normalized.prescriberName,
-          additionOd: toScaledHundredths(normalized.additionOd),
-          additionOi: toScaledHundredths(normalized.additionOi),
-          notes: normalized.notes,
-          updatedAt: new Date().toISOString(),
-        });
-      this.values.replace(id, normalized.values);
-      return this.requireById(id);
-    })();
+      )
+      .run({
+        id,
+        prescriptionDate: normalized.prescriptionDate,
+        prescriberName: normalized.prescriberName,
+        additionOd: toScaledHundredths(normalized.additionOd),
+        additionOi: toScaledHundredths(normalized.additionOi),
+        notes: normalized.notes,
+        updatedAt: new Date().toISOString(),
+      });
+    this.values.replace(id, normalized.values);
+    return { prescription: this.requireById(id), changed: true };
   }
 
   public listRevisions(prescriptionId: number): PrescriptionRevision[] {
@@ -388,6 +443,38 @@ export class PrescriptionRepository {
     const prescriptionId = insertedId(result);
     for (const value of normalized.values ?? []) this.values.create(prescriptionId, value);
     return this.requireById(prescriptionId);
+  }
+
+  private requiresOpticalData(id: number, current: Prescription): boolean {
+    const linkedJobs = this.database
+      .prepare('SELECT product FROM optical_jobs WHERE prescription_id = ?')
+      .all(id) as LinkedJobProductRow[];
+    const currentHasOpticalData =
+      current.values.length > 0 || current.additionOd !== null || current.additionOi !== null;
+    return (
+      linkedJobs.some((job) => isPrescriptionGlasses(job.product)) ||
+      (linkedJobs.length === 0 && currentHasOpticalData)
+    );
+  }
+
+  private correctionChanges(current: Prescription, normalized: CorrectPrescriptionInput): boolean {
+    const currentValues = current.values.map((value) => ({
+      distance: value.distance,
+      eye: value.eye,
+      sphere: value.sphere,
+      cylinder: value.cylinder,
+      axis: value.axis,
+      dip: value.dip,
+      height: value.height,
+    }));
+    return (
+      current.prescriptionDate !== normalized.prescriptionDate ||
+      current.prescriberName !== (normalized.prescriberName ?? null) ||
+      current.additionOd !== (normalized.additionOd ?? null) ||
+      current.additionOi !== (normalized.additionOi ?? null) ||
+      current.notes !== (normalized.notes ?? null) ||
+      comparableValues(currentValues) !== comparableValues(normalized.values)
+    );
   }
 
   private mapPrescription(row: PrescriptionRow): Prescription {

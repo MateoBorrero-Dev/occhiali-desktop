@@ -77,6 +77,12 @@ export function registerIpcHandlers(
   ipcMain.handle(IPC_CHANNELS.opticalJobsList, (_event, ...args: unknown[]) =>
     authorized(() => opticalJobs.list(...args)),
   );
+  ipcMain.handle(IPC_CHANNELS.opticalFilesList, (_event, ...args: unknown[]) =>
+    authorized(() => opticalJobs.listFiles(...args)),
+  );
+  ipcMain.handle(IPC_CHANNELS.opticalFilesUpdate, (_event, ...args: unknown[]) =>
+    authorized(() => opticalJobs.updateFile(...args)),
+  );
   ipcMain.handle(IPC_CHANNELS.opticalJobsListByClient, (_event, ...args: unknown[]) =>
     authorized(() => opticalJobs.listByClient(...args)),
   );

@@ -13,6 +13,7 @@ import type {
   UpdateOpticalJobInput,
 } from '../../../shared/database-models';
 import {
+  OpticalJobValidationError,
   parseCreateOpticalJobInput,
   parseOpticalJobListRequest,
   parseOpticalJobsByClientRequest,
@@ -52,6 +53,12 @@ interface ClientStateRow {
 
 interface CountRow {
   total: number;
+}
+
+interface PrescriptionOpticalStateRow {
+  addition_od: string | null;
+  addition_oi: string | null;
+  value_count: number;
 }
 
 export class OpticalJobNotFoundError extends Error {
@@ -100,6 +107,16 @@ function insertedId(result: Database.RunResult): number {
   const id = Number(result.lastInsertRowid);
   if (!Number.isSafeInteger(id)) throw new RangeError('SQLite devolvió un identificador inválido.');
   return id;
+}
+
+function isPrescriptionGlasses(product: string | null): boolean {
+  if (!product) return false;
+  const normalized = product
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('es');
+  return normalized === 'anteojos de receta' || normalized === 'anteojos recetados';
 }
 
 function mapSummary(row: OpticalJobSummaryRow): OpticalJobSummary {
@@ -230,20 +247,37 @@ export class OpticalJobRepository {
   }
 
   public update(id: number, input: UpdateOpticalJobInput): OpticalJob {
-    const normalized = parseUpdateOpticalJobInput(input);
-    return this.database.transaction(() => {
-      const current = this.requireById(id);
-      this.assertPrescriptionBelongsToClient(normalized.prescriptionId ?? null, current.clientId);
-      this.assertJobNumberAvailable(normalized.jobNumber ?? null, id);
-      const treatmentIds = this.treatments.resolveSelection(
-        normalized.treatmentIds ?? [],
-        normalized.treatmentNames ?? [],
-      );
-      if (comparable(current) === comparableInput(normalized, treatmentIds)) return current;
+    return this.database.transaction(() => this.updateInTransaction(id, input))();
+  }
 
-      this.database
-        .prepare(
-          `UPDATE optical_jobs SET
+  public validateUpdate(
+    id: number,
+    input: UpdateOpticalJobInput,
+    pendingOpticalData = false,
+  ): { current: OpticalJob; normalized: UpdateOpticalJobInput } {
+    const normalized = parseUpdateOpticalJobInput(input);
+    const current = this.requireById(id);
+    this.assertPrescriptionBelongsToClient(normalized.prescriptionId ?? null, current.clientId);
+    this.assertJobNumberAvailable(normalized.jobNumber ?? null, id);
+    this.assertOpticalDataForProductChange(current, normalized, pendingOpticalData);
+    this.treatments.assertIdsExist(normalized.treatmentIds ?? []);
+    return { current, normalized };
+  }
+
+  public updateInTransaction(id: number, input: UpdateOpticalJobInput): OpticalJob {
+    if (!this.database.inTransaction) {
+      throw new Error('La actualización integrada requiere una transacción SQLite activa.');
+    }
+    const { current, normalized } = this.validateUpdate(id, input);
+    const treatmentIds = this.treatments.resolveSelection(
+      normalized.treatmentIds ?? [],
+      normalized.treatmentNames ?? [],
+    );
+    if (comparable(current) === comparableInput(normalized, treatmentIds)) return current;
+
+    this.database
+      .prepare(
+        `UPDATE optical_jobs SET
             prescription_id = @prescriptionId,
             job_number = @jobNumber,
             product = @product,
@@ -258,11 +292,10 @@ export class OpticalJobRepository {
             observations = @observations,
             updated_at = @updatedAt
            WHERE id = @id`,
-        )
-        .run({ id, ...normalized, updatedAt: new Date().toISOString() });
-      this.treatments.replaceForJob(id, treatmentIds);
-      return this.requireById(id);
-    })();
+      )
+      .run({ id, ...normalized, updatedAt: new Date().toISOString() });
+    this.treatments.replaceForJob(id, treatmentIds);
+    return this.requireById(id);
   }
 
   private listSummaries(where: string, parameters: Record<string, unknown>): OpticalJobListPage {
@@ -330,6 +363,44 @@ export class OpticalJobRepository {
       .get(prescriptionId) as { client_id: number } | undefined;
     if (!prescription) throw new OpticalJobPrescriptionNotFoundError();
     if (prescription.client_id !== clientId) throw new OpticalJobPrescriptionMismatchError();
+  }
+
+  private assertOpticalDataForProductChange(
+    current: OpticalJob,
+    next: UpdateOpticalJobInput,
+    pendingOpticalData = false,
+  ): void {
+    const prescriptionId = next.prescriptionId ?? null;
+    if (!isPrescriptionGlasses(next.product ?? null)) return;
+    if (isPrescriptionGlasses(current.product) && current.prescriptionId === prescriptionId) {
+      return;
+    }
+    if (pendingOpticalData && prescriptionId !== null) return;
+    if (prescriptionId !== null) {
+      const state = this.database
+        .prepare(
+          `SELECT p.addition_od, p.addition_oi,
+                  count(v.id) AS value_count
+           FROM prescriptions p
+           LEFT JOIN prescription_values v ON v.prescription_id = p.id
+           WHERE p.id = ?
+           GROUP BY p.id`,
+        )
+        .get(prescriptionId) as PrescriptionOpticalStateRow | undefined;
+      if (
+        state &&
+        (state.value_count > 0 || state.addition_od !== null || state.addition_oi !== null)
+      ) {
+        return;
+      }
+    }
+    throw new OpticalJobValidationError([
+      {
+        field: 'product',
+        message:
+          'Primero corregí la graduación de la ficha antes de cambiar el producto a anteojos de receta.',
+      },
+    ]);
   }
 
   private requireClient(id: number): ClientStateRow {

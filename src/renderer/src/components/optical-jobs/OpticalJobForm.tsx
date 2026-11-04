@@ -24,6 +24,7 @@ import { Card } from '../ui/Card';
 interface OpticalJobFormProps {
   fixedClient?: Client;
   initialJob?: OpticalJob;
+  lockPrescription?: boolean;
   submitLabel: string;
   onSubmit: (input: CreateOpticalJobInput | UpdateOpticalJobInput) => Promise<OpticalJob>;
   onCancel: () => void;
@@ -85,6 +86,7 @@ function FieldError({ message }: { message?: string }): React.JSX.Element | null
 export function OpticalJobForm({
   fixedClient,
   initialJob,
+  lockPrescription = false,
   submitLabel,
   onSubmit,
   onCancel,
@@ -96,7 +98,7 @@ export function OpticalJobForm({
   const [prescriptions, setPrescriptions] = useState<PrescriptionSummary[]>([]);
   const [prescriptionTotal, setPrescriptionTotal] = useState(0);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(
-    Boolean(fixedClient || initialJob),
+    !lockPrescription && Boolean(fixedClient || initialJob),
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -126,6 +128,10 @@ export function OpticalJobForm({
   }, [clientQuery, editing, fixedClient]);
 
   useEffect(() => {
+    if (lockPrescription) {
+      prescriptionSequence.current += 1;
+      return;
+    }
     const clientId = Number(values.clientId);
     if (!Number.isSafeInteger(clientId) || clientId < 1) {
       prescriptionSequence.current += 1;
@@ -155,7 +161,7 @@ export function OpticalJobForm({
     return () => {
       active = false;
     };
-  }, [values.clientId]);
+  }, [lockPrescription, values.clientId]);
 
   const loadMorePrescriptions = (): void => {
     const clientId = Number(values.clientId);
@@ -333,7 +339,7 @@ export function OpticalJobForm({
         <div className="my-6 border-t border-slate-200" />
         <section aria-labelledby="job-product">
           <h2 id="job-product" className="text-base font-bold text-slate-950">
-            Producto y número de ficha
+            Información del producto
           </h2>
           <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
             <label className="text-sm font-semibold text-slate-800">
@@ -401,59 +407,64 @@ export function OpticalJobForm({
               <FieldError message={errors.productColor} />
             </label>
             <label className="text-sm font-semibold text-slate-800">
-              Proveedor <span className="font-normal text-slate-500">(opcional)</span>
-              <input
+              Coloración
+              <select
                 className={inputClassName}
-                value={values.supplier}
-                maxLength={OPTICAL_JOB_FIELD_LIMITS.supplier}
-                onChange={(event) => update('supplier', event.target.value)}
-                placeholder="Ej. Proveedor local"
-                aria-invalid={Boolean(errors.supplier)}
-              />
-              <FieldError message={errors.supplier} />
+                value={values.colorType}
+                onChange={(event) => update('colorType', event.target.value)}
+              >
+                <option value=""></option>
+                <option value="FULL">Color pleno</option>
+                <option value="GRADIENT">Color degradé</option>
+              </select>
+              <span className="mt-1.5 block text-xs font-normal text-slate-500">
+                Es distinta del color del producto o armazón.
+              </span>
             </label>
           </div>
         </section>
         <div className="my-6 border-t border-slate-200" />
-        <section aria-labelledby="job-prescription">
-          <h2 id="job-prescription" className="text-base font-bold text-slate-950">
-            Receta asociada
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Opcional. Solo se muestran recetas del cliente seleccionado.
-          </p>
-          <label className="mt-3 block text-sm font-semibold text-slate-800">
-            Receta
-            <select
-              className={inputClassName}
-              value={values.prescriptionId}
-              disabled={!values.clientId}
-              onChange={(event) => update('prescriptionId', event.target.value)}
-              aria-invalid={Boolean(errors.prescriptionId)}
-            >
-              <option value="">Sin receta asociada</option>
-              {prescriptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {formatPrescriptionDate(item.prescriptionDate)} ·{' '}
-                  {item.prescriberName ?? 'Profesional no informado'}
-                </option>
-              ))}
-            </select>
-            <FieldError message={errors.prescriptionId} />
-            {prescriptions.length < prescriptionTotal && (
-              <Button
-                className="mt-2"
-                size="sm"
-                variant="secondary"
-                onClick={loadMorePrescriptions}
-                disabled={prescriptionsLoading}
+        {!lockPrescription && (
+          <section aria-labelledby="job-prescription">
+            <h2 id="job-prescription" className="text-base font-bold text-slate-950">
+              Receta asociada
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Opcional. Solo se muestran recetas del cliente seleccionado.
+            </p>
+            <label className="mt-3 block text-sm font-semibold text-slate-800">
+              Receta
+              <select
+                className={inputClassName}
+                value={values.prescriptionId}
+                disabled={!values.clientId}
+                onChange={(event) => update('prescriptionId', event.target.value)}
+                aria-invalid={Boolean(errors.prescriptionId)}
               >
-                {prescriptionsLoading ? 'Cargando recetas…' : 'Cargar recetas anteriores'}
-              </Button>
-            )}
-          </label>
-        </section>
-        <div className="my-6 border-t border-slate-200" />
+                <option value="">Sin receta asociada</option>
+                {prescriptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {formatPrescriptionDate(item.prescriptionDate)} ·{' '}
+                    {item.prescriberName ?? 'Profesional no informado'}
+                  </option>
+                ))}
+              </select>
+              <FieldError message={errors.prescriptionId} />
+              {prescriptions.length < prescriptionTotal && (
+                <Button
+                  className="mt-2"
+                  size="sm"
+                  variant="secondary"
+                  onClick={loadMorePrescriptions}
+                  disabled={prescriptionsLoading}
+                >
+                  {prescriptionsLoading ? 'Cargando recetas…' : 'Cargar recetas anteriores'}
+                </Button>
+              )}
+            </label>
+          </section>
+        )}
+        {!lockPrescription && <div className="my-6 border-t border-slate-200" />}
         <section aria-labelledby="job-frame">
           <h2 id="job-frame" className="text-base font-bold text-slate-950">
             Armazón
@@ -492,6 +503,18 @@ export function OpticalJobForm({
                 onChange={(event) => update('frameModel', event.target.value)}
               />
             </label>
+            <label className="text-sm font-semibold text-slate-800">
+              Proveedor <span className="font-normal text-slate-500">(opcional)</span>
+              <input
+                className={inputClassName}
+                value={values.supplier}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.supplier}
+                onChange={(event) => update('supplier', event.target.value)}
+                placeholder="Ej. Proveedor local"
+                aria-invalid={Boolean(errors.supplier)}
+              />
+              <FieldError message={errors.supplier} />
+            </label>
           </div>
         </section>
         <div className="my-6 border-t border-slate-200" />
@@ -517,25 +540,10 @@ export function OpticalJobForm({
             </span>
             <FieldError message={errors.treatmentNames} />
           </label>
-          <label className="mt-5 block max-w-sm text-sm font-semibold text-slate-800">
-            Coloración de los lentes
-            <select
-              className={inputClassName}
-              value={values.colorType}
-              onChange={(event) => update('colorType', event.target.value)}
-            >
-              <option value="">Sin especificar</option>
-              <option value="FULL">Color pleno</option>
-              <option value="GRADIENT">Color degradé</option>
-            </select>
-            <span className="mt-1.5 block text-xs font-normal text-slate-500">
-              Es distinta del color del producto o armazón.
-            </span>
-          </label>
         </section>
         <div className="my-6 border-t border-slate-200" />
         <label className="block text-sm font-semibold text-slate-800">
-          Observaciones <span className="font-normal text-slate-500">(opcional)</span>
+          Observaciones generales <span className="font-normal text-slate-500">(opcional)</span>
           <textarea
             rows={4}
             className={`${inputClassName} resize-y py-2.5`}

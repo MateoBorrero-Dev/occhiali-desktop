@@ -227,6 +227,18 @@ export interface CreatePrescriptionBundleResult {
   opticalJob: OpticalJob | null;
 }
 
+export interface UpdateOpticalFileInput {
+  opticalJob: UpdateOpticalJobInput;
+  prescription: CorrectPrescriptionInput | null;
+  confirmSharedPrescription: boolean;
+}
+
+export interface UpdateOpticalFileResult {
+  opticalJob: OpticalJob;
+  prescription: Prescription | null;
+  prescriptionRevisionCreated: boolean;
+}
+
 export interface UpdateOpticalJobInput {
   prescriptionId?: number | null;
   jobNumber?: string | null;
@@ -277,6 +289,37 @@ export interface OpticalJobsByPrescriptionRequest {
 
 export interface OpticalJobListPage {
   items: OpticalJobSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export type OpticalFileKind = 'JOB' | 'PRESCRIPTION_ONLY';
+
+export interface OpticalFileSummary {
+  kind: OpticalFileKind;
+  recordId: number;
+  jobId: number | null;
+  prescriptionId: number | null;
+  clientId: number;
+  clientFirstName: string;
+  clientLastName: string;
+  fileDate: CalendarDate;
+  jobNumber: string | null;
+  product: string | null;
+  createdAt: IsoTimestamp;
+  relatedJobCount: number;
+}
+
+export interface OpticalFileListRequest {
+  clientId?: number;
+  query?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface OpticalFileListPage {
+  items: OpticalFileSummary[];
   total: number;
   limit: number;
   offset: number;

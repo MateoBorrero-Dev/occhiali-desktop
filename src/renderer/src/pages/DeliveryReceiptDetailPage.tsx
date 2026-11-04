@@ -154,7 +154,7 @@ export function DeliveryReceiptDetailPage(): React.JSX.Element {
               Volver a retiros
             </Link>
             <Link
-              to={`/trabajos/${receipt.opticalJobId}`}
+              to={`/fichas/trabajo/${receipt.opticalJobId}`}
               className={buttonStyles({ variant: 'secondary' })}
             >
               Ver ficha

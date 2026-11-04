@@ -19,8 +19,10 @@ type State =
 
 export function PrescriptionOpticalJobs({
   prescriptionId,
+  action = 'view',
 }: {
   prescriptionId: number;
+  action?: 'view' | 'edit';
 }): React.JSX.Element {
   const [offset, setOffset] = useState(0);
   const [reloadToken, setReloadToken] = useState(0);
@@ -96,10 +98,15 @@ export function PrescriptionOpticalJobs({
                   </p>
                 </div>
                 <Link
-                  to={`/trabajos/${item.id}`}
+                  to={
+                    action === 'edit'
+                      ? `/fichas/trabajo/${item.id}/editar`
+                      : `/fichas/trabajo/${item.id}`
+                  }
                   className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                 >
-                  Ver ficha <ExternalLink size={15} aria-hidden="true" />
+                  {action === 'edit' ? 'Editar esta ficha' : 'Ver ficha'}{' '}
+                  <ExternalLink size={15} aria-hidden="true" />
                 </Link>
               </li>
             ))}

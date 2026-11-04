@@ -75,6 +75,12 @@ function installApi() {
             data: { items: [], total: 0, limit: 25, offset: 0 },
           }),
         ),
+        listFiles: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 10, offset: 0 },
+          }),
+        ),
         listByClient: vi.fn(() =>
           Promise.resolve({
             ok: true as const,
@@ -306,17 +312,15 @@ describe('módulo de clientes', () => {
     expect(api.restore).toHaveBeenCalledWith(1);
   });
 
-  it('muestra el historial de recetas real sin inventar datos', async () => {
+  it('muestra el historial unificado de fichas sin inventar datos', async () => {
     window.location.hash = '#/clientes/1';
     installApi();
     render(<App />);
+    expect(await screen.findByRole('heading', { name: 'Fichas ópticas' })).toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { name: 'Historial de recetas' }),
+      await screen.findByRole('heading', { name: 'Todavía no hay fichas ópticas.' }),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByRole('heading', { name: 'Todavía no hay recetas registradas.' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Nueva receta/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Nueva ficha/ })).toHaveAttribute(
       'href',
       '#/clientes/1/recetas/nueva',
     );

@@ -24,6 +24,8 @@ describe('contratos IPC', () => {
       prescriptionsCreateIntegrated: 'prescriptions:create-integrated',
       prescriptionsCorrect: 'prescriptions:correct',
       prescriptionsRevisions: 'prescriptions:revisions',
+      opticalFilesList: 'optical-files:list',
+      opticalFilesUpdate: 'optical-files:update',
       opticalJobsList: 'optical-jobs:list',
       opticalJobsListByClient: 'optical-jobs:list-by-client',
       opticalJobsListByPrescription: 'optical-jobs:list-by-prescription',
@@ -108,6 +110,10 @@ describe('handlers IPC de fichas de trabajo', () => {
     if (!created.ok) throw new Error('No se pudo preparar la ficha.');
     expect(handlers.get(created.data.id)).toEqual(created);
     expect(handlers.list({ query: 'IPC-01' })).toMatchObject({ ok: true, data: { total: 1 } });
+    expect(handlers.listFiles({ clientId: owner.id, query: 'IPC-01' })).toMatchObject({
+      ok: true,
+      data: { total: 1, items: [{ kind: 'JOB', jobNumber: 'IPC-01' }] },
+    });
     expect(handlers.listByClient({ clientId: owner.id })).toMatchObject({
       ok: true,
       data: { total: 1 },
@@ -148,6 +154,50 @@ describe('handlers IPC de fichas de trabajo', () => {
     });
   });
 
+  it('expone la actualización unificada mediante un canal validado', () => {
+    const owner = context.database.clients.create(TEST_CLIENT);
+    const created = context.database.prescriptionJobs.create({
+      prescription: {
+        clientId: owner.id,
+        prescriptionDate: '2026-11-04',
+        additionOd: '1.25',
+        values: [{ distance: 'FAR', eye: 'OD', sphere: '-1.00' }],
+      },
+      opticalJob: { jobNumber: 'IPC-UNIFICADA', product: 'Anteojos de receta' },
+    });
+    const handlers = createOpticalJobIpcHandlers(context.database);
+    const result = handlers.updateFile(created.opticalJob!.id, {
+      opticalJob: {
+        prescriptionId: created.prescription.id,
+        jobNumber: 'IPC-UNIFICADA',
+        product: 'Anteojos de receta',
+        observations: 'Actualización IPC',
+      },
+      prescription: {
+        prescriptionDate: '2026-11-04',
+        additionOd: '1.25',
+        additionOi: null,
+        notes: null,
+        values: [{ distance: 'FAR', eye: 'OD', sphere: '-2.00' }],
+        reason: 'Corrección desde IPC',
+      },
+      confirmSharedPrescription: false,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        opticalJob: { observations: 'Actualización IPC' },
+        prescription: { additionOd: '1.25', values: [{ sphere: '-2.00' }] },
+        prescriptionRevisionCreated: true,
+      },
+    });
+    expect(handlers.updateFile(created.opticalJob!.id, {}, 'extra')).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+  });
+
   it('rechaza payloads, IDs y cantidades de argumentos inválidos', () => {
     const handlers = createOpticalJobIpcHandlers(context.database);
     expect(handlers.create({ clientId: '1' })).toMatchObject({
@@ -156,6 +206,14 @@ describe('handlers IPC de fichas de trabajo', () => {
     });
     expect(handlers.get('1')).toMatchObject({ ok: false, error: { code: 'VALIDATION' } });
     expect(handlers.update(1)).toMatchObject({ ok: false, error: { code: 'VALIDATION' } });
+    expect(handlers.listFiles({ clientId: '1' })).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
+    expect(handlers.listFiles({ sql: 'SELECT * FROM clients' })).toMatchObject({
+      ok: false,
+      error: { code: 'VALIDATION' },
+    });
   });
 
   it('diferencia número duplicado, cliente archivado y receta incompatible', () => {
@@ -336,6 +394,19 @@ describe('handlers IPC de recetas', () => {
       throw new Error('No se pudo preparar el alta integrada IPC.');
     }
     expect(created.data.opticalJob.prescriptionId).toBe(created.data.prescription.id);
+    expect(
+      handlers.correct(created.data.prescription.id, {
+        prescriptionDate: created.data.prescription.prescriptionDate,
+        additionOd: created.data.prescription.additionOd,
+        additionOi: created.data.prescription.additionOi,
+        notes: created.data.prescription.notes,
+        values: [{ distance: 'FAR', eye: 'OD', sphere: '-2.00' }],
+        reason: 'Intento por canal histórico',
+      }),
+    ).toMatchObject({
+      ok: false,
+      error: { code: 'LINKED_JOB_REQUIRES_UNIFIED_EDIT' },
+    });
   });
 
   it('valida la solicitud integrada y traduce conflictos sin persistencia parcial', () => {

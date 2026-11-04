@@ -151,7 +151,7 @@ export function DeliveryReceiptCreatePage(): React.JSX.Element {
         title="Registrar retiro"
         description={`Ficha ${data.job.jobNumber ?? `#${data.job.id}`} · ${summary.client}`}
         action={
-          <Link to={`/trabajos/${jobId}`} className={buttonStyles({ variant: 'secondary' })}>
+          <Link to={`/fichas/trabajo/${jobId}`} className={buttonStyles({ variant: 'secondary' })}>
             <ArrowLeft size={17} />
             Volver
           </Link>

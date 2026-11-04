@@ -10,6 +10,7 @@ import {
 import { parseCreatePrescriptionBundleInput } from '../../shared/prescription-job-validation';
 import {
   ArchivedClientPrescriptionError,
+  LinkedPrescriptionCorrectionError,
   PrescriptionClientNotFoundError,
   PrescriptionNotFoundError,
 } from '../database/repositories/prescription-repository';
@@ -70,6 +71,9 @@ function prescriptionError(error: unknown): PrescriptionIpcError {
   }
   if (error instanceof ArchivedClientPrescriptionError) {
     return { code: 'ARCHIVED_CLIENT', message: error.message };
+  }
+  if (error instanceof LinkedPrescriptionCorrectionError) {
+    return { code: 'LINKED_JOB_REQUIRES_UNIFIED_EDIT', message: error.message };
   }
   if (error instanceof DuplicateOpticalJobNumberError) {
     return { code: 'DUPLICATE_JOB_NUMBER', message: error.message };
@@ -133,7 +137,7 @@ export function createPrescriptionIpcHandlers(
         assertArgumentCount(IPC_CHANNELS.prescriptionsCorrect, args, 2);
         return database.prescriptions.correct(
           parsePrescriptionId(args[0]),
-          parseCorrectPrescriptionInput(args[1]),
+          parseCorrectPrescriptionInput(args[1], false),
         );
       }),
     revisions: (...args) =>

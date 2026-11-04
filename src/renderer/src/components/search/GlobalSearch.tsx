@@ -175,7 +175,7 @@ export function GlobalSearch(): React.JSX.Element {
                   {state.results.prescriptions.map((item) => (
                     <Link
                       key={item.id}
-                      to={`/recetas/${item.id}`}
+                      to={`/fichas/receta/${item.id}`}
                       onClick={close}
                       className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-teal-700"
                     >
@@ -207,7 +207,7 @@ export function GlobalSearch(): React.JSX.Element {
                   {state.results.opticalJobs.map((item) => (
                     <Link
                       key={item.id}
-                      to={`/trabajos/${item.id}`}
+                      to={`/fichas/trabajo/${item.id}`}
                       onClick={close}
                       className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-teal-700"
                     >

@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, FileCheck2, Save, Search, X } from 'lucide-react';
+import { Save, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
   Client,
@@ -6,27 +6,55 @@ import type {
   CreatePrescriptionBundleResult,
   CreatePrescriptionValueInput,
   Eye,
+  OpticalJob,
+  OpticalJobSummary,
+  Prescription,
   PrescriptionDistance,
+  UpdateOpticalFileInput,
+  UpdateOpticalFileResult,
 } from '../../../../shared/database-models';
 import {
   OPTICAL_JOB_FIELD_LIMITS,
   OpticalJobValidationError,
 } from '../../../../shared/optical-job-validation';
-import { parseCreatePrescriptionBundleInput } from '../../../../shared/prescription-job-validation';
+import {
+  parseCreatePrescriptionBundleInput,
+  parseUpdateOpticalFileInput,
+} from '../../../../shared/prescription-job-validation';
 import {
   PRESCRIPTION_FIELD_LIMITS,
+  parseCorrectPrescriptionInput,
   PrescriptionValidationError,
 } from '../../../../shared/prescription-validation';
 import { unwrapClientResult } from '../../lib/client-api';
+import { OpticalJobRequestError } from '../../lib/optical-job-api';
 import { PrescriptionRequestError } from '../../lib/prescription-api';
+import { SharedPrescriptionWarning } from './SharedPrescriptionWarning';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 
-interface IntegratedPrescriptionFormProps {
+interface CommonProps {
   fixedClient?: Client;
-  onSubmit: (input: CreatePrescriptionBundleInput) => Promise<CreatePrescriptionBundleResult>;
   onCancel: () => void;
 }
+
+interface CreateProps extends CommonProps {
+  initialJob?: never;
+  initialPrescription?: never;
+  relatedJobs?: never;
+  relatedJobTotal?: never;
+  onSubmit: (input: CreatePrescriptionBundleInput) => Promise<CreatePrescriptionBundleResult>;
+}
+
+interface EditProps extends CommonProps {
+  initialJob: OpticalJob;
+  initialPrescription: Prescription | null;
+  relatedJobs: OpticalJobSummary[];
+  relatedJobTotal: number;
+  onSubmit: (input: UpdateOpticalFileInput) => Promise<UpdateOpticalFileResult>;
+}
+
+type IntegratedPrescriptionFormProps = CreateProps | EditProps;
 
 interface OpticalRow {
   distance: PrescriptionDistance;
@@ -42,7 +70,7 @@ interface FormValues {
   clientId: string;
   prescriptionDate: string;
   prescriberName: string;
-  prescriptionNotes: string;
+  generalObservations: string;
   rows: OpticalRow[];
   jobNumber: string;
   product: string;
@@ -55,11 +83,10 @@ interface FormValues {
   frameCondition: string;
   frameMaterial: string;
   treatmentNames: string;
-  jobObservations: string;
+  correctionReason: string;
 }
 
 type FormErrors = Record<string, string | undefined>;
-type SaveMode = 'PRESCRIPTION_ONLY' | 'PRESCRIPTION_AND_JOB';
 type ProductChoice = '' | 'Anteojos de receta' | 'Lentes de sol' | 'Lentes de contacto' | 'OTHER';
 
 const ROWS: readonly [PrescriptionDistance, Eye][] = [
@@ -89,34 +116,51 @@ const inputClassName =
 
 const labelClassName = 'block text-base font-semibold leading-6 text-slate-800';
 
-function initialValues(client?: Client): FormValues {
-  return {
-    clientId: String(client?.id ?? ''),
-    prescriptionDate: new Date().toISOString().slice(0, 10),
-    prescriberName: '',
-    prescriptionNotes: '',
-    rows: ROWS.map(([distance, eye]) => ({
+function initialValues(
+  client?: Client,
+  job?: OpticalJob,
+  prescription?: Prescription | null,
+): FormValues {
+  const rows = ROWS.map(([distance, eye]) => {
+    const current = prescription?.values.find(
+      (value) => value.distance === distance && value.eye === eye,
+    );
+    return {
       distance,
       eye,
-      sphere: '',
-      cylinder: '',
-      axis: '',
-      dip: '',
-      height: '',
-    })),
-    jobNumber: '',
-    product: '',
-    lens: '',
-    brand: '',
-    frameModel: '',
-    productColor: '',
-    supplier: '',
-    colorType: '',
-    frameCondition: '',
-    frameMaterial: '',
-    treatmentNames: '',
-    jobObservations: '',
+      sphere: current?.sphere ?? '',
+      cylinder: current?.cylinder ?? '',
+      axis: current?.axis === null || current?.axis === undefined ? '' : String(current.axis),
+      dip: current?.dip ?? '',
+      height: current?.height ?? '',
+    };
+  });
+  return {
+    clientId: String(client?.id ?? ''),
+    prescriptionDate: prescription?.prescriptionDate ?? new Date().toISOString().slice(0, 10),
+    prescriberName: prescription?.prescriberName ?? '',
+    generalObservations: job?.observations ?? '',
+    rows,
+    jobNumber: job?.jobNumber ?? '',
+    product: job?.product ?? '',
+    lens: job?.lens ?? '',
+    brand: job?.brand ?? '',
+    frameModel: job?.frameModel ?? '',
+    productColor: job?.productColor ?? '',
+    supplier: job?.supplier ?? '',
+    colorType: job?.colorType ?? '',
+    frameCondition: job?.frameCondition ?? '',
+    frameMaterial: job?.frameMaterial ?? '',
+    treatmentNames: job?.treatments.map((item) => item.name).join('\n') ?? '',
+    correctionReason: '',
   };
+}
+
+function initialProductChoice(product: string | null | undefined): ProductChoice {
+  if (!product) return '';
+  return PRODUCT_OPTIONS.some((option) => option.value === product)
+    ? (product as ProductChoice)
+    : 'OTHER';
 }
 
 function toOpticalValues(rows: readonly OpticalRow[]): CreatePrescriptionValueInput[] {
@@ -178,19 +222,26 @@ function SectionHeading({
   );
 }
 
-export function IntegratedPrescriptionForm({
-  fixedClient,
-  onSubmit,
-  onCancel,
-}: IntegratedPrescriptionFormProps): React.JSX.Element {
-  const [values, setValues] = useState<FormValues>(() => initialValues(fixedClient));
+export function IntegratedPrescriptionForm(
+  props: IntegratedPrescriptionFormProps,
+): React.JSX.Element {
+  const editing = props.initialJob !== undefined;
+  const { fixedClient, onCancel } = props;
+  const initialJob = editing ? props.initialJob : undefined;
+  const initialPrescription = editing ? props.initialPrescription : undefined;
+  const [values, setValues] = useState<FormValues>(() =>
+    initialValues(fixedClient, initialJob, initialPrescription),
+  );
   const [selectedClient, setSelectedClient] = useState<Client | undefined>(fixedClient);
   const [clientQuery, setClientQuery] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [clientLoadError, setClientLoadError] = useState(false);
-  const [productChoice, setProductChoice] = useState<ProductChoice>('');
+  const [productChoice, setProductChoice] = useState<ProductChoice>(() =>
+    initialProductChoice(initialJob?.product),
+  );
+  const [confirmSharedPrescription, setConfirmSharedPrescription] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [submittingMode, setSubmittingMode] = useState<SaveMode | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const clientSearchSequence = useRef(0);
 
@@ -241,56 +292,114 @@ export function IntegratedPrescriptionForm({
     }));
   };
 
-  const createInput = (mode: SaveMode): CreatePrescriptionBundleInput =>
-    parseCreatePrescriptionBundleInput({
+  const createInput = (): CreatePrescriptionBundleInput | UpdateOpticalFileInput => {
+    if (!editing && !values.jobNumber.trim()) {
+      throw new OpticalJobValidationError([
+        { field: 'jobNumber', message: 'Ingresá el número de ficha.' },
+      ]);
+    }
+    const prescriptionCore = {
+      prescriptionDate: values.prescriptionDate,
+      prescriberName: values.prescriberName,
+      additionOd: initialPrescription?.additionOd ?? null,
+      additionOi: initialPrescription?.additionOi ?? null,
+      notes: initialPrescription?.notes ?? null,
+      values: toOpticalValues(values.rows),
+    };
+    const opticalJob = {
+      ...(editing ? { prescriptionId: props.initialJob.prescriptionId } : {}),
+      jobNumber: values.jobNumber,
+      product: values.product,
+      lens: values.lens,
+      brand: values.brand,
+      frameModel: values.frameModel,
+      productColor: values.productColor,
+      supplier: values.supplier,
+      colorType: values.colorType || null,
+      frameCondition: values.frameCondition || null,
+      frameMaterial: values.frameMaterial || null,
+      treatmentIds: [],
+      treatmentNames: parseTreatmentText(values.treatmentNames),
+      observations: values.generalObservations,
+    };
+    if (editing) {
+      let prescription = null;
+      if (initialPrescription) {
+        const candidate = parseCorrectPrescriptionInput(
+          { ...prescriptionCore, reason: values.correctionReason || 'Edición de ficha' },
+          false,
+        );
+        const currentComparable = JSON.stringify({
+          prescriptionDate: initialPrescription.prescriptionDate,
+          prescriberName: initialPrescription.prescriberName,
+          additionOd: initialPrescription.additionOd,
+          additionOi: initialPrescription.additionOi,
+          notes: initialPrescription.notes,
+          values: initialPrescription.values.map((value) => ({
+            distance: value.distance,
+            eye: value.eye,
+            sphere: value.sphere,
+            cylinder: value.cylinder,
+            axis: value.axis,
+            dip: value.dip,
+            height: value.height,
+          })),
+        });
+        const nextComparable = JSON.stringify({
+          prescriptionDate: candidate.prescriptionDate,
+          prescriberName: candidate.prescriberName ?? null,
+          additionOd: candidate.additionOd ?? null,
+          additionOi: candidate.additionOi ?? null,
+          notes: candidate.notes ?? null,
+          values: candidate.values,
+        });
+        if (currentComparable !== nextComparable) {
+          if (!values.correctionReason.trim()) {
+            throw new PrescriptionValidationError([
+              { field: 'reason', message: 'Indicá el motivo de la corrección óptica.' },
+            ]);
+          }
+          prescription = parseCorrectPrescriptionInput(
+            { ...prescriptionCore, reason: values.correctionReason },
+            false,
+          );
+        }
+      }
+      return parseUpdateOpticalFileInput({
+        opticalJob,
+        prescription,
+        confirmSharedPrescription,
+      });
+    }
+    return parseCreatePrescriptionBundleInput({
       prescription: {
         clientId: Number(values.clientId),
-        prescriptionDate: values.prescriptionDate,
-        prescriberName: values.prescriberName,
-        additionOd: null,
-        additionOi: null,
-        notes: values.prescriptionNotes,
-        values: toOpticalValues(values.rows),
+        ...prescriptionCore,
       },
-      opticalJob:
-        mode === 'PRESCRIPTION_ONLY'
-          ? null
-          : {
-              jobNumber: values.jobNumber,
-              product: values.product,
-              lens: values.lens,
-              brand: values.brand,
-              frameModel: values.frameModel,
-              productColor: values.productColor,
-              supplier: values.supplier,
-              colorType: values.colorType || null,
-              frameCondition: values.frameCondition || null,
-              frameMaterial: values.frameMaterial || null,
-              treatmentIds: [],
-              treatmentNames: parseTreatmentText(values.treatmentNames),
-              observations: values.jobObservations,
-            },
+      opticalJob,
     });
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     if (submittingRef.current) return;
-    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const mode: SaveMode =
-      submitter?.value === 'PRESCRIPTION_AND_JOB' ? 'PRESCRIPTION_AND_JOB' : 'PRESCRIPTION_ONLY';
     try {
-      const input = createInput(mode);
+      const input = createInput();
       setErrors({});
       submittingRef.current = true;
-      setSubmittingMode(mode);
-      await onSubmit(input);
+      setSubmitting(true);
+      if (editing) await props.onSubmit(input as UpdateOpticalFileInput);
+      else await props.onSubmit(input as CreatePrescriptionBundleInput);
     } catch (error: unknown) {
       if (
         error instanceof PrescriptionValidationError ||
         error instanceof OpticalJobValidationError
       ) {
         setErrors(validationErrors(error));
-      } else if (error instanceof PrescriptionRequestError) {
+      } else if (
+        error instanceof PrescriptionRequestError ||
+        error instanceof OpticalJobRequestError
+      ) {
         if (error.detail.code === 'DUPLICATE_JOB_NUMBER') {
           setErrors({ jobNumber: error.detail.message });
         } else if (error.detail.code === 'ARCHIVED_CLIENT') {
@@ -303,7 +412,7 @@ export function IntegratedPrescriptionForm({
       }
     } finally {
       submittingRef.current = false;
-      setSubmittingMode(null);
+      setSubmitting(false);
     }
   };
 
@@ -336,8 +445,8 @@ export function IntegratedPrescriptionForm({
           <div id="integrated-general">
             <SectionHeading
               number={1}
-              title="Datos generales de la receta"
-              description="Seleccioná el cliente e ingresá la información general de la receta."
+              title="Cliente y datos generales"
+              description="Seleccioná el cliente e ingresá la fecha, el profesional y el número único de ficha."
             />
           </div>
           <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -424,21 +533,34 @@ export function IntegratedPrescriptionForm({
                 type="date"
                 className={inputClassName}
                 value={values.prescriptionDate}
+                disabled={editing && !initialPrescription}
                 onChange={(event) => update('prescriptionDate', event.target.value)}
                 aria-invalid={Boolean(errors.prescriptionDate)}
               />
               <FieldError id="prescriptionDate-error" message={errors.prescriptionDate} />
             </label>
-            <label className={`${labelClassName} lg:col-span-2`}>
+            <label className={labelClassName}>
               Profesional <span className="font-normal text-slate-600">(opcional)</span>
               <input
                 className={inputClassName}
                 value={values.prescriberName}
+                disabled={editing && !initialPrescription}
                 maxLength={PRESCRIPTION_FIELD_LIMITS.prescriberName}
                 onChange={(event) => update('prescriberName', event.target.value)}
                 aria-invalid={Boolean(errors.prescriberName)}
               />
               <FieldError id="prescriberName-error" message={errors.prescriberName} />
+            </label>
+            <label className={labelClassName}>
+              Número de ficha <span className="text-red-700">*</span>
+              <input
+                className={inputClassName}
+                value={values.jobNumber}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.jobNumber}
+                onChange={(event) => update('jobNumber', event.target.value)}
+                aria-invalid={Boolean(errors.jobNumber)}
+              />
+              <FieldError id="jobNumber-error" message={errors.jobNumber} />
             </label>
           </div>
         </section>
@@ -454,6 +576,12 @@ export function IntegratedPrescriptionForm({
             Las tablas permiten desplazamiento horizontal interno en pantallas angostas.
           </p>
           <FieldError id="values-error" message={errors.values} />
+          {editing && !initialPrescription && (
+            <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-base font-semibold text-amber-950">
+              Esta ficha histórica no tiene una receta asociada. Sus datos comerciales pueden
+              editarse sin inventar ni vincular una graduación.
+            </div>
+          )}
           <div className="mt-5 space-y-5">
             {(['FAR', 'NEAR'] as const).map((distance) => (
               <section
@@ -524,6 +652,7 @@ export function IntegratedPrescriptionForm({
                                     inputMode={field === 'axis' ? 'numeric' : 'decimal'}
                                     className={`${inputClassName} mt-0 min-w-28 px-3 text-lg tabular-nums`}
                                     value={row[field]}
+                                    disabled={editing && !initialPrescription}
                                     onChange={(event) =>
                                       updateRow(index, field, event.target.value)
                                     }
@@ -550,29 +679,80 @@ export function IntegratedPrescriptionForm({
               </section>
             ))}
           </div>
+          {editing && initialPrescription && (
+            <div className="mt-6 space-y-5">
+              {props.relatedJobTotal > 1 && (
+                <SharedPrescriptionWarning
+                  jobs={props.relatedJobs}
+                  currentJobId={props.initialJob.id}
+                  total={props.relatedJobTotal}
+                  prescriptionId={initialPrescription.id}
+                />
+              )}
+              <label className={labelClassName}>
+                Motivo de la corrección óptica{' '}
+                <span className="font-normal text-slate-600">
+                  (obligatorio sólo si cambia la graduación)
+                </span>
+                <textarea
+                  rows={3}
+                  className={`${inputClassName} resize-y py-3`}
+                  value={values.correctionReason}
+                  maxLength={PRESCRIPTION_FIELD_LIMITS.reason}
+                  onChange={(event) => update('correctionReason', event.target.value)}
+                  aria-invalid={Boolean(errors.reason)}
+                />
+                <FieldError id="reason-error" message={errors.reason} />
+              </label>
+              {props.relatedJobTotal > 1 && (
+                <label className="flex min-h-12 items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-base font-semibold text-amber-950">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-teal-700"
+                    checked={confirmSharedPrescription}
+                    onChange={(event) => {
+                      setConfirmSharedPrescription(event.target.checked);
+                      setErrors((current) => ({
+                        ...current,
+                        confirmSharedPrescription: undefined,
+                        form: undefined,
+                      }));
+                    }}
+                  />
+                  Confirmo que una corrección de graduación afectará a todas las fichas vinculadas a
+                  esta receta.
+                </label>
+              )}
+              <FieldError id="confirm-shared-error" message={errors.confirmSharedPrescription} />
+              {initialPrescription.notes && (
+                <div
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                  aria-label="Nota histórica de receta"
+                >
+                  <p className="font-bold text-slate-800">Nota histórica de receta</p>
+                  <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-700">
+                    {initialPrescription.notes}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Se conserva sin cambios; las observaciones actuales se registran al final de la
+                    ficha.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </fieldset>
 
         <section aria-labelledby="integrated-product" className="min-w-0">
           <div id="integrated-product">
             <SectionHeading
               number={3}
-              title="Producto, cristal y tratamiento"
-              description="Esta información se utilizará sólo si elegís guardar también el trabajo."
+              title="Información del producto"
+              description="Completá el tipo de producto, el cristal, la marca y sus tratamientos."
             />
           </div>
-          <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            <label className={labelClassName}>
-              Número de ficha <span className="font-normal text-slate-600">(opcional)</span>
-              <input
-                className={inputClassName}
-                value={values.jobNumber}
-                maxLength={OPTICAL_JOB_FIELD_LIMITS.jobNumber}
-                onChange={(event) => update('jobNumber', event.target.value)}
-                aria-invalid={Boolean(errors.jobNumber)}
-              />
-              <FieldError id="jobNumber-error" message={errors.jobNumber} />
-            </label>
-            <fieldset className="min-w-0 lg:col-span-2 xl:col-span-3">
+          <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <fieldset className="min-w-0 lg:col-span-2">
               <legend className={labelClassName}>Producto (opcional)</legend>
               <p className="mt-1 text-sm font-normal text-slate-600">
                 Podés dejarlo sin seleccionar si todavía no está definido.
@@ -640,17 +820,6 @@ export function IntegratedPrescriptionForm({
               <FieldError id="brand-error" message={errors.brand} />
             </label>
             <label className={labelClassName}>
-              Modelo <span className="font-normal text-slate-600">(opcional)</span>
-              <input
-                className={inputClassName}
-                value={values.frameModel}
-                maxLength={OPTICAL_JOB_FIELD_LIMITS.frameModel}
-                onChange={(event) => update('frameModel', event.target.value)}
-                aria-invalid={Boolean(errors.frameModel)}
-              />
-              <FieldError id="frameModel-error" message={errors.frameModel} />
-            </label>
-            <label className={labelClassName}>
               Color <span className="font-normal text-slate-600">(opcional)</span>
               <input
                 className={inputClassName}
@@ -662,24 +831,13 @@ export function IntegratedPrescriptionForm({
               <FieldError id="productColor-error" message={errors.productColor} />
             </label>
             <label className={labelClassName}>
-              Proveedor <span className="font-normal text-slate-600">(opcional)</span>
-              <input
-                className={inputClassName}
-                value={values.supplier}
-                maxLength={OPTICAL_JOB_FIELD_LIMITS.supplier}
-                onChange={(event) => update('supplier', event.target.value)}
-                aria-invalid={Boolean(errors.supplier)}
-              />
-              <FieldError id="supplier-error" message={errors.supplier} />
-            </label>
-            <label className={labelClassName}>
-              Coloración de los lentes
+              Coloración
               <select
                 className={inputClassName}
                 value={values.colorType}
                 onChange={(event) => update('colorType', event.target.value)}
               >
-                <option value="">Sin especificar</option>
+                <option value=""></option>
                 <option value="FULL">Color pleno</option>
                 <option value="GRADIENT">Color degradé</option>
               </select>
@@ -715,7 +873,7 @@ export function IntegratedPrescriptionForm({
             <SectionHeading
               number={4}
               title="Armazón"
-              description="Indicá si el armazón es nuevo o propio y su material."
+              description="Indicá la condición, el material y los datos comerciales del armazón."
             />
           </div>
           <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -726,7 +884,7 @@ export function IntegratedPrescriptionForm({
                 value={values.frameCondition}
                 onChange={(event) => update('frameCondition', event.target.value)}
               >
-                <option value="">Sin especificar</option>
+                <option value=""></option>
                 <option value="NEW">Nuevo</option>
                 <option value="USED">Propio</option>
               </select>
@@ -738,10 +896,32 @@ export function IntegratedPrescriptionForm({
                 value={values.frameMaterial}
                 onChange={(event) => update('frameMaterial', event.target.value)}
               >
-                <option value="">Sin especificar</option>
+                <option value=""></option>
                 <option value="ZILO">Zilo</option>
                 <option value="METAL">Metal</option>
               </select>
+            </label>
+            <label className={labelClassName}>
+              Modelo <span className="font-normal text-slate-600">(opcional)</span>
+              <input
+                className={inputClassName}
+                value={values.frameModel}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.frameModel}
+                onChange={(event) => update('frameModel', event.target.value)}
+                aria-invalid={Boolean(errors.frameModel)}
+              />
+              <FieldError id="frameModel-error" message={errors.frameModel} />
+            </label>
+            <label className={labelClassName}>
+              Proveedor <span className="font-normal text-slate-600">(opcional)</span>
+              <input
+                className={inputClassName}
+                value={values.supplier}
+                maxLength={OPTICAL_JOB_FIELD_LIMITS.supplier}
+                onChange={(event) => update('supplier', event.target.value)}
+                aria-invalid={Boolean(errors.supplier)}
+              />
+              <FieldError id="supplier-error" message={errors.supplier} />
             </label>
           </div>
         </section>
@@ -751,31 +931,18 @@ export function IntegratedPrescriptionForm({
             <SectionHeading
               number={5}
               title="Observaciones"
-              description="Las observaciones de receta y trabajo se guardan por separado."
+              description="Registrá una única observación general para la ficha."
             />
           </div>
-          <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="mt-5">
             <label className={labelClassName}>
-              Observaciones de receta <span className="font-normal text-slate-600">(opcional)</span>
+              Observaciones generales <span className="font-normal text-slate-600">(opcional)</span>
               <textarea
                 rows={5}
                 className={`${inputClassName} resize-y py-3`}
-                value={values.prescriptionNotes}
-                maxLength={PRESCRIPTION_FIELD_LIMITS.notes}
-                onChange={(event) => update('prescriptionNotes', event.target.value)}
-                aria-invalid={Boolean(errors.notes)}
-              />
-              <FieldError id="notes-error" message={errors.notes} />
-            </label>
-            <label className={labelClassName}>
-              Observaciones del trabajo{' '}
-              <span className="font-normal text-slate-600">(opcional)</span>
-              <textarea
-                rows={5}
-                className={`${inputClassName} resize-y py-3`}
-                value={values.jobObservations}
+                value={values.generalObservations}
                 maxLength={OPTICAL_JOB_FIELD_LIMITS.observations}
-                onChange={(event) => update('jobObservations', event.target.value)}
+                onChange={(event) => update('generalObservations', event.target.value)}
                 aria-invalid={Boolean(errors.observations)}
               />
               <FieldError id="observations-error" message={errors.observations} />
@@ -788,11 +955,12 @@ export function IntegratedPrescriptionForm({
           aria-labelledby="integrated-actions"
         >
           <h2 id="integrated-actions" className="text-lg font-black text-slate-950">
-            Elegí qué querés guardar
+            {editing ? 'Guardar cambios' : 'Guardar ficha óptica'}
           </h2>
           <p className="mt-1 text-base leading-6 text-slate-600">
-            Guardar sólo receta ignora los campos del trabajo. La segunda opción crea ambos
-            registros en una única operación.
+            {editing
+              ? 'Los cambios comerciales y ópticos se guardarán juntos o no se guardará ninguno.'
+              : 'La graduación y la información comercial se guardarán juntas en una única operación.'}
           </p>
           <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
             <Button
@@ -800,36 +968,17 @@ export function IntegratedPrescriptionForm({
               variant="ghost"
               className="min-h-12 px-5 text-base"
               onClick={onCancel}
-              disabled={submittingMode !== null}
+              disabled={submitting}
             >
               <X size={19} aria-hidden="true" /> Cancelar
             </Button>
             <Button
               type="submit"
-              name="saveMode"
-              value="PRESCRIPTION_ONLY"
-              variant="secondary"
               className="min-h-12 px-5 text-base"
-              disabled={submittingMode !== null || clientLoadError}
+              disabled={submitting || clientLoadError}
             >
-              <FileCheck2 size={19} aria-hidden="true" />
-              {submittingMode === 'PRESCRIPTION_ONLY' ? 'Guardando…' : 'Guardar solo receta'}
-            </Button>
-            <Button
-              type="submit"
-              name="saveMode"
-              value="PRESCRIPTION_AND_JOB"
-              className="min-h-12 px-5 text-base"
-              disabled={submittingMode !== null || clientLoadError}
-            >
-              {submittingMode === 'PRESCRIPTION_AND_JOB' ? (
-                <Save size={19} aria-hidden="true" />
-              ) : (
-                <BriefcaseBusiness size={19} aria-hidden="true" />
-              )}
-              {submittingMode === 'PRESCRIPTION_AND_JOB'
-                ? 'Guardando…'
-                : 'Guardar receta y trabajo'}
+              <Save size={19} aria-hidden="true" />
+              {submitting ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar ficha'}
             </Button>
           </div>
         </section>

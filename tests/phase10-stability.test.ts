@@ -72,10 +72,20 @@ describe('auditoría integral de estabilidad de Fase 10', () => {
         treatmentIds: [treatmentId],
       });
     }
-    database.prescriptions.correct(prescriptions[0]!.id, {
-      reason: 'Corrección ficticia de auditoría',
-      prescriptionDate: '2026-10-15',
-      values: [FOUR_PRESCRIPTION_VALUES[1]!],
+    const firstJob = database.opticalJobs.listByClient(100)[0]!;
+    database.prescriptionJobs.update(firstJob.id, {
+      opticalJob: {
+        prescriptionId: prescriptions[0]!.id,
+        jobNumber: firstJob.jobNumber,
+        product: firstJob.product,
+        treatmentIds: firstJob.treatments.map((treatment) => treatment.id),
+      },
+      prescription: {
+        reason: 'Corrección ficticia de auditoría',
+        prescriptionDate: '2026-10-15',
+        values: [FOUR_PRESCRIPTION_VALUES[1]!],
+      },
+      confirmSharedPrescription: false,
     });
     database.clients.archive(1_000);
     database.clients.restore(1_000);

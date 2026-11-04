@@ -11,8 +11,6 @@ interface PrescriptionValuesTableProps {
 
 export function PrescriptionValuesTable({
   values,
-  additionOd = null,
-  additionOi = null,
   caption = 'Graduaciones ópticas',
 }: PrescriptionValuesTableProps): React.JSX.Element {
   const findValue = (
@@ -23,28 +21,6 @@ export function PrescriptionValuesTable({
 
   return (
     <div className="min-w-0 max-w-full space-y-4" aria-label={caption}>
-      <section className="min-w-0 max-w-full overflow-hidden rounded-xl border border-teal-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-teal-200 bg-teal-50 px-4 py-3">
-          <span className="flex h-8 min-w-12 items-center justify-center rounded-lg bg-teal-700 px-2 text-xs font-black tracking-wider text-white">
-            ADD
-          </span>
-          <h3 className="text-sm font-bold text-teal-950">Adición por ojo</h3>
-        </div>
-        <dl className="grid max-w-lg grid-cols-2 gap-3 p-4 text-sm">
-          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-            <dt className="text-xs font-black text-teal-800">OD</dt>
-            <dd className="mt-1.5 font-bold text-slate-950 tabular-nums">
-              {formatOpticalDecimal(additionOd)}
-            </dd>
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-            <dt className="text-xs font-black text-teal-800">OI</dt>
-            <dd className="mt-1.5 font-bold text-slate-950 tabular-nums">
-              {formatOpticalDecimal(additionOi)}
-            </dd>
-          </div>
-        </dl>
-      </section>
       {(['FAR', 'NEAR'] as const).map((distance) => (
         <section
           key={distance}

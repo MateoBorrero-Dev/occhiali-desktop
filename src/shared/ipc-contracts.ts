@@ -11,6 +11,8 @@ import type {
   OpticalJob,
   OpticalJobListPage,
   OpticalJobListRequest,
+  OpticalFileListPage,
+  OpticalFileListRequest,
   OpticalJobsByClientRequest,
   OpticalJobsByPrescriptionRequest,
   Prescription,
@@ -21,6 +23,8 @@ import type {
   PrescriptionsByClientRequest,
   UpdateClientInput,
   UpdateOpticalJobInput,
+  UpdateOpticalFileInput,
+  UpdateOpticalFileResult,
   DashboardSummary,
   GlobalSearchRequest,
   GlobalSearchResults,
@@ -53,6 +57,8 @@ export const IPC_CHANNELS = {
   prescriptionsCorrect: 'prescriptions:correct',
   prescriptionsRevisions: 'prescriptions:revisions',
   opticalJobsList: 'optical-jobs:list',
+  opticalFilesList: 'optical-files:list',
+  opticalFilesUpdate: 'optical-files:update',
   opticalJobsListByClient: 'optical-jobs:list-by-client',
   opticalJobsListByPrescription: 'optical-jobs:list-by-prescription',
   opticalJobsGet: 'optical-jobs:get',
@@ -119,6 +125,7 @@ export type PrescriptionIpcErrorCode =
   | 'ARCHIVED_CLIENT'
   | 'DUPLICATE_JOB_NUMBER'
   | 'TREATMENT_NOT_FOUND'
+  | 'LINKED_JOB_REQUIRES_UNIFIED_EDIT'
   | 'CONFLICT'
   | 'PERSISTENCE';
 
@@ -171,6 +178,13 @@ export type OpticalJobIpcResult<T> =
 
 export interface OpticalJobApi {
   list: (request?: OpticalJobListRequest) => Promise<OpticalJobIpcResult<OpticalJobListPage>>;
+  listFiles: (
+    request?: OpticalFileListRequest,
+  ) => Promise<OpticalJobIpcResult<OpticalFileListPage>>;
+  updateFile: (
+    id: number,
+    input: UpdateOpticalFileInput,
+  ) => Promise<OpticalJobIpcResult<UpdateOpticalFileResult>>;
   listByClient: (
     request: OpticalJobsByClientRequest,
   ) => Promise<OpticalJobIpcResult<OpticalJobListPage>>;

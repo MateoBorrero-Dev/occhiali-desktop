@@ -9,7 +9,6 @@ import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapClientResult } from '../lib/client-api';
 import { unwrapPrescriptionResult } from '../lib/prescription-api';
-import { recipesAndJobsPath } from '../app/routes';
 
 export function PrescriptionCreatePage(): React.JSX.Element {
   const { id } = useParams();
@@ -44,19 +43,11 @@ export function PrescriptionCreatePage(): React.JSX.Element {
     const created = unwrapPrescriptionResult(
       await window.optica.prescriptions.createIntegrated(input),
     );
-    void navigate(
-      created.opticalJob
-        ? `/trabajos/${created.opticalJob.id}`
-        : `/recetas/${created.prescription.id}`,
-      {
-        replace: true,
-        state: {
-          message: created.opticalJob
-            ? 'Receta y ficha registradas correctamente.'
-            : 'Receta registrada correctamente.',
-        },
-      },
-    );
+    if (!created.opticalJob) throw new Error('La operación no creó la ficha comercial esperada.');
+    void navigate(`/fichas/trabajo/${created.opticalJob.id}`, {
+      replace: true,
+      state: { message: 'Ficha óptica registrada correctamente.' },
+    });
     return created;
   };
 
@@ -87,7 +78,7 @@ export function PrescriptionCreatePage(): React.JSX.Element {
         <EmptyState
           icon={Archive}
           title="El cliente está archivado"
-          description="Reactivalo para registrar una nueva receta. Su historial continúa disponible."
+          description="Reactivalo para registrar una nueva ficha. Su historial continúa disponible."
           action={
             <Link to={`/clientes/${client.id}`} className={buttonStyles()}>
               Volver a la ficha
@@ -100,16 +91,16 @@ export function PrescriptionCreatePage(): React.JSX.Element {
   return (
     <div>
       <PageHeader
-        eyebrow="Historial óptico"
-        title="Nueva receta y trabajo"
+        eyebrow="Historial óptico y gestión comercial"
+        title="Nueva ficha óptica"
         description={
           client
-            ? `La receta quedará asociada exclusivamente a ${client.firstName} ${client.lastName}.`
-            : 'Registrá la receta y, si corresponde, completá el trabajo óptico en la misma pantalla.'
+            ? `La ficha quedará asociada exclusivamente a ${client.firstName} ${client.lastName}.`
+            : 'Registrá la graduación y la información comercial en una única pantalla.'
         }
         action={
           <Link
-            to={client ? `/clientes/${client.id}` : recipesAndJobsPath('recetas')}
+            to={client ? `/clientes/${client.id}` : '/fichas'}
             className={buttonStyles({ variant: 'secondary' })}
           >
             <ArrowLeft size={17} aria-hidden="true" />
@@ -121,7 +112,7 @@ export function PrescriptionCreatePage(): React.JSX.Element {
         fixedClient={client}
         onSubmit={submit}
         onCancel={() => {
-          void navigate(client ? `/clientes/${client.id}` : recipesAndJobsPath('recetas'));
+          void navigate(client ? `/clientes/${client.id}` : '/fichas');
         }}
       />
     </div>

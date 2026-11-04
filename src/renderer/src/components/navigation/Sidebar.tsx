@@ -2,7 +2,7 @@ import { Files, House, PackageCheck, Settings, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { RECIPES_AND_JOBS_PATH } from '../../app/routes';
+import { OPTICAL_FILES_PATH } from '../../app/routes';
 import occhialiGlassesWhite from '../../../../../resources/branding/occhiali-anteojos-blanco-transparente.png';
 
 interface NavigationItem {
@@ -19,10 +19,10 @@ const navigationItems: readonly NavigationItem[] = [
   { label: 'Inicio', path: '/', icon: House, end: true },
   { label: 'Clientes', path: '/clientes', icon: Users },
   {
-    label: 'Recetas y trabajos',
-    path: RECIPES_AND_JOBS_PATH,
+    label: 'Fichas ópticas',
+    path: OPTICAL_FILES_PATH,
     icon: Files,
-    activePrefixes: ['/recetas', '/trabajos'],
+    activePrefixes: ['/fichas', '/recetas', '/trabajos'],
   },
   { label: 'Retiros', path: '/retiros', icon: PackageCheck },
   { label: 'Configuración', path: '/configuracion', icon: Settings },

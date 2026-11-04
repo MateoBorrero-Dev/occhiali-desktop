@@ -24,6 +24,8 @@ interface PrescriptionFormProps {
   fixedClient?: Client;
   initialPrescription?: Prescription;
   correction?: boolean;
+  requireOpticalData?: boolean;
+  notesEditable?: boolean;
   submitLabel: string;
   onSubmit: (input: CreatePrescriptionInput | CorrectPrescriptionInput) => Promise<Prescription>;
   onCancel: () => void;
@@ -128,6 +130,8 @@ export function PrescriptionForm({
   fixedClient,
   initialPrescription,
   correction = false,
+  requireOpticalData = true,
+  notesEditable = true,
   submitLabel,
   onSubmit,
   onCancel,
@@ -204,7 +208,7 @@ export function PrescriptionForm({
         values: toOpticalValues(values.rows),
       };
       const input = correction
-        ? parseCorrectPrescriptionInput({ ...core, reason: values.reason })
+        ? parseCorrectPrescriptionInput({ ...core, reason: values.reason }, requireOpticalData)
         : parseCreatePrescriptionInput({ ...core, clientId: Number(values.clientId) });
       setErrors({});
       submittingRef.current = true;
@@ -365,47 +369,6 @@ export function PrescriptionForm({
               {errors.values}
             </p>
           )}
-          <section className="mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border border-teal-200 bg-white shadow-sm">
-            <div className="flex items-center gap-3 border-b border-teal-200 bg-teal-50 px-4 py-3">
-              <span className="flex h-8 min-w-12 items-center justify-center rounded-lg bg-teal-700 px-2 text-xs font-black tracking-wider text-white">
-                ADD
-              </span>
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-teal-950">Adición por ojo</h3>
-                <p className="mt-0.5 text-xs text-teal-900">
-                  Informá cada ojo por separado. Ambos valores son opcionales.
-                </p>
-              </div>
-            </div>
-            <div className="grid w-full max-w-2xl grid-cols-1 gap-4 p-4 sm:grid-cols-2">
-              {(['additionOd', 'additionOi'] as const).map((field) => {
-                const eye = field === 'additionOd' ? 'OD' : 'OI';
-                return (
-                  <label
-                    key={field}
-                    className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-sm font-semibold text-slate-800 focus-within:border-teal-400 focus-within:bg-teal-50/40"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="rounded-md bg-teal-100 px-2 py-0.5 text-xs font-black text-teal-800">
-                        {eye}
-                      </span>
-                      Adición
-                    </span>
-                    <input
-                      inputMode="decimal"
-                      className={`${inputClassName} mt-1.5`}
-                      placeholder="0,00"
-                      value={values[field]}
-                      onChange={(event) => update(field, event.target.value)}
-                      aria-invalid={Boolean(errors[field])}
-                      aria-label={`ADD ${eye}`}
-                    />
-                    <FieldError id={`${field}-error`} message={errors[field]} />
-                  </label>
-                );
-              })}
-            </div>
-          </section>
           <div className="mt-4 min-w-0 max-w-full space-y-4">
             {(['FAR', 'NEAR'] as const).map((distance) => (
               <section
@@ -514,18 +477,33 @@ export function PrescriptionForm({
           </div>
         </fieldset>
 
-        <label className="mt-6 block text-sm font-semibold text-slate-800">
-          Observaciones <span className="font-normal text-slate-500">(opcional)</span>
-          <textarea
-            rows={4}
-            className={`${inputClassName} mt-1.5 resize-y py-2.5`}
-            value={values.notes}
-            maxLength={PRESCRIPTION_FIELD_LIMITS.notes}
-            onChange={(event) => update('notes', event.target.value)}
-            aria-invalid={Boolean(errors.notes)}
-          />
-          <FieldError id="notes-error" message={errors.notes} />
-        </label>
+        {notesEditable ? (
+          <label className="mt-6 block text-sm font-semibold text-slate-800">
+            Observaciones <span className="font-normal text-slate-500">(opcional)</span>
+            <textarea
+              rows={4}
+              className={`${inputClassName} mt-1.5 resize-y py-2.5`}
+              value={values.notes}
+              maxLength={PRESCRIPTION_FIELD_LIMITS.notes}
+              onChange={(event) => update('notes', event.target.value)}
+              aria-invalid={Boolean(errors.notes)}
+            />
+            <FieldError id="notes-error" message={errors.notes} />
+          </label>
+        ) : initialPrescription?.notes ? (
+          <div
+            className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4"
+            aria-label="Nota histórica de receta"
+          >
+            <p className="text-sm font-bold text-slate-800">Nota histórica de receta</p>
+            <p className="mt-2 whitespace-pre-wrap text-base leading-7 text-slate-700">
+              {initialPrescription.notes}
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              Se conserva para la trazabilidad y no se modifica desde la ficha comercial.
+            </p>
+          </div>
+        ) : null}
 
         {correction && (
           <label className="mt-5 block text-sm font-semibold text-slate-800">

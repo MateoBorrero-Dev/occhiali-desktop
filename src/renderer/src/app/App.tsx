@@ -10,14 +10,12 @@ import { PrescriptionCreatePage } from '../pages/PrescriptionCreatePage';
 import { PrescriptionDetailPage } from '../pages/PrescriptionDetailPage';
 import { PrescriptionCorrectionPage } from '../pages/PrescriptionCorrectionPage';
 import { SettingsPage } from '../pages/SettingsPage';
-import { OpticalJobCreatePage } from '../pages/OpticalJobCreatePage';
 import { OpticalJobDetailPage } from '../pages/OpticalJobDetailPage';
 import { OpticalJobEditPage } from '../pages/OpticalJobEditPage';
 import { DeliveryReceiptCreatePage } from '../pages/DeliveryReceiptCreatePage';
 import { DeliveryReceiptDetailPage } from '../pages/DeliveryReceiptDetailPage';
 import { DeliveryReceiptsPage } from '../pages/DeliveryReceiptsPage';
-import { RecipesAndJobsPage } from '../pages/RecipesAndJobsPage';
-import { recipesAndJobsPath } from './routes';
+import { OpticalFilesPage } from '../pages/OpticalFilesPage';
 
 export function App(): React.JSX.Element {
   return (
@@ -30,17 +28,21 @@ export function App(): React.JSX.Element {
           <Route path="clientes/:id" element={<ClientDetailPage />} />
           <Route path="clientes/:id/editar" element={<ClientEditPage />} />
           <Route path="clientes/:id/recetas/nueva" element={<PrescriptionCreatePage />} />
-          <Route path="clientes/:id/trabajos/nuevo" element={<OpticalJobCreatePage />} />
-          <Route path="recetas-trabajos" element={<RecipesAndJobsPage />} />
-          <Route path="recetas" element={<Navigate replace to={recipesAndJobsPath('recetas')} />} />
+          <Route path="clientes/:id/trabajos/nuevo" element={<PrescriptionCreatePage />} />
+          <Route path="fichas" element={<OpticalFilesPage />} />
+          <Route path="fichas/nueva" element={<PrescriptionCreatePage />} />
+          <Route path="fichas/trabajo/:id" element={<OpticalJobDetailPage />} />
+          <Route path="fichas/trabajo/:id/editar" element={<OpticalJobEditPage />} />
+          <Route path="fichas/trabajo/:id/retiro/nuevo" element={<DeliveryReceiptCreatePage />} />
+          <Route path="fichas/receta/:id" element={<PrescriptionDetailPage />} />
+          <Route path="fichas/receta/:id/corregir" element={<PrescriptionCorrectionPage />} />
+          <Route path="recetas-trabajos" element={<Navigate replace to="/fichas" />} />
+          <Route path="recetas" element={<Navigate replace to="/fichas" />} />
           <Route path="recetas/nueva" element={<PrescriptionCreatePage />} />
           <Route path="recetas/:id" element={<PrescriptionDetailPage />} />
           <Route path="recetas/:id/corregir" element={<PrescriptionCorrectionPage />} />
-          <Route
-            path="trabajos"
-            element={<Navigate replace to={recipesAndJobsPath('trabajos')} />}
-          />
-          <Route path="trabajos/nuevo" element={<OpticalJobCreatePage />} />
+          <Route path="trabajos" element={<Navigate replace to="/fichas" />} />
+          <Route path="trabajos/nuevo" element={<PrescriptionCreatePage />} />
           <Route path="trabajos/:id" element={<OpticalJobDetailPage />} />
           <Route path="trabajos/:id/editar" element={<OpticalJobEditPage />} />
           <Route path="trabajos/:id/retiro/nuevo" element={<DeliveryReceiptCreatePage />} />

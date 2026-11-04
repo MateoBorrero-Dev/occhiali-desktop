@@ -1,7 +1,12 @@
 import { ArrowLeft, FileQuestion, History, Pencil, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import type { Client, Prescription, PrescriptionRevision } from '../../../shared/database-models';
+import type {
+  Client,
+  OpticalJobSummary,
+  Prescription,
+  PrescriptionRevision,
+} from '../../../shared/database-models';
 import { EmptyState } from '../components/common/EmptyState';
 import { PageHeader } from '../components/common/PageHeader';
 import { PrescriptionValuesTable } from '../components/prescriptions/PrescriptionValuesTable';
@@ -10,13 +15,13 @@ import { Button } from '../components/ui/Button';
 import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapClientResult } from '../lib/client-api';
+import { unwrapOpticalJobResult } from '../lib/optical-job-api';
 import {
   formatPrescriptionDate,
   formatPrescriptionTimestamp,
   PrescriptionRequestError,
   unwrapPrescriptionResult,
 } from '../lib/prescription-api';
-import { recipesAndJobsPath } from '../app/routes';
 
 type DetailState =
   | { status: 'loading' }
@@ -27,6 +32,8 @@ type DetailState =
       prescription: Prescription;
       client: Client;
       revisions: PrescriptionRevision[];
+      jobs: OpticalJobSummary[];
+      jobTotal: number;
     };
 
 export function PrescriptionDetailPage(): React.JSX.Element {
@@ -45,10 +52,15 @@ export function PrescriptionDetailPage(): React.JSX.Element {
     void Promise.all([
       window.optica.prescriptions.get(prescriptionId).then(unwrapPrescriptionResult),
       window.optica.prescriptions.revisions(prescriptionId).then(unwrapPrescriptionResult),
+      window.optica.opticalJobs
+        .listByPrescription({ prescriptionId, limit: 100, offset: 0 })
+        .then(unwrapOpticalJobResult),
     ])
-      .then(async ([prescription, revisions]) => ({
+      .then(async ([prescription, revisions, jobs]) => ({
         prescription,
         revisions,
+        jobs: jobs.items,
+        jobTotal: jobs.total,
         client: unwrapClientResult(await window.optica.clients.get(prescription.clientId)),
       }))
       .then((data) => {
@@ -81,8 +93,8 @@ export function PrescriptionDetailPage(): React.JSX.Element {
           title="Receta no encontrada"
           description="El registro solicitado no existe."
           action={
-            <Link to={recipesAndJobsPath('recetas')} className={buttonStyles()}>
-              Volver a recetas
+            <Link to="/fichas" className={buttonStyles()}>
+              Volver a fichas
             </Link>
           }
         />
@@ -108,29 +120,41 @@ export function PrescriptionDetailPage(): React.JSX.Element {
         />
       </Card>
     );
-  const { prescription, client, revisions } = state;
+  const { prescription, client, revisions, jobs, jobTotal } = state;
+  const singleJob = jobTotal === 1 && jobs.length === 1 ? jobs[0] : undefined;
+  const relationshipDescription =
+    jobTotal === 0
+      ? 'Graduación histórica sin trabajo comercial'
+      : jobTotal === 1
+        ? `Graduación asociada a la ficha ${singleJob?.jobNumber ?? `#${singleJob?.id}`}`
+        : `Graduación compartida por ${jobTotal} fichas ópticas`;
   return (
     <div>
       <PageHeader
-        eyebrow="Detalle de receta"
-        title={`Receta del ${formatPrescriptionDate(prescription.prescriptionDate)}`}
-        description={`${client.firstName} ${client.lastName} · Registro #${prescription.id}`}
+        eyebrow={jobTotal === 0 ? 'Graduación histórica' : 'Graduación asociada'}
+        title={`Graduación del ${formatPrescriptionDate(prescription.prescriptionDate)}`}
+        description={`${client.firstName} ${client.lastName} · ${relationshipDescription}`}
         action={
           <div className="flex flex-wrap justify-end gap-2">
-            <Link
-              to={recipesAndJobsPath('recetas')}
-              className={buttonStyles({ variant: 'secondary' })}
-            >
+            <Link to="/fichas" className={buttonStyles({ variant: 'secondary' })}>
               <ArrowLeft size={17} aria-hidden="true" />
               Volver
             </Link>
             <Link to={`/clientes/${client.id}`} className={buttonStyles({ variant: 'secondary' })}>
               Historial del cliente
             </Link>
-            <Link to={`/recetas/${prescription.id}/corregir`} className={buttonStyles()}>
-              <Pencil size={16} aria-hidden="true" />
-              Corregir carga
-            </Link>
+            {jobTotal === 0 && (
+              <Link to={`/fichas/receta/${prescription.id}/corregir`} className={buttonStyles()}>
+                <Pencil size={16} aria-hidden="true" />
+                Corregir carga histórica
+              </Link>
+            )}
+            {singleJob && (
+              <Link to={`/fichas/trabajo/${singleJob.id}/editar`} className={buttonStyles()}>
+                <Pencil size={16} aria-hidden="true" />
+                Editar ficha completa
+              </Link>
+            )}
           </div>
         }
       />
@@ -186,7 +210,21 @@ export function PrescriptionDetailPage(): React.JSX.Element {
           </p>
         </div>
       </Card>
-      <PrescriptionOpticalJobs prescriptionId={prescription.id} />
+      {jobTotal > 1 && (
+        <Card className="mt-5 border-amber-300 bg-amber-50 p-5">
+          <h2 className="text-lg font-black text-amber-950">Graduación compartida</h2>
+          <p className="mt-2 text-base leading-7 text-amber-950">
+            Esta graduación pertenece a {jobTotal} fichas. Elegí explícitamente cuál ficha querés
+            editar; la edición mostrará nuevamente la advertencia antes de guardar cambios ópticos.
+          </p>
+        </Card>
+      )}
+      <div id="fichas-asociadas">
+        <PrescriptionOpticalJobs
+          prescriptionId={prescription.id}
+          action={jobTotal > 1 ? 'edit' : 'view'}
+        />
+      </div>
       <Card className="mt-5 p-6">
         <div className="flex items-center gap-3">
           <History className="text-teal-700" size={20} aria-hidden="true" />

@@ -16,7 +16,6 @@ import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import { unwrapQueryResult } from '../lib/query-api';
 import type { LucideIcon } from 'lucide-react';
-import { recipesAndJobsPath } from '../app/routes';
 
 type DashboardState =
   { status: 'loading' } | { status: 'error' } | { status: 'ready'; summary: DashboardSummary };
@@ -31,8 +30,7 @@ interface Metric {
 const quickActions = [
   { label: 'Nuevo cliente', path: '/clientes/nuevo', icon: UserPlus },
   { label: 'Buscar cliente', path: '/clientes', icon: Search },
-  { label: 'Nueva receta', path: '/recetas/nueva', icon: FilePlus2 },
-  { label: 'Nueva ficha óptica', path: '/trabajos/nuevo', icon: BriefcaseBusiness },
+  { label: 'Nueva ficha óptica', path: '/fichas/nueva', icon: FilePlus2 },
 ] as const;
 
 export function HomePage(): React.JSX.Element {
@@ -65,16 +63,16 @@ export function HomePage(): React.JSX.Element {
             path: '/clientes',
           },
           {
-            label: 'Recetas registradas',
+            label: 'Graduaciones registradas',
             value: state.summary.totalPrescriptions,
             icon: FileText,
-            path: recipesAndJobsPath('recetas'),
+            path: '/fichas',
           },
           {
             label: 'Fichas ópticas',
             value: state.summary.totalOpticalJobs,
             icon: BriefcaseBusiness,
-            path: recipesAndJobsPath('trabajos'),
+            path: '/fichas',
           },
         ]
       : [];
@@ -154,7 +152,7 @@ export function HomePage(): React.JSX.Element {
           Iniciá las tareas más frecuentes sin recorrer otros menús.
         </p>
         <Card className="mt-3 p-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {quickActions.map((action, index) => (
               <Link
                 key={action.path + action.label}
@@ -172,8 +170,8 @@ export function HomePage(): React.JSX.Element {
       </section>
 
       <p className="text-xs leading-5 text-slate-500">
-        Las recetas y fichas históricas permanecen contabilizadas aunque su cliente esté archivado.
-        No se muestran datos de ventas, caja ni ingresos.
+        Las graduaciones y fichas históricas permanecen contabilizadas aunque su cliente esté
+        archivado. No se muestran datos de ventas, caja ni ingresos.
       </p>
     </div>
   );

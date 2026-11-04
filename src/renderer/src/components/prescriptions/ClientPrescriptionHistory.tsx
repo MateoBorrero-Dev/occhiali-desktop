@@ -146,7 +146,7 @@ export function ClientPrescriptionHistory({
                     </td>
                     <td className="px-5 py-4 text-right">
                       <Link
-                        to={`/recetas/${item.id}`}
+                        to={`/fichas/receta/${item.id}`}
                         className={buttonStyles({ variant: 'ghost', size: 'sm' })}
                       >
                         Ver detalle <ExternalLink size={15} aria-hidden="true" />

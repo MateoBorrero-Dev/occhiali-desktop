@@ -1,7 +1,9 @@
 export type RecipesAndJobsTab = 'recetas' | 'trabajos';
 
-export const RECIPES_AND_JOBS_PATH = '/recetas-trabajos';
+export const OPTICAL_FILES_PATH = '/fichas';
+export const RECIPES_AND_JOBS_PATH = OPTICAL_FILES_PATH;
 
 export function recipesAndJobsPath(tab: RecipesAndJobsTab): string {
-  return `${RECIPES_AND_JOBS_PATH}?tab=${tab}`;
+  void tab;
+  return OPTICAL_FILES_PATH;
 }

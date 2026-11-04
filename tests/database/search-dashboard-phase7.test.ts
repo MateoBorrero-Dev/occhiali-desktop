@@ -190,10 +190,20 @@ describe('dashboard y búsqueda integrada de Fase 7', () => {
 
   it('las consultas no modifican recetas, revisiones ni fichas', () => {
     const fixture = createFixture();
-    context.database.prescriptions.correct(fixture.prescriptionId, {
-      prescriptionDate: '2026-09-11',
-      reason: 'Corrección ficticia',
-      values: [{ distance: 'FAR', eye: 'OD', sphere: '-1.50' }],
+    const job = context.database.opticalJobs.getById(fixture.jobId)!;
+    context.database.prescriptionJobs.update(fixture.jobId, {
+      opticalJob: {
+        prescriptionId: fixture.prescriptionId,
+        jobNumber: job.jobNumber,
+        product: job.product,
+        treatmentIds: job.treatments.map((treatment) => treatment.id),
+      },
+      prescription: {
+        prescriptionDate: '2026-09-11',
+        reason: 'Corrección ficticia',
+        values: [{ distance: 'FAR', eye: 'OD', sphere: '-1.50' }],
+      },
+      confirmSharedPrescription: false,
     });
     const beforePrescription = context.database.prescriptions.getById(fixture.prescriptionId);
     const beforeRevisions = context.database.prescriptions.listRevisions(fixture.prescriptionId);

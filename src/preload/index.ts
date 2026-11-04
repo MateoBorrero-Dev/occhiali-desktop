@@ -39,6 +39,8 @@ const prescriptions = Object.freeze(prescriptionMethods);
 
 const opticalJobMethods: OpticalJobApi = {
   list: (request = {}) => ipcRenderer.invoke(IPC_CHANNELS.opticalJobsList, request),
+  listFiles: (request = {}) => ipcRenderer.invoke(IPC_CHANNELS.opticalFilesList, request),
+  updateFile: (id, input) => ipcRenderer.invoke(IPC_CHANNELS.opticalFilesUpdate, id, input),
   listByClient: (request) => ipcRenderer.invoke(IPC_CHANNELS.opticalJobsListByClient, request),
   listByPrescription: (request) =>
     ipcRenderer.invoke(IPC_CHANNELS.opticalJobsListByPrescription, request),

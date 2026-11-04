@@ -59,6 +59,12 @@ function mockAppInfo(
             data: { items: [], total: 0, limit: 25, offset: 0 },
           }),
         ),
+        listFiles: vi.fn(() =>
+          Promise.resolve({
+            ok: true as const,
+            data: { items: [], total: 0, limit: 25, offset: 0 },
+          }),
+        ),
         listByClient: vi.fn(() =>
           Promise.resolve({
             ok: true as const,
@@ -125,9 +131,9 @@ describe('interfaz principal', () => {
     );
     const navigation = screen.getByRole('navigation', { name: 'Navegación principal' });
     expect(within(navigation).getAllByRole('link')).toHaveLength(5);
-    expect(within(navigation).getByRole('link', { name: 'Recetas y trabajos' })).toHaveAttribute(
+    expect(within(navigation).getByRole('link', { name: 'Fichas ópticas' })).toHaveAttribute(
       'href',
-      '#/recetas-trabajos',
+      '#/fichas',
     );
     expect(within(navigation).queryByRole('link', { name: 'Recetas' })).not.toBeInTheDocument();
     expect(within(navigation).queryByRole('link', { name: 'Trabajos' })).not.toBeInTheDocument();
@@ -135,7 +141,7 @@ describe('interfaz principal', () => {
     expect(links.map((link) => link.textContent)).toEqual([
       'Inicio',
       'Clientes',
-      'Recetas y trabajos',
+      'Fichas ópticas',
       'Retiros',
       'Configuración',
     ]);
@@ -195,14 +201,9 @@ describe('interfaz principal', () => {
       'page',
     );
 
-    await user.click(within(navigation).getByRole('link', { name: 'Recetas y trabajos' }));
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Recetas y trabajos' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Recetas' })).toHaveAttribute('aria-selected', 'true');
-
-    await user.click(screen.getByRole('tab', { name: 'Trabajos' }));
-    expect(screen.getByRole('tab', { name: 'Trabajos' })).toHaveAttribute('aria-selected', 'true');
+    await user.click(within(navigation).getByRole('link', { name: 'Fichas ópticas' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Fichas ópticas' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
 
     await user.click(within(navigation).getByRole('link', { name: 'Retiros' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Retiros' })).toBeInTheDocument();
@@ -219,11 +220,8 @@ describe('interfaz principal', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(await screen.findByRole('link', { name: /Recetas registradas/i }));
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Recetas y trabajos' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Recetas' })).toHaveAttribute('aria-selected', 'true');
+    await user.click(await screen.findByRole('link', { name: /Graduaciones registradas/i }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Fichas ópticas' })).toBeInTheDocument();
   });
 
   it('presenta estados vacíos reales de clientes y trabajos', async () => {
@@ -238,57 +236,38 @@ describe('interfaz principal', () => {
       }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('link', { name: 'Recetas y trabajos' }));
-    await user.click(screen.getByRole('tab', { name: 'Trabajos' }));
+    await user.click(screen.getByRole('link', { name: 'Fichas ópticas' }));
     expect(
       await screen.findByRole('heading', {
         level: 2,
-        name: 'Todavía no hay fichas de trabajo.',
+        name: 'Todavía no hay fichas ópticas.',
       }),
     ).toBeInTheDocument();
   });
 
-  it('cambia de pestaña con teclado y conserva los filtros de cada listado', async () => {
+  it('presenta una lista única con búsqueda accesible por teclado', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('link', { name: 'Recetas y trabajos' }));
-    const recipesTab = screen.getByRole('tab', { name: 'Recetas' });
-    recipesTab.focus();
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar por cliente' }), 'Laura');
-    recipesTab.focus();
-    await user.keyboard('{ArrowRight}');
-
-    const jobsTab = screen.getByRole('tab', { name: 'Trabajos' });
-    expect(jobsTab).toHaveFocus();
-    expect(jobsTab).toHaveAttribute('aria-selected', 'true');
-    expect(window.location.hash).toContain('tab=trabajos');
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar fichas' }), '000152');
-
-    jobsTab.focus();
-    await user.keyboard('{Home}');
-    expect(recipesTab).toHaveFocus();
-    expect(recipesTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('searchbox', { name: 'Buscar por cliente' })).toHaveValue('Laura');
-
-    await user.click(jobsTab);
-    expect(screen.getByRole('searchbox', { name: 'Buscar fichas' })).toHaveValue('000152');
+    await user.click(screen.getByRole('link', { name: 'Fichas ópticas' }));
+    const search = screen.getByRole('searchbox', { name: 'Buscar fichas' });
+    search.focus();
+    await user.type(search, '000152');
+    expect(search).toHaveFocus();
+    expect(search).toHaveValue('000152');
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['#/recetas', 'Recetas', 'tab=recetas'],
-    ['#/trabajos', 'Trabajos', 'tab=trabajos'],
-  ])(
+  it.each([['#/recetas'], ['#/trabajos']])(
     'redirige el listado histórico %s sin agregar una pantalla intermedia',
-    async (hash, tab, query) => {
+    async (hash) => {
       window.location.hash = hash;
       render(<App />);
 
       expect(
-        await screen.findByRole('heading', { level: 1, name: 'Recetas y trabajos' }),
+        await screen.findByRole('heading', { level: 1, name: 'Fichas ópticas' }),
       ).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: tab })).toHaveAttribute('aria-selected', 'true');
-      expect(window.location.hash).toContain(query);
+      expect(window.location.hash).toBe('#/fichas');
     },
   );
 

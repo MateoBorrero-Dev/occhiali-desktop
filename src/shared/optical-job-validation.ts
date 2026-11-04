@@ -1,6 +1,7 @@
 import type {
   CreateIntegratedOpticalJobInput,
   CreateOpticalJobInput,
+  OpticalFileListRequest,
   OpticalJobListRequest,
   OpticalJobsByClientRequest,
   OpticalJobsByPrescriptionRequest,
@@ -46,6 +47,7 @@ const DETAIL_KEYS = [
 const CREATE_KEYS = ['clientId', 'prescriptionId', ...DETAIL_KEYS] as const;
 const UPDATE_KEYS = ['prescriptionId', ...DETAIL_KEYS] as const;
 const LIST_KEYS = ['query', 'limit', 'offset'] as const;
+const OPTICAL_FILE_LIST_KEYS = ['clientId', 'query', 'limit', 'offset'] as const;
 const BY_CLIENT_KEYS = ['clientId', 'limit', 'offset'] as const;
 const BY_PRESCRIPTION_KEYS = ['prescriptionId', 'limit', 'offset'] as const;
 
@@ -280,6 +282,30 @@ export function parseOpticalJobListRequest(value: unknown): Required<OpticalJobL
     ]);
   }
   return { query, ...page(record) };
+}
+
+export function parseOpticalFileListRequest(
+  value: unknown,
+): Required<Omit<OpticalFileListRequest, 'clientId'>> & { clientId?: number } {
+  const record = value === undefined ? {} : asRecord(value);
+  assertOnlyKeys(record, OPTICAL_FILE_LIST_KEYS);
+  const queryValue = record.query ?? '';
+  if (typeof queryValue !== 'string') {
+    throw new OpticalJobValidationError([{ field: 'query', message: 'La búsqueda no es válida.' }]);
+  }
+  const query = queryValue.trim().replace(/\s+/g, ' ');
+  if (query.length > OPTICAL_JOB_FIELD_LIMITS.query) {
+    throw new OpticalJobValidationError([
+      { field: 'query', message: 'La búsqueda es demasiado larga.' },
+    ]);
+  }
+  return {
+    ...(record.clientId === undefined
+      ? {}
+      : { clientId: parseOpticalJobClientId(record.clientId) }),
+    query,
+    ...page(record),
+  };
 }
 
 export function parseOpticalJobsByClientRequest(

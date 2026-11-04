@@ -11,6 +11,7 @@ import { TreatmentNotFoundError } from '../database/repositories/treatment-repos
 import {
   OpticalJobValidationError,
   parseCreateOpticalJobInput,
+  parseOpticalFileListRequest,
   parseOpticalJobId,
   parseOpticalJobListRequest,
   parseOpticalJobsByClientRequest,
@@ -18,11 +19,21 @@ import {
   parseUpdateOpticalJobInput,
 } from '../../shared/optical-job-validation';
 import { assertArgumentCount, assertNoArguments, IPC_CHANNELS } from '../../shared/ipc-contracts';
+import { parseUpdateOpticalFileInput } from '../../shared/prescription-job-validation';
+import { PrescriptionValidationError } from '../../shared/prescription-validation';
 import type { OpticalJobIpcError, OpticalJobIpcResult } from '../../shared/ipc-contracts';
-import type { OpticalJob, OpticalJobListPage, Treatment } from '../../shared/database-models';
+import type {
+  OpticalFileListPage,
+  UpdateOpticalFileResult,
+  OpticalJob,
+  OpticalJobListPage,
+  Treatment,
+} from '../../shared/database-models';
 
 export interface OpticalJobIpcHandlers {
   list: (...args: unknown[]) => OpticalJobIpcResult<OpticalJobListPage>;
+  listFiles: (...args: unknown[]) => OpticalJobIpcResult<OpticalFileListPage>;
+  updateFile: (...args: unknown[]) => OpticalJobIpcResult<UpdateOpticalFileResult>;
   listByClient: (...args: unknown[]) => OpticalJobIpcResult<OpticalJobListPage>;
   listByPrescription: (...args: unknown[]) => OpticalJobIpcResult<OpticalJobListPage>;
   get: (...args: unknown[]) => OpticalJobIpcResult<OpticalJob>;
@@ -42,6 +53,13 @@ function isPersistenceConflict(error: unknown): boolean {
 
 function safeError(error: unknown): OpticalJobIpcError {
   if (error instanceof OpticalJobValidationError) {
+    return {
+      code: 'VALIDATION',
+      message: 'Revisá los datos ingresados.',
+      fields: Object.fromEntries(error.issues.map((issue) => [issue.field, issue.message])),
+    };
+  }
+  if (error instanceof PrescriptionValidationError) {
     return {
       code: 'VALIDATION',
       message: 'Revisá los datos ingresados.',
@@ -86,6 +104,19 @@ export function createOpticalJobIpcHandlers(database: ApplicationDatabase): Opti
       perform(() => {
         assertArgumentCount(IPC_CHANNELS.opticalJobsList, args, 1);
         return database.opticalJobs.search(parseOpticalJobListRequest(args[0]));
+      }),
+    listFiles: (...args) =>
+      perform(() => {
+        assertArgumentCount(IPC_CHANNELS.opticalFilesList, args, 1);
+        return database.opticalFiles.search(parseOpticalFileListRequest(args[0]));
+      }),
+    updateFile: (...args) =>
+      perform(() => {
+        assertArgumentCount(IPC_CHANNELS.opticalFilesUpdate, args, 2);
+        return database.prescriptionJobs.update(
+          parseOpticalJobId(args[0]),
+          parseUpdateOpticalFileInput(args[1]),
+        );
       }),
     listByClient: (...args) =>
       perform(() => {

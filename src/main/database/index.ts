@@ -3,6 +3,7 @@ import { openSqliteDatabase } from './connection';
 import { applyMigrations } from './migrations';
 import { ClientRepository } from './repositories/client-repository';
 import { OpticalJobRepository } from './repositories/optical-job-repository';
+import { OpticalFileRepository } from './repositories/optical-file-repository';
 import { PrescriptionRepository } from './repositories/prescription-repository';
 import { PrescriptionValueRepository } from './repositories/prescription-value-repository';
 import { TreatmentRepository } from './repositories/treatment-repository';
@@ -21,6 +22,7 @@ export class ApplicationDatabase {
   public readonly prescriptions: PrescriptionRepository;
   public readonly treatments: TreatmentRepository;
   public readonly opticalJobs: OpticalJobRepository;
+  public readonly opticalFiles: OpticalFileRepository;
   public readonly queries: QueryRepository;
   public readonly deliveryReceipts: DeliveryReceiptRepository;
   public readonly prescriptionJobs: PrescriptionJobService;
@@ -32,6 +34,7 @@ export class ApplicationDatabase {
     this.prescriptions = new PrescriptionRepository(database, this.prescriptionValues);
     this.treatments = new TreatmentRepository(database);
     this.opticalJobs = new OpticalJobRepository(database, this.treatments);
+    this.opticalFiles = new OpticalFileRepository(database);
     this.prescriptionJobs = new PrescriptionJobService(
       database,
       this.prescriptions,

@@ -228,11 +228,11 @@ function parseValues(value: unknown): CreatePrescriptionValueInput[] {
   return parsed;
 }
 
-function parsePrescriptionCore(record: Record<string, unknown>) {
+function parsePrescriptionCore(record: Record<string, unknown>, requireOpticalData = true) {
   const additionOd = normalizeOpticalDecimal(record.additionOd, 'additionOd');
   const additionOi = normalizeOpticalDecimal(record.additionOi, 'additionOi');
   const values = parseValues(record.values);
-  if (values.length === 0 && additionOd === null && additionOi === null) {
+  if (requireOpticalData && values.length === 0 && additionOd === null && additionOi === null) {
     throw new PrescriptionValidationError([
       { field: 'values', message: 'Ingresá al menos un dato óptico antes de guardar.' },
     ]);
@@ -257,7 +257,22 @@ export function parseCreatePrescriptionInput(value: unknown): CreatePrescription
   return { clientId: parsePrescriptionClientId(record.clientId), ...parsePrescriptionCore(record) };
 }
 
-export function parseCorrectPrescriptionInput(value: unknown): CorrectPrescriptionInput {
+export function parseIntegratedPrescriptionInput(
+  value: unknown,
+  requireOpticalData: boolean,
+): CreatePrescriptionInput {
+  const record = asRecord(value);
+  assertOnlyKeys(record, CREATE_KEYS);
+  return {
+    clientId: parsePrescriptionClientId(record.clientId),
+    ...parsePrescriptionCore(record, requireOpticalData),
+  };
+}
+
+export function parseCorrectPrescriptionInput(
+  value: unknown,
+  requireOpticalData = true,
+): CorrectPrescriptionInput {
   const record = asRecord(value);
   assertOnlyKeys(record, CORRECTION_KEYS);
   const reasonValue = record.reason;
@@ -275,7 +290,7 @@ export function parseCorrectPrescriptionInput(value: unknown): CorrectPrescripti
       },
     ]);
   }
-  return { ...parsePrescriptionCore(record), reason };
+  return { ...parsePrescriptionCore(record, requireOpticalData), reason };
 }
 
 function parsePage(value: Record<string, unknown>): { limit: number; offset: number } {
