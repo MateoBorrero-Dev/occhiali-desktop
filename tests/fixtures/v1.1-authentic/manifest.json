@@ -1,0 +1,43 @@
+{
+  "sourceTag": "v1.1.0",
+  "sourceCommit": "bde9b1a9de2960fd628e2c38fa2891f791695055",
+  "generatedWith": "ApplicationDatabase, repositories, SecurityManager and BackupService from v1.1.0",
+  "accessPassword": "Acceso-Fixture-1.1.0-Solo-QA",
+  "recoveryPassword": "Recuperacion-Fixture-1.1.0-Solo-QA",
+  "expectedMigrationIds": [
+    "001_initial_schema",
+    "002_seed_treatments",
+    "003_prescription_revisions",
+    "004_optical_job_product_details",
+    "005_prescription_additions",
+    "006_delivery_receipts"
+  ],
+  "records": {
+    "clients": 2,
+    "prescriptions": 1,
+    "prescriptionRevisions": 1,
+    "prescriptionValues": 4,
+    "opticalJobs": 3,
+    "sharedPrescriptionJobs": 2,
+    "deliveryReceipts": 2,
+    "deliveryReceiptEvents": 2
+  },
+  "files": {
+    "backup-1.1.0.ocbackup-fixture": {
+      "bytes": 224399,
+      "sha256": "093D565A95F14BDC89D31A4121342CFD680654476650EC08B0A36CE07C11E3AE"
+    },
+    "backup-settings-1.1.0.json-fixture": {
+      "bytes": 778,
+      "sha256": "3A3E373FE76ABB79AE8ACD779679290B1C15063BA602E19D79490BC84691CF4D"
+    },
+    "optica-1.1.0.sqlite-fixture": {
+      "bytes": 167936,
+      "sha256": "F150D39F56BA241353DEF895D3FF2A2DB5C43A3AC2DC2854320ED19994666200"
+    },
+    "security-1.1.0.json-fixture": {
+      "bytes": 128,
+      "sha256": "D1B374D8FD27131AB5D738FE34EA6D04CBFAFFAF9D4F5AB8A5DC8DB26C7A25A6"
+    }
+  }
+}
