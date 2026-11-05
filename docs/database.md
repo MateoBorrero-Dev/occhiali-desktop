@@ -4,7 +4,7 @@
 
 La aplicación utiliza `better-sqlite3 13.0.3` y SQLite `3.53.4`. Esta versión requiere Node.js 22 o
 posterior y distribuye un binario Windows x64 basado en Node-API. Se comprobó su carga tanto con
-Node.js 24.18.0 como con Electron 44.7.0 sin reconstrucción por ABI.
+Node.js 24.18.0 como con Electron 44.10.2 sin reconstrucción por ABI.
 
 La base de la aplicación se ubica en:
 
@@ -161,9 +161,10 @@ Valores enumerados opcionales:
 `product` sigue siendo texto libre para admitir anteojos recetados, lentes de sol, lentes de
 contacto y otros productos sin crear inventario. `product_color` guarda el color comercial del
 producto o armazón y no se confunde con `color_type`, que describe la coloración de los lentes.
-`supplier` es texto libre opcional y no crea un catálogo, compras ni stock. `job_number` es textual,
-conserva ceros iniciales y su índice único parcial evita duplicados solo cuando se informa. Las altas
-se bloquean para clientes archivados y las ediciones conservan el cliente.
+`supplier` es texto libre opcional y no crea un catálogo, compras ni stock. `lens` y `brand`
+conservan cristal y marca en columnas independientes y opcionales. `job_number` es textual, conserva
+ceros iniciales y su índice único parcial evita duplicados solo cuando se informa. Las altas se
+bloquean para clientes archivados y las ediciones conservan el cliente.
 
 ### `treatments`
 
@@ -191,8 +192,8 @@ claves foráneas impiden referenciar trabajos o tratamientos inexistentes.
 
 ### Comprobantes de retiro
 
-`delivery_receipts` conserva una instantánea del cliente, ficha, producto, color, proveedor,
-tratamientos, receptor y entrega. `optical_job_id` es clave foránea y única: una ficha admite una
+`delivery_receipts` conserva una instantánea del cliente, ficha, producto, cristal, marca, color,
+proveedor, tratamientos, receptor y entrega. `optical_job_id` es clave foránea y única: una ficha admite una
 entrega completa y no puede duplicarse por otra ruta. `delivery_receipt_sequence` reserva el próximo
 número mediante un `UPDATE ... RETURNING` dentro de la transacción; anular no decrementa ni libera
 la secuencia. `delivery_receipt_events` agrega aclaraciones o anulaciones con motivo y fecha sin
@@ -241,6 +242,9 @@ Migraciones actuales:
    no informado.
 6. `006_delivery_receipts`: agrega secuencia, snapshots de entrega e historial de eventos. No altera
    fichas existentes ni genera comprobantes retroactivos.
+7. `007_optical_job_commercial_details`: agrega `lens` y `brand` como columnas nullable en
+   `optical_jobs` y `delivery_receipts`; los registros y comprobantes anteriores permanecen intactos
+   con ambos valores en `NULL`.
 
 Fase 6 no agregó migraciones: las tres tablas de fichas y tratamientos ya representaban el dominio
 necesario. El Bloque 1 de ajustes de la clienta reutiliza esas relaciones para tratamientos libres y
@@ -297,8 +301,8 @@ medición orientativa del entorno, no un SLA.
 
 El build externaliza `better-sqlite3 13.0.3`. El paquete incluye únicamente su prebuild Node-API
 `win32-x64.node` y lo ubica fuera de ASAR. No se recompila con node-gyp: la distribución upstream
-incluye el binario Windows y la prueba real lo carga con Electron 44.7.0, ABI/modules 149. El runtime
-empaquetado creó la base, aplicó las tres migraciones, escribió, cerró y reabrió con persistencia.
+incluye el binario Windows y la prueba real lo carga con Electron 44.10.2, ABI/modules 149. El runtime
+empaquetado creó la base, aplicó las migraciones disponibles, escribió, cerró y reabrió con persistencia.
 
 El instalador no contiene una base inicial. NSIS tampoco borra `userData` al desinstalar. La
 instalación, reinstalación y comprobaciones se detallan en

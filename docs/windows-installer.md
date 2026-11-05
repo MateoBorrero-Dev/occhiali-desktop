@@ -2,12 +2,14 @@
 
 ## Alcance y requisitos
 
-Occhiali 1.1.0 es una candidata offline para Windows 10 u 11 x64. La usuaria final solo
-necesita ejecutar el instalador; no necesita Node.js, npm, Git, PowerShell ni herramientas de
-desarrollo. No hay versión portable, activación, telemetría, servidor ni actualizaciones
-automáticas.
+Occhiali 1.2.0 está preparado para Windows 10 u 11 x64. La usuaria final solo necesita ejecutar el
+instalador; no necesita Node.js, npm, Git, PowerShell ni herramientas de desarrollo. La aplicación funciona
+offline y no incluye versión portable, activación, telemetría, servidor ni actualizaciones automáticas.
 
-## Generación
+En esta etapa todavía no se generó el instalador 1.2.0. La creación y la prueba del candidato corresponden
+a la etapa siguiente.
+
+## Generación del candidato
 
 Desde un checkout confiable con las dependencias fijadas:
 
@@ -17,28 +19,30 @@ npm run package:candidate
 npm run verify:candidate
 ```
 
-`--ignore-scripts` evita que npm intente una compilación local innecesaria de `better-sqlite3` y
-reduce la ejecución de código durante la instalación. La distribución fijada ya contiene el
-prebuild Windows x64; las verificaciones posteriores prueban que Electron puede cargarlo realmente.
+`--ignore-scripts` evita una compilación local innecesaria de `better-sqlite3`. Las verificaciones
+posteriores deben demostrar que Electron puede cargar realmente el binario Windows x64.
 
-electron-builder 26.16.1 genera el candidato aislado en `release/candidates/1.1.0`:
+electron-builder 26.16.1 genera el candidato aislado en `release/candidates/1.2.0`:
 
-- `Occhiali-Setup-1.1.0-x64.exe`: instalador NSIS asistido.
+- `Occhiali-Setup-1.2.0-x64.exe`: instalador NSIS asistido.
 - `win-unpacked/Occhiali.exe`: aplicación desempaquetada para inspección.
-- `Occhiali-Setup-1.1.0-x64.exe.blockmap`: mapa auxiliar; no se usa para autoactualizar.
+- `Occhiali-Setup-1.2.0-x64.exe.blockmap`: mapa auxiliar; no se usa para autoactualizar.
 
-El destino separado impide que electron-builder reemplace instaladores históricos o sus metadatos.
-El comando `npm run package` conserva el destino tradicional y se reserva para una promoción final
-explícita, no para candidatos.
+El destino separado evita sobrescribir instaladores históricos o sus metadatos. `npm run package` conserva
+el destino tradicional y se reserva para una promoción final explícita.
 
-La versión se identifica con `appId` estable `com.occhiali.desktop`, `productName` y ejecutable
-`Occhiali`. NSIS instala por usuario, no solicita elevación, permite elegir carpeta, crea accesos en
-Escritorio y menú Inicio y agrega desinstalador.
+La identidad permanece estable:
+
+- `appId`: `com.occhiali.desktop`;
+- `productName` y ejecutable: `Occhiali`;
+- instalación NSIS por usuario, sin elevación obligatoria;
+- accesos directos en Escritorio y menú Inicio;
+- desinstalador sin borrado automático de datos.
 
 ## Primera ejecución y datos
 
-El primer inicio crea las migraciones SQLite y solicita configurar una contraseña de acceso. Los
-datos viven fuera del directorio de instalación:
+El primer inicio crea la base y solicita una contraseña de acceso. Los datos viven fuera del directorio de
+instalación:
 
 ```text
 %APPDATA%\optica-desktop\
@@ -48,99 +52,86 @@ datos viven fuera del directorio de instalación:
   backups\
 ```
 
-La carpeta `optica-desktop` está fijada deliberadamente para conservar la identidad de datos de las
-fases anteriores aunque el nombre visible sea Occhiali. El instalador no incluye una base y nunca
-reemplaza una existente por una vacía.
+La carpeta histórica `optica-desktop` se conserva deliberadamente. El instalador no incluye una base de
+usuario y nunca debe reemplazar una existente por una vacía.
 
-## Actualización manual
+## Actualización desde 1.1.0
 
-Cerrar Occhiali y conservar un backup cifrado verificado antes de ejecutar el instalador posterior.
-El nuevo instalador debe mantener `appId`, nombre interno de `userData` y migraciones incrementales.
-No debe ejecutar resets ni borrar el perfil. En Fase 9 se comprobó reinstalar 0.9.0 conservando
-SQLite, seguridad, configuración y backup byte a byte. La actualización real desde 0.9.0 a 1.0.0
-se completó en la cuenta aislada de Windows `OcchialiQA`, instalando por usuario y sin desinstalar la
-versión anterior. Se conservaron información y credenciales, se comprobó persistencia y se restauró
-correctamente desde 1.0.0 un backup creado en 0.9.0.
+1. Abrir 1.1.0 y crear un respaldo cifrado y verificado.
+2. Copiar ese `.ocbackup` a un dispositivo o carpeta externa y conservar la contraseña por separado.
+3. Cerrar completamente Occhiali.
+4. Ejecutar el instalador 1.2.0 sin desinstalar antes la versión existente.
+5. Iniciar con la contraseña de acceso anterior.
+6. Comprobar clientes, fichas, graduaciones, retiros, configuración y respaldos.
+7. Crear y verificar un nuevo respaldo desde 1.2.0.
+
+El `appId`, el directorio de datos y la instalación por usuario no cambian. Al primer inicio, 1.2.0 aplica la
+migración 007 una sola vez: agrega campos opcionales para cristal y marca en fichas y snapshots de retiros.
+Los registros 1.1.0 conservan sus datos y reciben valores nulos en los campos nuevos.
+
+> **Advertencia de downgrade:** una vez aplicada la migración 007, la base ya no puede abrirse directamente
+> con 1.1.0. Para regresar a 1.1.0 se necesita restaurar, desde esa versión, un respaldo compatible creado
+> antes de la migración. No se debe forzar el inicio de 1.1.0 sobre una base migrada ni editar SQLite a mano.
+
+La compatibilidad de base y `.ocbackup` 1.1.0→1.2.0 fue probada con fixtures auténticos y perfiles
+temporales. La actualización mediante instalador todavía debe validarse con el candidato real.
 
 ## Desinstalación y reinstalación
 
-El desinstalador retira programa y accesos directos, pero `deleteAppDataOnUninstall` está desactivado.
-La prueba real confirmó que el perfil permanece y que la reinstalación puede leerlo. Las carpetas de
-exportación o sincronización externas nunca forman parte de la desinstalación.
+`deleteAppDataOnUninstall` permanece desactivado. El desinstalador retira programa y accesos directos, pero
+conserva el perfil. Las carpetas externas y los PDF exportados no forman parte de la desinstalación.
 
-La eliminación definitiva es una operación separada: cerrar Occhiali, verificar un backup, ejecutar
-el desinstalador y luego eliminar manualmente la carpeta exacta `%APPDATA%\optica-desktop` solo por
-decisión explícita de la dueña. Nunca automatizar ese borrado desde una actualización.
+La eliminación definitiva de datos es una operación manual y separada. Solo debe realizarse por decisión
+explícita, después de cerrar Occhiali y verificar un respaldo. Ninguna actualización debe borrar
+`%APPDATA%\optica-desktop`.
 
 ## SQLite, ASAR y seguridad
 
-Main externaliza `better-sqlite3 13.0.3`. Se incluye únicamente
-`prebuilds/win32-x64.node` en `app.asar.unpacked`; las otras arquitecturas y plataformas se excluyen.
-No se usa node-gyp durante el empaquetado porque este módulo distribuye un prebuild Node-API.
-electron-builder 26.16.1 presenta en este entorno Windows un fallo de su recolector npm; antes de
-empaquetar, un parche local idempotente y de coincidencia exacta prioriza el recolector por traversía
-que mantiene el propio proveedor. El script comprueba explícitamente `app-builder-lib 26.16.1`; si
-cambia esa versión o el archivo upstream, falla cerrado y exige revisión. Se aplica automáticamente
-desde los scripts de empaquetado después de una instalación limpia, sin cambios manuales en
-`node_modules`. El verificador exige que `better-sqlite3`, `node-addon-api` y el binario x64 estén realmente
-incluidos y ejecuta el binario desde Occhiali empaquetado con Electron 44.7.0: aplica migraciones,
-inserta, cierra, reabre y consulta.
+Main externaliza `better-sqlite3 13.0.3`. El paquete debe incluir únicamente el prebuild Windows x64
+necesario en `app.asar.unpacked`. El parche acotado del recolector comprueba explícitamente
+`app-builder-lib 26.16.1`; si cambia la versión esperada o el archivo upstream, falla cerrado y exige
+revisión.
 
-El mismo escenario configura autenticación, crea y verifica un backup AES-256-GCM, ejecuta la
-restauración segura y reabre el resultado. Se mantienen sandbox, `contextIsolation`, CSP, IPC
-específico, scrypt y recuperación durable. ASAR fue inspeccionado para descartar SQLite, `.ocbackup`,
-`.env`, contraseñas, configuración y perfiles QA.
+El verificador debe ejecutar el binario empaquetado con Electron 44.10.2 y comprobar migraciones, escritura,
+lectura y reapertura de SQLite. También debe comprobar autenticación, creación y verificación de un respaldo
+AES-256-GCM, restauración segura y generación de PDF. Se mantienen sandbox, `contextIsolation`, CSP, IPC
+específico y `nodeIntegration` deshabilitado.
+
+ASAR debe inspeccionarse para descartar bases SQLite, `.ocbackup`, `.env`, contraseñas, configuraciones y
+perfiles QA.
 
 ## Firma, icono y SmartScreen
 
-`resources/branding/occhiali-windows.ico` es el icono oficial multirresolución (16, 24, 32, 48, 64,
-128 y 256 px). electron-builder lo incrusta en `Occhiali.exe`, el instalador y el desinstalador; los
-accesos directos de Escritorio y menú Inicio apuntan al ejecutable. Main también lo asigna a la
-ventana y conserva una copia idéntica en `resources/branding` dentro de la distribución.
+`resources/branding/occhiali-windows.ico` es el icono oficial multirresolución. electron-builder lo utiliza
+en ejecutable, instalador y desinstalador; los accesos directos apuntan al ejecutable.
 
-El instalador continúa sin certificado Authenticode; Windows puede mostrar editor desconocido o
-advertencias de SmartScreen. No se debe desactivar ninguna protección. Para una entrega firmada se
-necesita un certificado confiable con clave privada fuera de Git y sello de tiempo.
+El instalador no tiene firma Authenticode. Windows puede mostrar editor desconocido o advertencias de
+SmartScreen. No se debe desactivar ninguna protección. Una entrega firmada requiere un certificado
+confiable y una clave privada fuera de Git.
 
-Explorer, el menú Inicio y la barra de tareas pueden conservar una miniatura anterior después de
-reinstalar. Esto es caché de Windows si el icono extraído directamente del instalador y de
-`release/win-unpacked/Occhiali.exe` es el oficial y la copia empaquetada coincide por SHA-256. Para
-refrescar la vista se puede cerrar Occhiali, desanclar y volver a anclar el acceso, recrear el acceso
-directo o reiniciar Explorer/iniciar una nueva sesión. No se deben borrar datos de la aplicación ni
-modificar el paquete para resolver una caché visual.
+Explorer, menú Inicio y barra de tareas pueden conservar un icono anterior por caché. Si los recursos
+extraídos del instalador y ejecutable son correctos, se puede cerrar Occhiali, desanclar y volver a anclar el
+acceso o reiniciar Explorer. Nunca se deben borrar datos para resolver una caché visual.
 
-## QA realizado y pendiente
+## Evidencia histórica que se conserva
 
-Fase 10 actualizó electron-builder de 26.4.1 a 26.16.1 para retirar vulnerabilidades altas y
-críticas de la cadena de empaquetado. La auditoría de 1.0.0 informa siete ocurrencias moderadas del
-mismo advisory de `sprintf-js` (`GHSA-hp3w-g68c-fv3c`) en dependencias transitivas de build; no se
-incluye en el runtime de Occhiali. `npm audit fix --force` propone un cambio incompatible y una
-versión anterior de electron-builder, por lo que no debe aplicarse. Debe reevaluarse cuando el
-proveedor publique una corrección compatible.
+Las pruebas reales de actualización 0.9.0→1.0.0 y 1.0.0→1.1.0, junto con sus hashes y procedimientos,
+siguen documentadas en [release-1.0.0.md](release-1.0.0.md) y
+[release-1.1.0.md](release-1.1.0.md). Esos resultados son históricos y no sustituyen el QA del candidato
+1.2.0.
 
-Se generó e inspeccionó el instalador real. Se instaló silenciosamente en una carpeta temporal, se
-comprobaron ejecutable, desinstalador y accesos directos, y la aplicación instalada abrió una ventana
-real. El runtime instalado validó SQLite, migraciones, persistencia, autenticación, backup y
-restauración. Después se desinstaló, se verificaron hashes del perfil, se reinstaló y se volvió a
-leer la información.
+## Checklist del candidato 1.2.0
 
-El controlador gráfico detectó la ventana, pero agotó el tiempo de aprobación al capturarla. El QA
-visual automatizado en las resoluciones 820×600, 1180×760, 1366×768 y 1920×1080 continúa limitado
-por ese controlador. La actualización real entre 0.9.0 y 1.0.0, el login, la persistencia, la
-exportación PDF y la restauración de un backup anterior fueron validados manualmente en `OcchialiQA`.
-
-La preparación, compatibilidad y procedimiento de actualización y rollback de 1.1.0 están en
-[release-1.1.0.md](release-1.1.0.md).
-
-## Checklist de entrega
-
-- Ejecutar todas las validaciones y `npm run verify:candidate`.
-- Revisar versión, `appId`, SHA-256, firma e icono.
+- Ejecutar las validaciones y `npm run verify:candidate`.
+- Revisar versión 1.2.0, `appId`, SHA-256, firma e icono.
 - Inspeccionar ASAR y el binario nativo x64.
-- Probar instalación limpia con un perfil aislado.
-- Probar login, clientes, recetas, fichas, búsqueda y dashboard offline.
-- Crear, verificar y restaurar un backup cifrado.
+- Probar instalación limpia con un perfil temporal.
+- Probar actualización real desde 1.1.0 sin desinstalar.
+- Confirmar contraseña, datos, configuración y respaldos anteriores.
+- Probar fichas unificadas, retiros, PDF y WhatsApp asistido.
+- Crear, verificar y restaurar un respaldo cifrado.
 - Reiniciar el ejecutable instalado y confirmar persistencia.
-- Probar actualización real desde la versión anterior.
-- Desinstalar/reinstalar y confirmar que `userData` permanece.
-- Entregar instrucciones de backup y la limitación de SmartScreen.
+- Probar desinstalación/reinstalación y conservación de `userData`.
+- Documentar el SHA-256 final y la limitación de SmartScreen.
+
+Ver también [release-1.2.0.md](release-1.2.0.md).

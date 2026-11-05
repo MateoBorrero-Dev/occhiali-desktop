@@ -2,7 +2,8 @@
 
 Aplicación de escritorio offline para digitalizar la gestión cotidiana de una óptica pequeña de
 Argentina. Dispone de una base técnica y de persistencia, además de una interfaz de escritorio con
-navegación y módulos de clientes, recetas y fichas de trabajo conectados al almacenamiento local.
+navegación y módulos de clientes, fichas ópticas unificadas y retiros conectados al almacenamiento
+local.
 
 ## Tecnologías
 
@@ -116,17 +117,26 @@ un backup anterior. El commit, tag, push y publicación continúan siendo pasos 
 con DPAPI, transferencias y retención conservadora y recuperación ante desastres. El candidato se
 genera en un destino aislado y conserva identidad, perfil y migraciones de 1.0.0.
 
+**Versión 1.2.0:** preparación previa al instalador. Unifica receta, graduación y trabajo en Fichas
+ópticas; incorpora cristal y marca, edición transaccional, una sección independiente de Retiros y el
+envío asistido de comprobantes digitales por WhatsApp. Mantiene `appId`, carpeta de datos e
+identificadores históricos. El instalador candidato todavía no se generó.
+
 La usuaria final solo necesita Windows 10 u 11 x64 y el instalador generado. No necesita Node.js,
 npm, Git ni herramientas de desarrollo. La instalación y sus limitaciones están documentadas en
 [Instalador Windows](docs/windows-installer.md).
 
-La aplicación permite gestionar clientes y registrar, buscar, consultar y corregir recetas ópticas
-con historial de revisiones. Los valores FAR/NEAR, OD/OI y las adiciones independientes por ojo se guardan como enteros escalados en
-SQLite mediante canales IPC específicos y validados; no se usan datos simulados ni `localStorage`.
-Las fichas de trabajo registran productos, armazones, tratamientos y acabados comerciales,
-coloración y una receta opcional. Los tratamientos describen características de lentes, no
-procedimientos médicos. No se recopilan datos reales automáticamente: la única carga inicial es el
-catálogo de tratamientos.
+La aplicación permite gestionar clientes y crear, buscar, consultar y editar Fichas ópticas desde
+una experiencia unificada. La graduación LEJOS/CERCA para OD/OI conserva revisiones históricas; los
+datos comerciales incluyen producto, cristal, marca, color, coloración, tratamientos y armazón. Los
+valores ADD anteriores se preservan en SQLite, aunque ya no forman parte de la interfaz. Las altas y
+ediciones conjuntas son transaccionales y usan canales IPC específicos y validados; no se usan datos
+simulados ni `localStorage`.
+
+Retiros dispone de listado, filtros, detalle, aclaraciones, anulaciones y comprobante digital PDF.
+El flujo de WhatsApp es asistido: Occhiali prepara el archivo y abre el destinatario y mensaje, pero
+la usuaria debe adjuntar el PDF y confirmar el envío manualmente. Los tratamientos describen
+características de lentes, no procedimientos médicos.
 
 Inicio funciona como dashboard con conteos reales de clientes activos, recetas y fichas. El layout
 incluye una búsqueda global limitada y agrupada, accesible con `Ctrl+K`, que enlaza registros sin
@@ -139,7 +149,7 @@ Encontrá más información en:
 - [Base de datos](docs/database.md)
 - [Gestión de clientes](docs/clients.md)
 - [Recetas ópticas](docs/prescriptions.md)
-- [Fichas de trabajo](docs/optical-jobs.md)
+- [Fichas ópticas unificadas](docs/optical-jobs.md)
 - [Comprobantes de retiro](docs/delivery-receipts.md)
 - [Dashboard y búsqueda integrada](docs/search-and-dashboard.md)
 - [Seguridad](docs/security.md)
@@ -154,4 +164,5 @@ Encontrá más información en:
 - [Entrega y soporte](docs/entrega-y-soporte.md)
 - [Preparación de versión 1.0.0](docs/release-1.0.0.md)
 - [Preparación de versión 1.1.0](docs/release-1.1.0.md)
+- [Preparación de versión 1.2.0](docs/release-1.2.0.md)
 - [Roadmap](docs/roadmap.md)

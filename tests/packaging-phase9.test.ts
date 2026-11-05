@@ -44,7 +44,7 @@ describe('configuración de distribución de Windows', () => {
   it('mantiene identidad, versión candidata e instalador NSIS x64 estables', () => {
     expect(packageConfiguration).toMatchObject({
       name: 'optica-desktop',
-      version: '1.1.0',
+      version: '1.2.0',
       productName: 'Occhiali',
       main: './out/main/index.js',
       dependencies: { 'better-sqlite3': '13.0.3' },
