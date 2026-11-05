@@ -1,6 +1,7 @@
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import type { SecurityStatus } from '../../shared/database-models';
+import { atomicWriteTextFileSync, type AtomicTextFileWriter } from '../persistence/atomic-file';
 
 const KDF = { N: 32_768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 } as const;
 
@@ -39,7 +40,10 @@ export class SecurityManager {
   private failedAttempts = 0;
   private retryAt = 0;
 
-  public constructor(private readonly configPath: string) {
+  public constructor(
+    private readonly configPath: string,
+    private readonly writeConfig: AtomicTextFileWriter = atomicWriteTextFileSync,
+  ) {
     this.config = this.load();
   }
 
@@ -58,13 +62,14 @@ export class SecurityManager {
     validatePassword(password);
     validateMinutes(inactivityMinutes);
     const salt = randomBytes(16);
-    this.config = {
+    const nextConfig: SecurityConfig = {
       version: 1,
       salt: salt.toString('base64'),
       verifier: (await derive(password, salt)).toString('base64'),
       inactivityMinutes,
     };
-    this.save();
+    this.save(nextConfig);
+    this.config = nextConfig;
     this.authenticated = true;
     this.touch();
     return this.status();
@@ -111,19 +116,21 @@ export class SecurityManager {
     validatePassword(next);
     await this.login(current);
     const salt = randomBytes(16);
-    this.config = {
+    const nextConfig: SecurityConfig = {
       ...this.config!,
       salt: salt.toString('base64'),
       verifier: (await derive(next, salt)).toString('base64'),
     };
-    this.save();
+    this.save(nextConfig);
+    this.config = nextConfig;
   }
 
   public setInactivity(minutes: unknown): SecurityStatus {
     this.requireAuthenticated();
     validateMinutes(minutes);
-    this.config = { ...this.config!, inactivityMinutes: minutes };
-    this.save();
+    const nextConfig: SecurityConfig = { ...this.config!, inactivityMinutes: minutes };
+    this.save(nextConfig);
+    this.config = nextConfig;
     return this.status();
   }
 
@@ -156,7 +163,11 @@ export class SecurityManager {
       throw new SecurityConfigurationError('La configuración de seguridad está dañada.');
     }
   }
-  private save(): void {
-    writeFileSync(this.configPath, JSON.stringify(this.config), { encoding: 'utf8', mode: 0o600 });
+  private save(config: SecurityConfig): void {
+    try {
+      this.writeConfig(this.configPath, JSON.stringify(config));
+    } catch {
+      throw new SecurityConfigurationError('No se pudo guardar la configuración de seguridad.');
+    }
   }
 }

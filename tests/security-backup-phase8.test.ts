@@ -1,8 +1,12 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { BackupService } from '../src/main/backup/backup-service';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  BackupService,
+  MAX_BACKUP_FILE_SIZE_BYTES,
+  readBackupFileWithinLimit,
+} from '../src/main/backup/backup-service';
 import { recoverInterruptedRestore, RestoreCoordinator } from '../src/main/backup/restore-recovery';
 import { ApplicationDatabase } from '../src/main/database';
 import { SecurityManager } from '../src/main/security/security-manager';
@@ -70,6 +74,36 @@ describe('protección de acceso', () => {
     const item = manager();
     writeFileSync(item.file, '{dañado');
     expect(() => new SecurityManager(item.file)).toThrow('dañada');
+  });
+  it('no confirma la configuración si falla la escritura atómica', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'occhiali-security-write-failure-'));
+    directories.push(directory);
+    const file = join(directory, 'security.json');
+    const manager = new SecurityManager(file, () => {
+      throw Object.assign(new Error('disco lleno simulado'), { code: 'ENOSPC' });
+    });
+
+    await expect(manager.setup(ACCESS, 15)).rejects.toThrow('No se pudo guardar');
+    expect(manager.status()).toMatchObject({ configured: false, authenticated: false });
+    expect(existsSync(file)).toBe(false);
+  });
+  it('conserva la contraseña anterior si falla el reemplazo de security.json', async () => {
+    const item = manager();
+    await item.value.setup(ACCESS, 15);
+    const original = readFileSync(item.file, 'utf8');
+    const failing = new SecurityManager(item.file, () => {
+      throw Object.assign(new Error('permiso denegado simulado'), { code: 'EACCES' });
+    });
+    await failing.login(ACCESS);
+
+    await expect(failing.changePassword(ACCESS, 'Acceso-Nuevo-No-Persistido')).rejects.toThrow(
+      'No se pudo guardar',
+    );
+    expect(readFileSync(item.file, 'utf8')).toBe(original);
+    failing.logout();
+    await expect(failing.login(ACCESS)).resolves.toMatchObject({ authenticated: true });
+    const restarted = new SecurityManager(item.file);
+    await expect(restarted.login(ACCESS)).resolves.toMatchObject({ authenticated: true });
   });
 });
 
@@ -244,6 +278,20 @@ describe('backup cifrado y disaster recovery', () => {
     writeFileSync(path, JSON.stringify(envelope));
     value.service.setSelectedRestorePath(path);
     await expect(value.service.verifySelected(RECOVERY)).rejects.toThrow('versión futura');
+  });
+  it('rechaza por metadatos un respaldo excesivo antes de leer su contenido', async () => {
+    const readText = vi.fn(() => Promise.resolve('{no debe leerse}'));
+    await expect(
+      readBackupFileWithinLimit('respaldo-simulado.ocbackup', {
+        inspect: () =>
+          Promise.resolve({
+            isFile: true,
+            sizeBytes: MAX_BACKUP_FILE_SIZE_BYTES + 1,
+          }),
+        readText,
+      }),
+    ).rejects.toThrow('tamaño máximo admitido de 128 MB');
+    expect(readText).not.toHaveBeenCalled();
   });
 });
 

@@ -302,4 +302,65 @@ describe('observabilidad de respaldos 1.1', () => {
       alertLevel: 'MISSING',
     });
   });
+
+  it('pone en cuarentena una configuración truncada sin eliminar respaldos', () => {
+    const root = directory('occhiali-damaged-backup-settings-');
+    const settingsPath = join(root, 'backup-settings.json');
+    const backupsDirectory = join(root, 'backups');
+    const existingBackup = join(backupsDirectory, 'occhiali-backup-20260101000000000.ocbackup');
+    mkdirSync(backupsDirectory);
+    writeFileSync(existingBackup, 'respaldo cifrado ficticio', 'utf8');
+    writeFileSync(settingsPath, '{configuración truncada', 'utf8');
+
+    const service = new BackupService(
+      settingsPath,
+      '1.0.0',
+      () => new Date('2026-01-20T00:00:00.000Z'),
+    );
+
+    expect(service.status().automaticEnabled).toBe(false);
+    expect(service.status().lastErrorAt).not.toBeNull();
+    expect(existsSync(existingBackup)).toBe(true);
+    expect(JSON.parse(readFileSync(settingsPath, 'utf8'))).toMatchObject({
+      automationConfigurationVersion: 1,
+      automaticEnabled: false,
+    });
+    expect(readdirSync(root)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^backup-settings\.json\.corrupt-20260120000000000-[a-f0-9]{12}$/),
+      ]),
+    );
+  });
+
+  it('conserva configuración válida y memoria si falla una actualización', () => {
+    const root = directory('occhiali-backup-settings-write-failure-');
+    const settingsPath = join(root, 'backup-settings.json');
+    const initial = new BackupService(settingsPath, '1.0.0');
+    initial.configure({ automaticEnabled: false, automaticHour: 20, retentionCount: 14 });
+    const original = readFileSync(settingsPath, 'utf8');
+    const restarted = new BackupService(
+      settingsPath,
+      '1.0.0',
+      () => new Date(),
+      undefined,
+      () => {
+        throw Object.assign(new Error('disco lleno simulado'), { code: 'ENOSPC' });
+      },
+    );
+
+    expect(() =>
+      restarted.configure({ automaticEnabled: true, automaticHour: 7, retentionCount: 5 }),
+    ).toThrow('No se pudo guardar la configuración');
+    expect(restarted.status()).toMatchObject({
+      automaticEnabled: false,
+      automaticHour: 20,
+      retentionCount: 14,
+    });
+    expect(readFileSync(settingsPath, 'utf8')).toBe(original);
+    expect(new BackupService(settingsPath, '1.0.0').status()).toMatchObject({
+      automaticEnabled: false,
+      automaticHour: 20,
+      retentionCount: 14,
+    });
+  });
 });

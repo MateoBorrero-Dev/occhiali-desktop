@@ -17,6 +17,7 @@ import {
   ExternalBackupCopyError,
 } from '../src/main/backup/external-backup-copy';
 import { BackupService } from '../src/main/backup/backup-service';
+import { atomicWriteTextFileSync } from '../src/main/persistence/atomic-file';
 import { createTestDatabase, destroyTestDatabase } from './database/helpers';
 import type { TestDatabase } from './database/helpers';
 
@@ -154,6 +155,53 @@ describe('copias externas robustas y retención segura', () => {
         expect.objectContaining({ operation: 'EXPORT', trigger: 'RETRY', result: 'SUCCESS' }),
       ]),
     );
+  });
+
+  it('libera busy y conserva el pendiente si falla la persistencia inicial del reintento', async () => {
+    context = createTestDatabase();
+    const root = directory('occhiali-external-retry-write-failure-');
+    const external = join(root, 'externo');
+    const settingsPath = join(root, 'backup-settings.json');
+    mkdirSync(external);
+    let now = new Date('2026-10-20T04:00:00.000Z');
+    let failWrites = false;
+    const service = new BackupService(
+      settingsPath,
+      '1.0.0',
+      () => now,
+      undefined,
+      (path, contents) => {
+        if (failWrites) throw Object.assign(new Error('disco lleno simulado'), { code: 'ENOSPC' });
+        atomicWriteTextFileSync(path, contents);
+      },
+    );
+    await service.setExportDirectory(external);
+    rmSync(external, { recursive: true });
+    const first = await service.create(context.database, RECOVERY_PASSWORD);
+    const firstPath = join(root, 'backups', first.fileName);
+    const persistedBeforeRetry = readFileSync(settingsPath, 'utf8');
+
+    now = new Date('2026-10-20T04:01:01.000Z');
+    failWrites = true;
+    await expect(service.retryPendingExternalCopy()).rejects.toThrow(
+      'No se pudo guardar la configuración de respaldos',
+    );
+
+    expect(service.status()).toMatchObject({
+      busy: false,
+      externalCopyStatus: 'PENDING',
+      externalRetryAttempts: 1,
+    });
+    expect(readFileSync(settingsPath, 'utf8')).toBe(persistedBeforeRetry);
+    expect(existsSync(firstPath)).toBe(true);
+
+    failWrites = false;
+    now = new Date('2026-10-20T04:02:00.000Z');
+    await expect(service.create(context.database, RECOVERY_PASSWORD)).resolves.toBeDefined();
+    expect(existsSync(firstPath)).toBe(true);
+    expect(
+      readdirSync(join(root, 'backups')).filter((name) => name.endsWith('.ocbackup')),
+    ).toHaveLength(2);
   });
 
   it('agota dos reintentos adicionales y conserva el respaldo local', async () => {

@@ -43,6 +43,12 @@ Contraseña incorrecta, tag inválido, truncamiento, formato desconocido o migra
 rechazan antes de tocar la base activa. Un respaldo anterior compatible se abre en staging y recibe
 las migraciones incrementales normales. No se modifican migraciones históricas.
 
+Antes de leer o descifrar un archivo, Occhiali comprueba que sea un archivo regular y que no supere
+128 MiB. La base almacena textos y relaciones comerciales, por lo que ese límite deja un margen
+amplio para el uso previsto y evita que un archivo seleccionado accidentalmente o manipulado agote
+la memoria del proceso principal. El formato `.ocbackup` no cambia y los respaldos anteriores que se
+encuentren dentro de ese límite continúan siendo compatibles.
+
 ## Programación asistida y retención
 
 Configuración permite elegir modo asistido o automático, hora y conservar entre 2 y 90 copias; el

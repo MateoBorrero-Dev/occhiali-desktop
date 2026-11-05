@@ -1,9 +1,14 @@
 import { createCipheriv, createDecipheriv, randomBytes, scrypt as nodeScrypt } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { lstat, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { ApplicationDatabase } from '../database';
 import { getMigrationIds } from '../database/migrations';
+import {
+  atomicWriteTextFileSync,
+  quarantineFileSync,
+  type AtomicTextFileWriter,
+} from '../persistence/atomic-file';
 import { BackupHistoryStore } from './backup-history';
 import { applySafeLocalRetention } from './backup-retention';
 import {
@@ -23,6 +28,7 @@ import type {
 const MAGIC = 'OCCHIALI_BACKUP';
 const FORMAT_VERSION = 1;
 const KDF = { N: 32_768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 } as const;
+export const MAX_BACKUP_FILE_SIZE_BYTES = 128 * 1024 * 1024;
 
 interface BackupEnvelope {
   magic: typeof MAGIC;
@@ -65,6 +71,37 @@ interface Settings {
 }
 
 export class BackupError extends Error {}
+
+export interface BackupFileAccess {
+  inspect(path: string): Promise<{ isFile: boolean; sizeBytes: number }>;
+  readText(path: string): Promise<string>;
+}
+
+const defaultBackupFileAccess: BackupFileAccess = {
+  inspect: async (path) => {
+    const details = await lstat(path);
+    return { isFile: details.isFile() && !details.isSymbolicLink(), sizeBytes: details.size };
+  },
+  readText: (path) => readFile(path, 'utf8'),
+};
+
+export async function readBackupFileWithinLimit(
+  path: string,
+  access: BackupFileAccess = defaultBackupFileAccess,
+): Promise<string> {
+  const details = await access.inspect(path);
+  if (!details.isFile) throw new BackupError('El archivo seleccionado no es un respaldo válido.');
+  if (
+    !Number.isSafeInteger(details.sizeBytes) ||
+    details.sizeBytes < 0 ||
+    details.sizeBytes > MAX_BACKUP_FILE_SIZE_BYTES
+  )
+    throw new BackupError('El respaldo supera el tamaño máximo admitido de 128 MB.');
+  const contents = await access.readText(path);
+  if (Buffer.byteLength(contents, 'utf8') > MAX_BACKUP_FILE_SIZE_BYTES)
+    throw new BackupError('El respaldo supera el tamaño máximo admitido de 128 MB.');
+  return contents;
+}
 
 export type BackupCreationTrigger = 'MANUAL' | 'AUTOMATIC' | 'RESTORE_SAFETY';
 export type ExternalRetryResult = 'NONE' | 'NOT_DUE' | 'BUSY' | 'SUCCESS' | 'PENDING' | 'FAILED';
@@ -205,6 +242,7 @@ export class BackupService {
     private readonly appVersion: string,
     private readonly now: () => Date = () => new Date(),
     private readonly externalCopier: ExternalBackupCopier = new ExternalBackupCopier(),
+    private readonly writeSettings: AtomicTextFileWriter = atomicWriteTextFileSync,
   ) {
     const defaultDirectory = join(dirname(settingsPath), 'backups');
     this.settings = this.load(defaultDirectory);
@@ -213,7 +251,7 @@ export class BackupService {
       now,
     );
     mkdirSync(this.settings.localDirectory, { recursive: true });
-    this.save();
+    if (!existsSync(this.settingsPath)) this.save();
   }
 
   public status(): BackupStatus {
@@ -299,14 +337,15 @@ export class BackupService {
     const scheduleChanged =
       this.settings.automaticEnabled !== value.automaticEnabled ||
       this.settings.automaticHour !== value.automaticHour;
-    this.settings = {
+    const nextSettings: Settings = {
       ...this.settings,
       automaticEnabled: value.automaticEnabled,
       automaticHour: value.automaticHour,
       retentionCount: value.retentionCount,
       ...(scheduleChanged ? { lastAutomaticAttemptAt: null, lastAutomaticErrorAt: null } : {}),
     };
-    this.save();
+    this.save(nextSettings);
+    this.settings = nextSettings;
     return this.status();
   }
 
@@ -318,9 +357,13 @@ export class BackupService {
   }
 
   public resetAutomaticAttempt(): void {
-    this.settings.lastAutomaticAttemptAt = null;
-    this.settings.lastAutomaticErrorAt = null;
-    this.save();
+    const nextSettings = {
+      ...this.settings,
+      lastAutomaticAttemptAt: null,
+      lastAutomaticErrorAt: null,
+    };
+    this.save(nextSettings);
+    this.settings = nextSettings;
   }
 
   public automaticAttemptedForCurrentWindow(now: Date = this.now()): boolean {
@@ -379,6 +422,7 @@ export class BackupService {
       if (error instanceof ExternalBackupCopyError) throw new BackupError(error.message);
       throw error;
     }
+    const previousSettings = { ...this.settings };
     if (next !== this.settings.exportDirectory) {
       if (
         this.settings.exportDirectory &&
@@ -396,7 +440,12 @@ export class BackupService {
       this.clearPendingExternalCopy();
     }
     this.settings.exportDirectory = next;
-    this.save();
+    try {
+      this.save();
+    } catch (error: unknown) {
+      this.settings = previousSettings;
+      throw error;
+    }
     return this.status();
   }
   public setSelectedRestorePath(path: string | null): void {
@@ -585,78 +634,84 @@ export class BackupService {
     if (this.isCriticalOperation()) return 'BUSY';
 
     this.busy = true;
-    const occurredAt = this.now().toISOString();
-    const sourcePath = join(this.settings.localDirectory, fileName);
-    const previousTemporary = this.safeExternalTemporaryName(
-      this.settings.pendingExternalTemporaryFile,
-    );
-    const temporaryName = this.externalCopier.temporaryName(fileName);
-    this.settings.pendingExternalTemporaryFile = temporaryName;
-    this.settings.pendingExternalAttempts += 1;
-    this.settings.nextExternalRetryAt = null;
-    this.save();
     try {
-      await this.externalCopier.cleanupPersistedTemporary(directory, fileName, previousTemporary);
-      await this.externalCopier.transfer(sourcePath, directory, fileName, temporaryName);
-      const sizeBytes = (await stat(sourcePath)).size;
-      this.markExternalCopySucceeded(fileName, occurredAt);
-      if (this.settings.pendingExternalSourceTrigger === 'AUTOMATIC')
-        this.settings.lastAutomaticErrorAt = null;
-      this.settings.lastErrorAt = null;
-      this.clearPendingExternalCopy();
-      this.save();
-      this.recordHistory({
-        occurredAt,
-        operation: 'EXPORT',
-        trigger: 'RETRY',
-        result: 'SUCCESS',
-        localState: 'VALID',
-        externalState: 'COPIED',
-        fileName,
-        sizeBytes,
-      });
-      return 'SUCCESS';
-    } catch {
-      const localExists = existsSync(sourcePath);
-      const exhausted = this.settings.pendingExternalAttempts >= EXTERNAL_MAX_ATTEMPTS;
-      this.settings.pendingExternalTemporaryFile = null;
-      this.settings.lastExternalCopyStatus = exhausted ? 'FAILED' : 'PENDING';
-      this.settings.lastErrorAt = occurredAt;
-      if (this.settings.pendingExternalSourceTrigger === 'AUTOMATIC')
-        this.settings.lastAutomaticErrorAt = occurredAt;
-      this.settings.nextExternalRetryAt = exhausted
-        ? null
-        : new Date(
-            this.now().getTime() +
-              (EXTERNAL_RETRY_DELAYS_MS[
-                Math.min(
-                  this.settings.pendingExternalAttempts - 1,
-                  EXTERNAL_RETRY_DELAYS_MS.length - 1,
-                )
-              ] ?? 5 * 60_000),
-          ).toISOString();
-      this.save();
-      this.recordHistory({
-        occurredAt,
-        operation: 'EXPORT',
-        trigger: 'RETRY',
-        result: exhausted ? 'FAILURE' : 'PARTIAL',
-        localState: localExists ? 'VALID' : 'MISSING',
-        externalState: exhausted ? 'FAILED' : 'PENDING',
-        fileName,
-        error: localExists
-          ? exhausted
-            ? 'La copia externa agotó sus reintentos; el respaldo local sigue disponible.'
-            : 'La copia externa sigue pendiente; se programó otro reintento.'
-          : 'El respaldo local pendiente ya no está disponible; no se realizará otra copia.',
-      });
-      if (!localExists) {
-        this.settings.lastExternalCopyStatus = 'FAILED';
-        this.settings.nextExternalRetryAt = null;
+      const occurredAt = this.now().toISOString();
+      const sourcePath = join(this.settings.localDirectory, fileName);
+      const previousTemporary = this.safeExternalTemporaryName(
+        this.settings.pendingExternalTemporaryFile,
+      );
+      const temporaryName = this.externalCopier.temporaryName(fileName);
+      const retrySettings: Settings = {
+        ...this.settings,
+        pendingExternalTemporaryFile: temporaryName,
+        pendingExternalAttempts: this.settings.pendingExternalAttempts + 1,
+        nextExternalRetryAt: null,
+      };
+      this.save(retrySettings);
+      this.settings = retrySettings;
+      try {
+        await this.externalCopier.cleanupPersistedTemporary(directory, fileName, previousTemporary);
+        await this.externalCopier.transfer(sourcePath, directory, fileName, temporaryName);
+        const sizeBytes = (await stat(sourcePath)).size;
+        this.markExternalCopySucceeded(fileName, occurredAt);
+        if (this.settings.pendingExternalSourceTrigger === 'AUTOMATIC')
+          this.settings.lastAutomaticErrorAt = null;
+        this.settings.lastErrorAt = null;
+        this.clearPendingExternalCopy();
         this.save();
-        return 'FAILED';
+        this.recordHistory({
+          occurredAt,
+          operation: 'EXPORT',
+          trigger: 'RETRY',
+          result: 'SUCCESS',
+          localState: 'VALID',
+          externalState: 'COPIED',
+          fileName,
+          sizeBytes,
+        });
+        return 'SUCCESS';
+      } catch {
+        const localExists = existsSync(sourcePath);
+        const exhausted = this.settings.pendingExternalAttempts >= EXTERNAL_MAX_ATTEMPTS;
+        this.settings.pendingExternalTemporaryFile = null;
+        this.settings.lastExternalCopyStatus = exhausted ? 'FAILED' : 'PENDING';
+        this.settings.lastErrorAt = occurredAt;
+        if (this.settings.pendingExternalSourceTrigger === 'AUTOMATIC')
+          this.settings.lastAutomaticErrorAt = occurredAt;
+        this.settings.nextExternalRetryAt = exhausted
+          ? null
+          : new Date(
+              this.now().getTime() +
+                (EXTERNAL_RETRY_DELAYS_MS[
+                  Math.min(
+                    this.settings.pendingExternalAttempts - 1,
+                    EXTERNAL_RETRY_DELAYS_MS.length - 1,
+                  )
+                ] ?? 5 * 60_000),
+            ).toISOString();
+        this.save();
+        this.recordHistory({
+          occurredAt,
+          operation: 'EXPORT',
+          trigger: 'RETRY',
+          result: exhausted ? 'FAILURE' : 'PARTIAL',
+          localState: localExists ? 'VALID' : 'MISSING',
+          externalState: exhausted ? 'FAILED' : 'PENDING',
+          fileName,
+          error: localExists
+            ? exhausted
+              ? 'La copia externa agotó sus reintentos; el respaldo local sigue disponible.'
+              : 'La copia externa sigue pendiente; se programó otro reintento.'
+            : 'El respaldo local pendiente ya no está disponible; no se realizará otra copia.',
+        });
+        if (!localExists) {
+          this.settings.lastExternalCopyStatus = 'FAILED';
+          this.settings.nextExternalRetryAt = null;
+          this.save();
+          return 'FAILED';
+        }
+        return exhausted ? 'FAILED' : 'PENDING';
       }
-      return exhausted ? 'FAILED' : 'PENDING';
     } finally {
       this.busy = false;
       this.notifyIdle();
@@ -776,8 +831,9 @@ export class BackupService {
     let envelope: BackupEnvelope;
     let sqlitePath: string | null = null;
     try {
-      envelope = JSON.parse(await readFile(filePath, 'utf8')) as BackupEnvelope;
-    } catch {
+      envelope = JSON.parse(await readBackupFileWithinLimit(filePath)) as BackupEnvelope;
+    } catch (error: unknown) {
+      if (error instanceof BackupError) throw error;
       throw new BackupError('El archivo seleccionado no es un respaldo válido.');
     }
     if (
@@ -941,14 +997,22 @@ export class BackupService {
       }
       return merged;
     } catch {
+      try {
+        quarantineFileSync(this.settingsPath, `corrupt-${safeTimestamp(this.now())}`);
+      } catch {
+        throw new BackupError(
+          'La configuración de respaldos está dañada y no pudo preservarse para diagnóstico.',
+        );
+      }
       return { ...defaults, lastErrorAt: now };
     }
   }
-  private save(): void {
-    writeFileSync(this.settingsPath, JSON.stringify(this.settings), {
-      encoding: 'utf8',
-      mode: 0o600,
-    });
+  private save(settings: Settings = this.settings): void {
+    try {
+      this.writeSettings(this.settingsPath, JSON.stringify(settings));
+    } catch {
+      throw new BackupError('No se pudo guardar la configuración de respaldos.');
+    }
   }
 
   private externalCopyStatus(): BackupStatus['externalCopyStatus'] {
