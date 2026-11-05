@@ -7,18 +7,25 @@ import {
 } from '../database/repositories/delivery-receipt-repository';
 import type { DeliveryReceiptPdfExporter } from '../documents/delivery-receipt-pdf';
 import {
+  DeliveryReceiptSharePdfError,
+  DeliveryReceiptWhatsAppOpenError,
+  type DeliveryReceiptWhatsAppService,
+} from '../documents/delivery-receipt-whatsapp';
+import {
   DeliveryReceiptValidationError,
   parseCreateDeliveryReceiptInput,
   parseDeliveryReceiptEventInput,
   parseDeliveryReceiptId,
   parseDeliveryReceiptListRequest,
 } from '../../shared/delivery-receipt-validation';
+import { parseWhatsAppShareInput, WhatsAppValidationError } from '../../shared/whatsapp-validation';
 import { assertArgumentCount, IPC_CHANNELS } from '../../shared/ipc-contracts';
 import type { DeliveryReceiptIpcError, DeliveryReceiptIpcResult } from '../../shared/ipc-contracts';
 import type {
   DeliveryReceipt,
   DeliveryReceiptExportResult,
   DeliveryReceiptListPage,
+  DeliveryReceiptWhatsAppResult,
 } from '../../shared/database-models';
 
 export interface DeliveryReceiptIpcHandlers {
@@ -28,9 +35,18 @@ export interface DeliveryReceiptIpcHandlers {
   create: (...args: unknown[]) => DeliveryReceiptIpcResult<DeliveryReceipt>;
   addEvent: (...args: unknown[]) => DeliveryReceiptIpcResult<DeliveryReceipt>;
   exportPdf: (...args: unknown[]) => Promise<DeliveryReceiptIpcResult<DeliveryReceiptExportResult>>;
+  shareWhatsApp: (
+    ...args: unknown[]
+  ) => Promise<DeliveryReceiptIpcResult<DeliveryReceiptWhatsAppResult>>;
 }
 
 function safeError(error: unknown, exportOperation = false): DeliveryReceiptIpcError {
+  if (error instanceof WhatsAppValidationError)
+    return {
+      code: 'VALIDATION',
+      message: 'Revisá los datos para compartir.',
+      fields: Object.fromEntries(error.issues.map((issue) => [issue.field, issue.message])),
+    };
   if (error instanceof DeliveryReceiptValidationError)
     return {
       code: 'VALIDATION',
@@ -47,6 +63,10 @@ function safeError(error: unknown, exportOperation = false): DeliveryReceiptIpcE
     return { code: 'DUPLICATE', message: error.message };
   if (error instanceof DeliveryReceiptStateError)
     return { code: 'INVALID_STATE', message: error.message };
+  if (error instanceof DeliveryReceiptSharePdfError)
+    return { code: 'SHARE_PDF', message: error.message };
+  if (error instanceof DeliveryReceiptWhatsAppOpenError)
+    return { code: 'SHARE_OPEN', message: error.message };
   if (
     typeof error === 'object' &&
     error !== null &&
@@ -73,6 +93,7 @@ function perform<T>(operation: () => T): DeliveryReceiptIpcResult<T> {
 export function createDeliveryReceiptIpcHandlers(
   database: ApplicationDatabase,
   pdf: DeliveryReceiptPdfExporter,
+  whatsapp: DeliveryReceiptWhatsAppService,
 ): DeliveryReceiptIpcHandlers {
   return {
     list: (...args) =>
@@ -112,6 +133,19 @@ export function createDeliveryReceiptIpcHandlers(
         return { ok: true, data: await pdf.export(receipt) };
       } catch (error: unknown) {
         return { ok: false, error: safeError(error, true) };
+      }
+    },
+    shareWhatsApp: async (...args) => {
+      try {
+        assertArgumentCount(IPC_CHANNELS.deliveryReceiptsShareWhatsApp, args, 2);
+        const receipt = database.deliveryReceipts.getById(parseDeliveryReceiptId(args[0]));
+        if (!receipt) throw new DeliveryReceiptNotFoundError();
+        return {
+          ok: true,
+          data: await whatsapp.prepare(receipt, parseWhatsAppShareInput(args[1])),
+        };
+      } catch (error: unknown) {
+        return { ok: false, error: safeError(error) };
       }
     },
   };

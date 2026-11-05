@@ -87,9 +87,9 @@ detalle puede editarse la ficha y consultarse su relación con cliente y receta.
 5. Desde el comprobante podés **Exportar PDF**. Cancelar el diálogo no crea un archivo ni otra
    entrega.
 
-Una aclaración o anulación exige motivo y queda en el historial. No borra los datos originales. Los
-espacios de firma del PDF son para completar en papel; no existe firma digital. El comprobante no es
-una factura ni un comprobante fiscal.
+Una aclaración o anulación exige motivo y queda en el historial. No borra los datos originales. El
+comprobante es un registro digital de entrega y no contiene espacios de firma. No es una factura ni
+un comprobante fiscal.
 
 ### Dashboard y búsqueda global
 

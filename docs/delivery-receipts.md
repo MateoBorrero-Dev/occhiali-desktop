@@ -38,10 +38,10 @@ estado. Un comprobante anulado no admite nuevos eventos ni una nueva entrega par
 
 ## Vista previa y PDF
 
-La vista usa una composición A4 con identidad de Occhiali, datos disponibles, declaración de
-recepción y espacios para firmas manuscritas. **Exportar PDF** abre el diálogo nativo de Windows,
-sugiere `Occhiali-Retiro-RET-000001.pdf` y permite cancelar sin crear archivos. Reexportar no crea un
-nuevo comprobante.
+La vista usa una composición A4 con identidad de Occhiali, datos disponibles y una descripción del
+comprobante como registro digital de entrega. No incluye espacios de firma. **Exportar PDF** abre el
+diálogo nativo de Windows, sugiere `Occhiali-Retiro-RET-000001.pdf` y permite cancelar sin crear
+archivos. Reexportar no crea un nuevo comprobante.
 
 Main escapa todo contenido antes de construir el HTML, crea una ventana oculta con sandbox,
 `contextIsolation` y Node Integration deshabilitado, bloquea navegación y genera el documento con

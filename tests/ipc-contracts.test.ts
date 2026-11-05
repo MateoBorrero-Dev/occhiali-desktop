@@ -39,6 +39,7 @@ describe('contratos IPC', () => {
       deliveryReceiptsCreate: 'delivery-receipts:create',
       deliveryReceiptsAddEvent: 'delivery-receipts:add-event',
       deliveryReceiptsExportPdf: 'delivery-receipts:export-pdf',
+      deliveryReceiptsShareWhatsApp: 'delivery-receipts:share-whatsapp',
       dashboardSummary: 'dashboard:get-summary',
       globalSearch: 'search:global',
       securityStatus: 'security:status',

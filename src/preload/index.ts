@@ -64,6 +64,8 @@ const deliveryReceiptMethods: DeliveryReceiptApi = {
   create: (input) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsCreate, input),
   addEvent: (input) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsAddEvent, input),
   exportPdf: (id) => ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsExportPdf, id),
+  shareWhatsApp: (id, input) =>
+    ipcRenderer.invoke(IPC_CHANNELS.deliveryReceiptsShareWhatsApp, id, input),
 };
 const deliveryReceipts = Object.freeze(deliveryReceiptMethods);
 

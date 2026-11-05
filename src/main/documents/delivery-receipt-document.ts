@@ -75,7 +75,6 @@ h2 { margin:0 0 9px; color:#115e59; font-size:13px; text-transform:uppercase; le
 dl { margin:0; display:grid; grid-template-columns:1fr 1fr; gap:8px 18px; }.field { min-width:0; } dt { color:#64748b; font-size:10px; font-weight:700; text-transform:uppercase; } dd { margin:2px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; font-weight:600; }
 .wide { grid-column:1/-1; }.status { margin:14px 0; padding:10px; text-align:center; font-weight:800; border:2px solid; }.annulled { color:#991b1b; border-color:#dc2626; background:#fef2f2; }.corrected { color:#92400e; border-color:#d97706; background:#fffbeb; }
 ul { margin:5px 0 0; padding-left:18px; } li { margin-top:6px; }.declaration { margin-top:18px; padding:10px 12px; background:#f0fdfa; border:1px solid #99f6e4; }
-.signatures { margin-top:34px; display:grid; grid-template-columns:1fr 1fr; gap:45px; break-inside:avoid; }.signature { padding-top:7px; border-top:1px solid #334155; text-align:center; }
 footer { margin-top:25px; color:#64748b; font-size:9px; text-align:center; }
 </style></head><body>
 <header><div><div class="brand">OCCHIALI</div><h1>Comprobante de retiro de producto</h1></div><div class="number">${escapeHtml(receipt.receiptNumber)}<br>Ficha ${shown(receipt.jobNumber)}</div></header>
@@ -84,8 +83,7 @@ ${statusBanner}
 <section><h2>Producto entregado</h2><dl>${productDetails}</dl></section>
 <section><h2>Entrega</h2><dl>${row('Fecha y hora efectiva', escapeHtml(dateTime.format(new Date(receipt.deliveredAt))))}${row('Fecha y hora de registro', escapeHtml(dateTime.format(new Date(receipt.registeredAt))))}${row('Persona que retira', escapeHtml(receipt.recipientFullName))}${row('DNI de quien retira', shown(receipt.recipientDocumentNumber))}${row('Carácter', isThirdParty ? 'Tercero autorizado' : 'Cliente titular')}${row('Vínculo', isThirdParty ? shown(receipt.recipientRelationship) : 'Titular')}${isThirdParty ? `<div class="wide">${row('Referencia de autorización', shown(receipt.authorizationReference))}</div>` : ''}${row('Responsable de entrega', escapeHtml(receipt.deliveredBy))}<div class="wide">${row('Observaciones de entrega', shown(receipt.deliveryNotes))}</div></dl></section>
 ${events ? `<section><h2>Trazabilidad</h2><ul>${events}</ul></section>` : ''}
-<p class="declaration">Se deja constancia de que la usuaria registró la entrega del producto indicado a la persona identificada en este comprobante. Los espacios siguientes corresponden a firmas manuscritas sobre la impresión.</p>
-<div class="signatures"><div class="signature">Firma de quien retira</div><div class="signature">Firma de quien entrega</div></div>
-<footer>Este documento acredita un registro de entrega. No es factura, comprobante fiscal ni firma digital.</footer>
+<p class="declaration">Este comprobante constituye un registro digital de la entrega del producto indicado a la persona identificada.</p>
+<footer>Registro digital de entrega. No es factura ni comprobante fiscal.</footer>
 </body></html>`;
 }

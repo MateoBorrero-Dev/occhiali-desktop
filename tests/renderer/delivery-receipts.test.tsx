@@ -11,8 +11,11 @@ import type {
   DeliveryReceiptListPage,
   DeliveryReceiptListRequest,
   DeliveryReceiptSummary,
+  DeliveryReceiptWhatsAppInput,
+  DeliveryReceiptWhatsAppResult,
   OpticalJob,
 } from '../../src/shared/database-models';
+import type { DeliveryReceiptIpcResult } from '../../src/shared/ipc-contracts';
 import { formatDeliveryTimestamp } from '../../src/renderer/src/lib/delivery-receipt-api';
 
 const ok = <T,>(data: T) => ({ ok: true as const, data });
@@ -169,6 +172,19 @@ function installApi() {
     ),
     exportPdf: vi.fn(() =>
       Promise.resolve(ok({ canceled: false, fileName: 'Occhiali-Retiro-RET-000001.pdf' })),
+    ),
+    shareWhatsApp: vi.fn<
+      (
+        id: number,
+        input: DeliveryReceiptWhatsAppInput,
+      ) => Promise<DeliveryReceiptIpcResult<DeliveryReceiptWhatsAppResult>>
+    >(() =>
+      Promise.resolve(
+        ok({
+          fileName: 'Occhiali-Retiro-RET-000001.pdf',
+          normalizedPhone: '5493511234567',
+        }),
+      ),
     ),
   };
   Object.defineProperty(window, 'optica', {
@@ -539,6 +555,11 @@ describe('interfaz de comprobantes de retiro', () => {
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'RET-000001' })).toBeInTheDocument();
     expect(screen.getByText('Tercera Autorizada')).toBeInTheDocument();
+    expect(screen.getByText(/registro digital de la entrega/)).toBeInTheDocument();
+    expect(screen.getByText('No es factura ni comprobante fiscal.')).toBeInTheDocument();
+    expect(screen.queryByText(/Firma de quien retira/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Firma de quien entrega/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/firmas manuscritas/i)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Exportar PDF' }));
     expect(await screen.findByText(/PDF exportado como/)).toBeInTheDocument();
     expect(api.exportPdf).toHaveBeenCalledWith(3);
@@ -551,5 +572,125 @@ describe('interfaz de comprobantes de retiro', () => {
       type: 'CORRECTION_NOTE',
       reason: 'Aclaración QA',
     });
+  });
+
+  it('prepara un envío asistido con revisión explícita y conserva el mensaje editable', async () => {
+    window.location.hash = '#/retiros/3';
+    const api = installApi();
+    const pending = deferred<DeliveryReceiptIpcResult<DeliveryReceiptWhatsAppResult>>();
+    api.shareWhatsApp.mockReturnValueOnce(pending.promise);
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('heading', { name: 'RET-000001' });
+
+    await user.click(screen.getByRole('button', { name: 'Compartir por WhatsApp' }));
+    expect(
+      screen.getByRole('heading', { name: 'Compartir comprobante por WhatsApp' }),
+    ).toBeInTheDocument();
+    const phone = screen.getByLabelText('Teléfono del destinatario');
+    const message = screen.getByLabelText('Mensaje');
+    expect(phone).toHaveValue('1100000000');
+    expect(message).toHaveValue(
+      'Hola, te compartimos el comprobante de retiro RET-000001 de Occhiali. ¡Muchas gracias!',
+    );
+    expect((message as HTMLTextAreaElement).value).not.toContain('preparado para adjuntar');
+    const prepare = screen.getByRole('button', { name: 'Preparar PDF y abrir WhatsApp' });
+    expect(prepare).toBeDisabled();
+
+    await user.clear(phone);
+    await user.type(phone, '+54 9 351 1234567');
+    await user.clear(message);
+    await user.type(message, 'Mensaje personalizado para QA');
+    const confirmation = screen.getByRole('checkbox', { name: /Confirmo que revisé/ });
+    await user.click(confirmation);
+    expect(prepare).toBeEnabled();
+
+    await user.type(message, ' actualizado');
+    expect(message).toHaveValue('Mensaje personalizado para QA actualizado');
+    expect(confirmation).not.toBeChecked();
+    expect(prepare).toBeDisabled();
+    await user.click(confirmation);
+    await user.clear(phone);
+    await user.type(phone, '+54 9 351 7654321');
+    expect(phone).toHaveValue('+54 9 351 7654321');
+    expect(confirmation).not.toBeChecked();
+    expect(prepare).toBeDisabled();
+    await user.click(confirmation);
+    await user.click(prepare);
+
+    await waitFor(() =>
+      expect(api.shareWhatsApp).toHaveBeenCalledWith(3, {
+        phone: '+54 9 351 7654321',
+        message: 'Mensaje personalizado para QA actualizado',
+      }),
+    );
+    expect(screen.getByRole('button', { name: 'Preparando…' })).toBeDisabled();
+    expect(phone).toBeDisabled();
+    expect(message).toBeDisabled();
+    expect(confirmation).toBeDisabled();
+    await act(async () => {
+      pending.resolve(
+        ok({
+          fileName: 'Occhiali-Retiro-RET-000001.pdf',
+          normalizedPhone: '5493517654321',
+        }),
+      );
+      await Promise.resolve();
+    });
+    const prepared = await screen.findByText(/Adjuntá manualmente el PDF/);
+    expect(prepared).toHaveAttribute('role', 'status');
+    expect(prepared).not.toHaveTextContent('enviado');
+  });
+
+  it('mantiene teléfono y mensaje cuando Main rechaza el número y permite cerrar con Escape', async () => {
+    window.location.hash = '#/retiros/3';
+    const api = installApi();
+    api.shareWhatsApp.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        code: 'VALIDATION',
+        message: 'Revisá los datos para compartir.',
+        fields: { phone: 'El número es ambiguo.' },
+      },
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('heading', { name: 'RET-000001' });
+    await user.click(screen.getByRole('button', { name: 'Compartir por WhatsApp' }));
+    const phone = screen.getByLabelText('Teléfono del destinatario');
+    const message = screen.getByLabelText('Mensaje');
+    await user.clear(phone);
+    await user.type(phone, '11 4000 5000');
+    await user.clear(message);
+    await user.type(message, 'Mensaje que debe conservarse');
+    await user.click(screen.getByRole('checkbox', { name: /Confirmo que revisé/ }));
+    await user.click(screen.getByRole('button', { name: 'Preparar PDF y abrir WhatsApp' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('El número es ambiguo.');
+    expect(phone).toHaveValue('11 4000 5000');
+    expect(message).toHaveValue('Mensaje que debe conservarse');
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(
+      screen.queryByRole('heading', { name: 'Compartir comprobante por WhatsApp' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('permite completar un teléfono faltante y advierte si el comprobante está anulado', async () => {
+    window.location.hash = '#/retiros/3';
+    const api = installApi();
+    api.get.mockResolvedValueOnce(
+      ok({ ...RECEIPT, status: 'ANNULLED' as const, clientPhone: null }),
+    );
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('heading', { name: 'RET-000001' });
+    await user.click(screen.getByRole('button', { name: 'Compartir por WhatsApp' }));
+
+    expect(screen.getByLabelText('Teléfono del destinatario')).toHaveValue('');
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Mensaje').value).toMatch(
+      /comprobante se encuentra anulado/i,
+    );
+    expect(screen.getByText(/RET-000001 · Anulado/)).toBeInTheDocument();
+    expect(screen.getByText(/Este número se usa sólo para este envío/)).toBeInTheDocument();
   });
 });

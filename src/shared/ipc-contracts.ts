@@ -39,6 +39,8 @@ import type {
   DeliveryReceiptExportResult,
   DeliveryReceiptListPage,
   DeliveryReceiptListRequest,
+  DeliveryReceiptWhatsAppInput,
+  DeliveryReceiptWhatsAppResult,
 } from './database-models';
 
 export const IPC_CHANNELS = {
@@ -71,6 +73,7 @@ export const IPC_CHANNELS = {
   deliveryReceiptsCreate: 'delivery-receipts:create',
   deliveryReceiptsAddEvent: 'delivery-receipts:add-event',
   deliveryReceiptsExportPdf: 'delivery-receipts:export-pdf',
+  deliveryReceiptsShareWhatsApp: 'delivery-receipts:share-whatsapp',
   dashboardSummary: 'dashboard:get-summary',
   globalSearch: 'search:global',
   securityStatus: 'security:status',
@@ -208,7 +211,9 @@ export type DeliveryReceiptIpcErrorCode =
   | 'INVALID_STATE'
   | 'CONFLICT'
   | 'PERSISTENCE'
-  | 'EXPORT';
+  | 'EXPORT'
+  | 'SHARE_PDF'
+  | 'SHARE_OPEN';
 
 export interface DeliveryReceiptIpcError {
   code: DeliveryReceiptIpcErrorCode;
@@ -230,6 +235,10 @@ export interface DeliveryReceiptApi {
     input: CreateDeliveryReceiptEventInput,
   ) => Promise<DeliveryReceiptIpcResult<DeliveryReceipt>>;
   exportPdf: (id: number) => Promise<DeliveryReceiptIpcResult<DeliveryReceiptExportResult>>;
+  shareWhatsApp: (
+    id: number,
+    input: DeliveryReceiptWhatsAppInput,
+  ) => Promise<DeliveryReceiptIpcResult<DeliveryReceiptWhatsAppResult>>;
 }
 
 export type QueryIpcErrorCode = 'VALIDATION' | 'CONFLICT' | 'PERSISTENCE';

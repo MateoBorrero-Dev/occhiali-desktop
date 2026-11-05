@@ -12,6 +12,10 @@ import type { BackupService } from '../backup/backup-service';
 import type { BackupCredentialStore } from '../backup/backup-credential-store';
 import { createDeliveryReceiptIpcHandlers } from './delivery-receipt-handlers';
 import { ElectronDeliveryReceiptPdfExporter } from '../documents/delivery-receipt-pdf';
+import {
+  DeliveryReceiptWhatsAppService,
+  ElectronWhatsAppExternalGateway,
+} from '../documents/delivery-receipt-whatsapp';
 
 export function registerIpcHandlers(
   database: ApplicationDatabase,
@@ -102,9 +106,11 @@ export function registerIpcHandlers(
     authorized(() => opticalJobs.treatments(...args)),
   );
 
+  const pdf = new ElectronDeliveryReceiptPdfExporter();
   const deliveryReceipts = createDeliveryReceiptIpcHandlers(
     database,
-    new ElectronDeliveryReceiptPdfExporter(),
+    pdf,
+    new DeliveryReceiptWhatsAppService(pdf, new ElectronWhatsAppExternalGateway()),
   );
   ipcMain.handle(IPC_CHANNELS.deliveryReceiptsList, (_event, ...args: unknown[]) =>
     authorized(() => deliveryReceipts.list(...args)),
@@ -123,6 +129,9 @@ export function registerIpcHandlers(
   );
   ipcMain.handle(IPC_CHANNELS.deliveryReceiptsExportPdf, (_event, ...args: unknown[]) =>
     authorized(() => deliveryReceipts.exportPdf(...args)),
+  );
+  ipcMain.handle(IPC_CHANNELS.deliveryReceiptsShareWhatsApp, (_event, ...args: unknown[]) =>
+    authorized(() => deliveryReceipts.shareWhatsApp(...args)),
   );
 
   const queries = createQueryIpcHandlers(database);

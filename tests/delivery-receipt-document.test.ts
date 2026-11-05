@@ -49,11 +49,12 @@ describe('documento de retiro', () => {
     expect(html).toContain('AR “especial”');
   });
 
-  it('genera estructura A4 sin controles de interfaz y con firmas manuscritas', () => {
+  it('genera un registro digital A4 sin controles ni espacios de firma', () => {
     const html = renderDeliveryReceiptHtml(RECEIPT);
     expect(html).toContain('@page { size: A4');
-    expect(html).toContain('Firma de quien retira');
-    expect(html).toContain('No es factura');
+    expect(html).toContain('registro digital de la entrega');
+    expect(html).toContain('No es factura ni comprobante fiscal.');
+    expect(html).not.toMatch(/firma|manuscrit|impresi[oó]n/i);
     expect(html).not.toContain('<button');
   });
 

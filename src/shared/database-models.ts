@@ -438,6 +438,16 @@ export interface DeliveryReceiptExportResult {
   fileName: string | null;
 }
 
+export interface DeliveryReceiptWhatsAppInput {
+  phone: string;
+  message: string;
+}
+
+export interface DeliveryReceiptWhatsAppResult {
+  fileName: string;
+  normalizedPhone: string;
+}
+
 export interface DashboardSummary {
   activeClients: number;
   totalPrescriptions: number;

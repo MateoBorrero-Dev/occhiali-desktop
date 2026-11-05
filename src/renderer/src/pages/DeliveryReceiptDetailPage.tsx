@@ -1,4 +1,11 @@
-import { ArrowLeft, Download, FileWarning, RefreshCw } from 'lucide-react';
+import {
+  ArrowLeft,
+  Download,
+  FileWarning,
+  MessageCircle,
+  Paperclip,
+  RefreshCw,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import type { DeliveryReceipt, DeliveryReceiptEventType } from '../../../shared/database-models';
@@ -8,11 +15,23 @@ import { Button } from '../components/ui/Button';
 import { buttonStyles } from '../components/ui/buttonStyles';
 import { Card } from '../components/ui/Card';
 import {
+  DeliveryReceiptRequestError,
   deliveryStatusLabel,
   formatDeliveryTimestamp,
   recipientTypeLabel,
   unwrapDeliveryReceiptResult,
 } from '../lib/delivery-receipt-api';
+import { WHATSAPP_MESSAGE_LIMIT } from '../../../shared/whatsapp-validation';
+
+function initialWhatsAppMessage(receipt: DeliveryReceipt): string {
+  const state =
+    receipt.status === 'ANNULLED'
+      ? ' Este comprobante se encuentra anulado.'
+      : receipt.status === 'CORRECTED'
+        ? ' Este comprobante contiene aclaraciones.'
+        : '';
+  return `Hola, te compartimos el comprobante de retiro ${receipt.receiptNumber} de Occhiali.${state} ¡Muchas gracias!`;
+}
 
 function Field({
   label,
@@ -45,6 +64,13 @@ export function DeliveryReceiptDetailPage(): React.JSX.Element {
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [sharePhone, setSharePhone] = useState('');
+  const [shareMessage, setShareMessage] = useState('');
+  const [shareConfirmed, setShareConfirmed] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareErrors, setShareErrors] = useState<Record<string, string>>({});
+  const [shareResult, setShareResult] = useState('');
   const [message, setMessage] = useState(
     typeof (location.state as { message?: unknown } | null)?.message === 'string'
       ? (location.state as { message: string }).message
@@ -101,6 +127,40 @@ export function DeliveryReceiptDetailPage(): React.JSX.Element {
       );
     } catch (error: unknown) {
       setEventError(error instanceof Error ? error.message : 'No se pudo registrar el evento.');
+    }
+  };
+
+  const openSharePanel = (current: DeliveryReceipt): void => {
+    setSharePhone(current.clientPhone ?? '');
+    setShareMessage(initialWhatsAppMessage(current));
+    setShareConfirmed(false);
+    setShareErrors({});
+    setShareResult('');
+    setShareOpen(true);
+  };
+
+  const shareWhatsApp = async (): Promise<void> => {
+    setSharing(true);
+    setShareErrors({});
+    setShareResult('');
+    try {
+      const result = unwrapDeliveryReceiptResult(
+        await window.optica.deliveryReceipts.shareWhatsApp(receiptId, {
+          phone: sharePhone,
+          message: shareMessage,
+        }),
+      );
+      setShareResult(
+        `Se preparó ${result.fileName} y se abrió WhatsApp. Adjuntá manualmente el PDF que quedó seleccionado en el Explorador y revisá el mensaje antes de enviarlo.`,
+      );
+    } catch (error: unknown) {
+      if (error instanceof DeliveryReceiptRequestError) {
+        setShareErrors(error.detail.fields ?? { form: error.detail.message });
+      } else {
+        setShareErrors({ form: 'No se pudo preparar el envío. Volvé a intentarlo.' });
+      }
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -163,6 +223,10 @@ export function DeliveryReceiptDetailPage(): React.JSX.Element {
               <Download size={17} />
               {exporting ? 'Exportando…' : 'Exportar PDF'}
             </Button>
+            <Button variant="secondary" onClick={() => openSharePanel(receipt)}>
+              <MessageCircle size={17} aria-hidden="true" />
+              Compartir por WhatsApp
+            </Button>
           </div>
         }
       />
@@ -173,6 +237,136 @@ export function DeliveryReceiptDetailPage(): React.JSX.Element {
         >
           {message}
         </div>
+      )}
+      {shareOpen && (
+        <Card
+          className="mt-5 border-teal-300 p-5 sm:p-6"
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="whatsapp-share-title"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && !sharing) setShareOpen(false);
+          }}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 id="whatsapp-share-title" className="text-xl font-black text-slate-950">
+                Compartir comprobante por WhatsApp
+              </h2>
+              <p className="mt-1 text-base text-slate-600">
+                Revisá los datos. Occhiali abrirá WhatsApp, pero el PDF se adjunta y se envía
+                manualmente.
+              </p>
+            </div>
+            <Button variant="ghost" onClick={() => setShareOpen(false)} disabled={sharing}>
+              Cerrar
+            </Button>
+          </div>
+          <dl className="mt-5 grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm font-bold text-slate-600">Cliente</dt>
+              <dd className="mt-1 text-base font-semibold text-slate-950">
+                {receipt.clientFirstName} {receipt.clientLastName}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-bold text-slate-600">Comprobante</dt>
+              <dd className="mt-1 text-base font-semibold text-slate-950">
+                {receipt.receiptNumber} · {deliveryStatusLabel(receipt.status)}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-5 grid gap-5">
+            <div className="text-base font-semibold text-slate-800">
+              <label htmlFor="whatsapp-share-phone">Teléfono del destinatario</label>
+              <input
+                id="whatsapp-share-phone"
+                autoFocus
+                className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-base outline-none focus-visible:border-teal-700 focus-visible:ring-3 focus-visible:ring-teal-100"
+                value={sharePhone}
+                disabled={sharing}
+                onChange={(event) => {
+                  setSharePhone(event.target.value);
+                  setShareConfirmed(false);
+                  setShareErrors((current) => ({ ...current, phone: '', form: '' }));
+                }}
+                placeholder="Ejemplo: +54 9 351 1234567"
+                aria-invalid={Boolean(shareErrors.phone)}
+              />
+              {shareErrors.phone && (
+                <span className="mt-2 block text-sm font-semibold text-red-700" role="alert">
+                  {shareErrors.phone}
+                </span>
+              )}
+              <span className="mt-2 block text-sm font-normal text-slate-600">
+                Este número se usa sólo para este envío y no modifica la ficha del cliente.
+              </span>
+            </div>
+            <div className="text-base font-semibold text-slate-800">
+              <label htmlFor="whatsapp-share-message">Mensaje</label>
+              <textarea
+                id="whatsapp-share-message"
+                rows={5}
+                maxLength={WHATSAPP_MESSAGE_LIMIT}
+                className="mt-2 w-full resize-y rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus-visible:border-teal-700 focus-visible:ring-3 focus-visible:ring-teal-100"
+                value={shareMessage}
+                disabled={sharing}
+                onChange={(event) => {
+                  setShareMessage(event.target.value);
+                  setShareConfirmed(false);
+                  setShareErrors((current) => ({ ...current, message: '', form: '' }));
+                }}
+                aria-invalid={Boolean(shareErrors.message)}
+              />
+              {shareErrors.message && (
+                <span className="mt-2 block text-sm font-semibold text-red-700" role="alert">
+                  {shareErrors.message}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-base text-amber-950">
+            <p className="font-bold">El envío no es automático</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5">
+              <li>Occhiali prepara el PDF y lo muestra en el Explorador.</li>
+              <li>WhatsApp se abre con el destinatario y el mensaje.</li>
+              <li>Adjuntá el PDF, revisá todo y presioná Enviar en WhatsApp.</li>
+            </ol>
+          </div>
+          <label className="mt-5 flex min-h-12 items-start gap-3 text-base font-semibold text-slate-800">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-5 w-5 accent-teal-700"
+              checked={shareConfirmed}
+              disabled={sharing}
+              onChange={(event) => setShareConfirmed(event.target.checked)}
+            />
+            Confirmo que revisé el destinatario y comprendo que debo adjuntar y enviar el PDF
+            manualmente.
+          </label>
+          {shareErrors.form && (
+            <p className="mt-3 text-base font-semibold text-red-700" role="alert">
+              {shareErrors.form}
+            </p>
+          )}
+          {shareResult && (
+            <p
+              className="mt-4 rounded-xl border border-teal-300 bg-teal-50 p-4 text-base font-semibold text-teal-950"
+              role="status"
+            >
+              {shareResult}
+            </p>
+          )}
+          <div className="mt-5 flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShareOpen(false)} disabled={sharing}>
+              Cancelar
+            </Button>
+            <Button onClick={() => void shareWhatsApp()} disabled={sharing || !shareConfirmed}>
+              <Paperclip size={17} aria-hidden="true" />
+              {sharing ? 'Preparando…' : 'Preparar PDF y abrir WhatsApp'}
+            </Button>
+          </div>
+        </Card>
       )}
       {isAnnulled && (
         <div className="mt-5 rounded-lg border-2 border-red-400 bg-red-50 p-4 text-center font-black text-red-800">
@@ -254,15 +448,10 @@ export function DeliveryReceiptDetailPage(): React.JSX.Element {
           </dl>
         </section>
         <p className="mt-7 rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm">
-          Se registró la entrega del producto indicado a la persona identificada. Los espacios
-          inferiores son para firmas manuscritas en la impresión; este sistema no captura firma
-          digital.
+          Este comprobante constituye un registro digital de la entrega del producto indicado a la
+          persona identificada.
         </p>
-        <div className="mt-14 grid grid-cols-2 gap-12 text-center text-sm">
-          <div className="border-t border-slate-500 pt-2">Firma de quien retira</div>
-          <div className="border-t border-slate-500 pt-2">Firma de quien entrega</div>
-        </div>
-        <p className="mt-8 text-center text-xs text-slate-500">
+        <p className="mt-6 text-center text-xs text-slate-500">
           No es factura ni comprobante fiscal.
         </p>
       </Card>
